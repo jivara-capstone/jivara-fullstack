@@ -39,7 +39,7 @@ export default function RegisterPage() {
     showLoading('Mohon Tunggu', 'Sedang mendaftarkan akun Anda...');
 
     try {
-      await axios.post('http://localhost:3001/api/auth/register', {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/register`, {
         fullName,
         email,
         phone,

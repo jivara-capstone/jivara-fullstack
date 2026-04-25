@@ -33,7 +33,7 @@ export default function LoginPage() {
 
     try {
       // Backend handles identifier as either email or phone
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`, {
         identifier,
         password,
       });
