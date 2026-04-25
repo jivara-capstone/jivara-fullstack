@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { updateSession } from './utils/supabase/middleware';
 
 // Routes that require authentication
 const protectedRoutes = ['/dashboard'];
@@ -7,7 +8,10 @@ const protectedRoutes = ['/dashboard'];
 // Routes that should NOT be accessible if already logged in
 const authRoutes = ['/login', '/register'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Update the session
+  await updateSession(request);
+
   const token = request.cookies.get('jivara-token')?.value;
   const { pathname } = request.nextUrl;
 
