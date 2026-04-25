@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.app/sm_config_schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "rootDirectory": "backend"
+  },
+  "deploy": {
+    "startCommand": "npm run start",
+    "restartPolicyType": "ON_FAILURE",
+    "healthCheckPath": "/health",
+    "healthCheckTimeout": 100
+  }
+}
