@@ -18,10 +18,11 @@ const router = Router();
 
 /**
  * @swagger
- * /auth/register:
+ * /api/auth/register:
  *   post:
  *     summary: Daftarkan pengguna baru
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -63,10 +64,12 @@ router.post("/register", validateRegister, authController.register);
 
 /**
  * @swagger
- * /auth/login:
+ * /api/auth/login:
  *   post:
  *     summary: Masuk ke akun pengguna
+ *     description: Gunakan access_token dari response endpoint ini untuk tombol Authorize di Swagger UI.
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -81,7 +84,7 @@ router.post("/register", validateRegister, authController.register);
  *                 type: string
  *     responses:
  *       200:
- *         description: Login berhasil
+ *         description: Login berhasil. Salin data.access_token untuk autentikasi Bearer.
  *       400:
  *         description: Kredensial tidak valid
  */
@@ -89,10 +92,11 @@ router.post("/login", validateLogin, authController.login);
 
 /**
  * @swagger
- * /auth/refresh:
+ * /api/auth/refresh:
  *   post:
  *     summary: Perbarui token akses
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -114,10 +118,11 @@ router.post("/refresh", validateRefreshToken, authController.refresh);
 
 /**
  * @swagger
- * /auth/logout:
+ * /api/auth/logout:
  *   post:
  *     summary: Keluar dari akun
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -137,9 +142,10 @@ router.post("/logout", validateRefreshToken, authController.logout);
 
 /**
  * @swagger
- * /auth/me:
+ * /api/auth/me:
  *   get:
  *     summary: Ambil profil pengguna saat ini
+ *     description: Klik tombol Authorize di bagian atas Swagger UI, lalu masukkan access_token dari /api/auth/login tanpa awalan Bearer.
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []

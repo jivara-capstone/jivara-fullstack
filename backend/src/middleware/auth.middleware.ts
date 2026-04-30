@@ -27,7 +27,10 @@ export const authenticateToken = (
   next: NextFunction
 ) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer <token>
+  const token = authHeader
+    ?.replace(/^Bearer\s+/i, "")
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
 
   if (!token) {
     return res.status(401).json({
