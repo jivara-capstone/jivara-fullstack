@@ -8,6 +8,8 @@ import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
+import patientRoutes from './routes/patient.routes';
+import medicationScheduleRoutes from './routes/medication-schedule.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -66,6 +68,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/medication-schedules', medicationScheduleRoutes);
 
 // Custom JS untuk Smooth Scroll Swagger (Lenis)
 app.get('/swagger-custom.js', (req: Request, res: Response) => {
