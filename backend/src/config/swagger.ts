@@ -24,19 +24,20 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: 'Jivara API',
       version: '1.0.0',
-      description: 'API RESTful Jivara - Platform Kesehatan Berbasis AI',
+      description: 'API RESTful Jivara - Platform Kesehatan Berbasis AI. Untuk endpoint yang membutuhkan autentikasi, login ke /api/auth/login, salin data.access_token, klik Authorize, lalu isi token tanpa awalan Bearer.',
       contact: {
         name: 'Jivara',
       },
     },
     servers: getServers(),
+    security: [{ bearerAuth: [] }],
     components: {
       securitySchemes: {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Masukkan token JWT Anda',
+          description: 'Masukkan access_token dari endpoint /api/auth/login. Isi token saja tanpa awalan Bearer.',
         },
       },
     },

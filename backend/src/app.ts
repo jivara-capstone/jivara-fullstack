@@ -44,6 +44,9 @@ app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  swaggerOptions: {
+    persistAuthorization: true,
+  },
   customCss: `
     html.lenis { height: auto; }
     .lenis.lenis-smooth { scroll-behavior: auto !important; }
