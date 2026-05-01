@@ -1,10 +1,12 @@
 import { Edit3, Eye, Trash2 } from "lucide-react";
+import type { PatientRecord } from "@/lib/mocks/patients";
 
 export type PatientAction = "view" | "edit" | "delete";
 
 interface PatientActionsProps {
-  readonly patientName: string;
+  readonly patient: PatientRecord;
   readonly actions?: readonly PatientAction[];
+  readonly onAction?: (action: PatientAction, patient: PatientRecord) => void;
 }
 
 const actionConfig = {
@@ -13,7 +15,7 @@ const actionConfig = {
   delete: { label: "Hapus", icon: Trash2, className: "hover:bg-danger/10 hover:text-danger" },
 } as const;
 
-export default function PatientActions({ patientName, actions = ["view"] }: PatientActionsProps) {
+export default function PatientActions({ patient, actions = ["view"], onAction }: PatientActionsProps) {
   return (
     <div className="flex items-center justify-end gap-1">
       {actions.map((action) => {
@@ -24,7 +26,8 @@ export default function PatientActions({ patientName, actions = ["view"] }: Pati
           <button
             key={action}
             className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors ${config.className}`}
-            aria-label={`${config.label} ${patientName}`}
+            aria-label={`${config.label} ${patient.name}`}
+            onClick={() => onAction?.(action, patient)}
           >
             <Icon size={17} />
           </button>

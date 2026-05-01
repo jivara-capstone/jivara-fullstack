@@ -9,10 +9,11 @@ interface PatientTableProps {
   readonly title?: string;
   readonly showViewAll?: boolean;
   readonly actions?: readonly PatientAction[];
+  readonly onAction?: (action: PatientAction, patient: PatientRecord) => void;
   readonly embedded?: boolean;
 }
 
-export default function PatientTable({ patients, title, showViewAll = false, actions = ["view"], embedded = false }: PatientTableProps) {
+export default function PatientTable({ patients, title, showViewAll = false, actions = ["view"], onAction, embedded = false }: PatientTableProps) {
   return (
     <section id="pasien" className={`overflow-hidden bg-white ${embedded ? "rounded-t-3xl" : "rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.08)]"}`}>
       {(title || showViewAll) && (
@@ -44,7 +45,7 @@ export default function PatientTable({ patients, title, showViewAll = false, act
                 <td className="px-7 py-4"><PatientStatusBadge status={patient.status} /></td>
                 <td className="px-7 py-4 text-sm font-bold text-muted">{patient.lastVisit}</td>
                 <td className="px-7 py-4"><PatientAdherence value={patient.adherence} /></td>
-                <td className="px-7 py-4"><PatientActions patientName={patient.name} actions={actions} /></td>
+                <td className="px-7 py-4"><PatientActions patient={patient} actions={actions} onAction={onAction} /></td>
               </tr>
             ))}
           </tbody>
@@ -56,7 +57,7 @@ export default function PatientTable({ patients, title, showViewAll = false, act
           <article key={patient.id} className="p-5">
             <div className="flex items-start justify-between gap-4">
               <PatientIdentity patient={patient} />
-              <PatientActions patientName={patient.name} actions={actions} />
+              <PatientActions patient={patient} actions={actions} onAction={onAction} />
             </div>
             <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm font-bold text-muted">
               <span>{patient.id}</span>

@@ -1,0 +1,62 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { X } from "lucide-react";
+
+interface ModalProps {
+  readonly isOpen: boolean;
+  readonly title: string;
+  readonly description?: string;
+  readonly children: ReactNode;
+  readonly onClose: () => void;
+}
+
+export default function Modal({ isOpen, title, description, children, onClose }: ModalProps) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[50000] flex items-center justify-center p-4">
+          <motion.div
+            className="absolute inset-0 bg-dark/45 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={onClose}
+          />
+
+          <motion.section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
+            className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[32px] bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.22)] sm:p-8"
+            initial={{ opacity: 0, y: 28, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="mb-7 flex items-start justify-between gap-5">
+              <div>
+                <h2 id="modal-title" className="font-display text-2xl font-extrabold tracking-[-0.04em] text-text-main sm:text-3xl">
+                  {title}
+                </h2>
+                {description && <p className="mt-2 text-sm leading-6 text-muted">{description}</p>}
+              </div>
+
+              <button
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-muted transition-colors hover:text-text-main"
+                onClick={onClose}
+                aria-label="Tutup modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {children}
+          </motion.section>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
