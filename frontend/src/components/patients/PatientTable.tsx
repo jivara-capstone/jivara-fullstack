@@ -1,0 +1,103 @@
+import Image from "next/image";
+import Link from "next/link";
+import type { PatientRecord } from "@/lib/mocks/patients";
+import PatientActions, { type PatientAction } from "./PatientActions";
+import PatientStatusBadge from "./PatientStatusBadge";
+
+interface PatientTableProps {
+  readonly patients: readonly PatientRecord[];
+  readonly title?: string;
+  readonly showViewAll?: boolean;
+  readonly actions?: readonly PatientAction[];
+  readonly embedded?: boolean;
+}
+
+export default function PatientTable({ patients, title, showViewAll = false, actions = ["view"], embedded = false }: PatientTableProps) {
+  return (
+    <section id="pasien" className={`overflow-hidden bg-white ${embedded ? "rounded-t-3xl" : "rounded-3xl shadow-[0_10px_30px_rgba(15,23,42,0.08)]"}`}>
+      {(title || showViewAll) && (
+        <div className="flex items-center justify-between gap-4 px-5 py-5 sm:px-7">
+          {title && <h2 className="font-display text-xl font-bold tracking-[-0.03em] text-text-main">{title}</h2>}
+          {showViewAll && <Link href="/patients" className="text-sm font-extrabold text-text-main transition-colors hover:!text-primary">Lihat Semua</Link>}
+        </div>
+      )}
+
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[860px] text-left">
+          <thead className="bg-surface text-xs font-extrabold uppercase tracking-[0.08em] text-muted">
+            <tr>
+              <th className="px-7 py-4">Nama Pasien / ID</th>
+              <th className="px-7 py-4">Usia</th>
+              <th className="px-7 py-4">Status</th>
+              <th className="px-7 py-4">Kunjungan Terakhir</th>
+              <th className="px-7 py-4">Kepatuhan</th>
+              <th className="px-7 py-4 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {patients.map((patient) => (
+              <tr key={patient.id} className="transition-colors hover:bg-surface/60">
+                <td className="px-7 py-4">
+                  <PatientIdentity patient={patient} />
+                </td>
+                <td className="px-7 py-4 text-sm font-bold text-muted">{patient.age}</td>
+                <td className="px-7 py-4"><PatientStatusBadge status={patient.status} /></td>
+                <td className="px-7 py-4 text-sm font-bold text-muted">{patient.lastVisit}</td>
+                <td className="px-7 py-4"><PatientAdherence value={patient.adherence} /></td>
+                <td className="px-7 py-4"><PatientActions patientName={patient.name} actions={actions} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="divide-y divide-line sm:hidden">
+        {patients.map((patient) => (
+          <article key={patient.id} className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <PatientIdentity patient={patient} />
+              <PatientActions patientName={patient.name} actions={actions} />
+            </div>
+            <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm font-bold text-muted">
+              <span>{patient.id}</span>
+              <span>{patient.lastVisit}</span>
+              <PatientStatusBadge status={patient.status} />
+              <PatientAdherence value={patient.adherence} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PatientIdentity({ patient }: { readonly patient: PatientRecord }) {
+  return (
+    <div className="flex items-center gap-4">
+      {patient.image ? (
+        <Image src={patient.image} alt="" width={42} height={42} className="h-[42px] w-[42px] shrink-0 rounded-full object-cover" />
+      ) : (
+        <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-extrabold text-indigo-500">
+          {patient.avatar}
+        </span>
+      )}
+      <div>
+        <p className="font-extrabold text-text-main">{patient.name}</p>
+        <p className="mt-0.5 text-sm font-semibold text-muted">{patient.id} • {patient.gender}</p>
+      </div>
+    </div>
+  );
+}
+
+function PatientAdherence({ value }: { readonly value: number }) {
+  const tone = value < 50 ? "bg-danger" : value < 75 ? "bg-warning" : "bg-primary";
+
+  return (
+    <div className="flex min-w-[160px] items-center gap-3">
+      <div className="h-2 flex-1 rounded-full bg-line">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="text-sm font-bold text-muted">{value}%</span>
+    </div>
+  );
+}

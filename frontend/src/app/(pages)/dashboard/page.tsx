@@ -1,24 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { useAuthStore } from '@/store/auth';
-import Cookies from 'js-cookie';
-import { showToast, showConfirm } from '@/lib/swal';
 import api from '@/lib/axios';
 import Button from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
-import {
-  NurseDashboardNavbar,
-  RecentPatientsTable,
-} from '@/components/dashboard';
+import { DashboardLayout } from '@/components/dashboard';
+import { PatientTable } from '@/components/patients';
 import SummaryCard from '@/components/ui/SummaryCard';
 import { dashboardStats, recentPatients } from '@/lib/mocks/dashboard';
 
 export default function DashboardPage() {
-  const { user, logout, setAuth, token, refreshToken } = useAuthStore();
-  const router = useRouter();
+  const { user, setAuth, token, refreshToken } = useAuthStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,25 +39,6 @@ export default function DashboardPage() {
     }
   }, [setAuth, token, refreshToken]);
 
-  const handleLogout = async () => {
-    const result = await showConfirm('Keluar Akun?', 'Anda perlu masuk kembali untuk mengakses data Anda.', 'Ya, Keluar');
-
-    if (result.isConfirmed) {
-      try {
-        // Panggil endpoint logout agar sesi di backend ikut dihapus
-        await api.post('/auth/logout', { refresh_token: refreshToken });
-      } catch {
-        // Logout backend gagal, lanjutkan logout lokal
-      }
-
-      // Proses logout secara lokal
-      logout();
-      Cookies.remove('jivara-token');
-      showToast('Berhasil keluar dari akun.', 'success');
-      router.push('/login');
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-5">
@@ -75,9 +50,7 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-surface">
-      <NurseDashboardNavbar onLogout={handleLogout} />
-
+    <DashboardLayout>
       <motion.main
         className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:ml-[280px] lg:w-[calc(100%-280px)] lg:max-w-none lg:px-10 lg:py-8"
         initial={{ opacity: 0 }}
@@ -125,9 +98,9 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
         >
-          <RecentPatientsTable patients={recentPatients} />
+          <PatientTable patients={recentPatients.slice(0, 6)} title="Pasien Terbaru" showViewAll actions={["view"]} />
         </motion.div>
       </motion.main>
-    </div>
+    </DashboardLayout>
   );
 }

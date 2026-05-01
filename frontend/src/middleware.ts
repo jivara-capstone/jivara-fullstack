@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
 // Route yang memerlukan autentikasi
-const protectedRoutes = ['/dashboard'];
+const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log'];
 
 // Route yang TIDAK boleh diakses jika sudah login
 const authRoutes = ['/login', '/register'];

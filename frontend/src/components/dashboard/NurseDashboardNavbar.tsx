@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu } from "lucide-react";
 import { useLockBodyScroll } from "@/hooks";
 import DashboardSidebar from "./DashboardSidebar";
-import type { DashboardNavLabel } from "./navigation";
+import { DASHBOARD_NAV_ITEMS, type DashboardNavLabel } from "./navigation";
 
 interface NurseDashboardNavbarProps {
   readonly onLogout: () => void;
@@ -13,7 +14,8 @@ interface NurseDashboardNavbarProps {
 
 export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState<DashboardNavLabel>("Dashboard");
+  const pathname = usePathname();
+  const activeItem = getActiveNavLabel(pathname);
 
   useLockBodyScroll(isMenuOpen);
 
@@ -33,7 +35,7 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
       </header>
 
       <aside className="fixed inset-y-0 left-0 z-[10000] hidden w-[280px] flex-col bg-white px-7 py-8 shadow-[8px_0_26px_rgba(15,23,42,0.06)] lg:flex">
-        <DashboardSidebar activeItem={activeItem} onActiveChange={setActiveItem} onLogout={onLogout} />
+        <DashboardSidebar activeItem={activeItem} onLogout={onLogout} />
       </aside>
 
       <AnimatePresence>
@@ -60,7 +62,6 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
 
               <DashboardSidebar
                 activeItem={activeItem}
-                onActiveChange={setActiveItem}
                 onNavigate={() => setIsMenuOpen(false)}
                 onLogout={onLogout}
               />
@@ -70,4 +71,8 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
       </AnimatePresence>
     </>
   );
+}
+
+function getActiveNavLabel(pathname: string): DashboardNavLabel {
+  return DASHBOARD_NAV_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.label ?? "Dashboard";
 }

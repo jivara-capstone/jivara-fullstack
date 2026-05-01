@@ -4,12 +4,11 @@ import { DASHBOARD_NAV_ITEMS, type DashboardNavLabel } from "./navigation";
 
 interface DashboardSidebarProps {
   readonly activeItem: DashboardNavLabel;
-  readonly onActiveChange: (label: DashboardNavLabel) => void;
   readonly onLogout: () => void;
   readonly onNavigate?: () => void;
 }
 
-export default function DashboardSidebar({ activeItem, onActiveChange, onLogout, onNavigate }: DashboardSidebarProps) {
+export default function DashboardSidebar({ activeItem, onLogout, onNavigate }: DashboardSidebarProps) {
   return (
     <>
       <div className="hidden lg:block">
@@ -22,10 +21,7 @@ export default function DashboardSidebar({ activeItem, onActiveChange, onLogout,
             key={item.label}
             item={item}
             isActive={activeItem === item.label}
-            onSelect={() => {
-              onActiveChange(item.label);
-              onNavigate?.();
-            }}
+            onSelect={() => onNavigate?.()}
           />
         ))}
       </nav>
