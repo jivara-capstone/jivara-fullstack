@@ -13,6 +13,7 @@ import medicationScheduleRoutes from './routes/medication-schedule.routes';
 import medicationLogRoutes from './routes/medication-log.routes';
 import adherenceRoutes from './routes/adherence.routes';
 import foodAiRoutes from './routes/food-ai.routes';
+import prescriptionRoutes from './routes/prescription.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,6 +77,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
+app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/medication-schedules', medicationScheduleRoutes);
 app.use('/api/medication-logs', medicationLogRoutes);
 app.use('/api/adherence', adherenceRoutes);
