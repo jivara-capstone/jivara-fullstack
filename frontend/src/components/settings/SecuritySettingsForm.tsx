@@ -5,8 +5,10 @@ import { Lock, Save } from "lucide-react";
 import AuthInput from "@/components/ui/AuthInput";
 import Button from "@/components/ui/Button";
 import { showSuccess, showWarning } from "@/lib/swal";
+import { useAuthStore } from "@/store/auth";
 
 export default function SecuritySettingsForm() {
+  const user = useAuthStore((state) => state.user);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,6 +39,16 @@ export default function SecuritySettingsForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <input
+        type="email"
+        name="username"
+        value={user?.email ?? ""}
+        readOnly
+        autoComplete="username"
+        className="hidden"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
       <AuthInput
         id="currentPassword"
         label="Kata Sandi Saat Ini"
