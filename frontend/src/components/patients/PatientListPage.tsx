@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { patients as initialPatients, type PatientRecord } from "@/lib/mocks/patients";
-import { showConfirm, showSuccess, showToast } from "@/lib/swal";
+import { showConfirm, showToast } from "@/lib/swal";
 import AddPatientModal from "./AddPatientModal";
 import { createPatientRecord, type AddPatientValues } from "./AddPatientForm";
 import type { PatientAction } from "./PatientActions";
