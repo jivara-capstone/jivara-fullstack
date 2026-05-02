@@ -127,4 +127,22 @@ export const medicationSchedules: MedicationScheduleRecord[] = [
     instructions: "Jadwal dihentikan sementara oleh perawat.",
     status: "Nonaktif",
   },
+  {
+    id: "SCH-006",
+    patientId: patients[5].id,
+    patientName: patients[5].name,
+    patientAvatar: patients[5].avatar,
+    medicineName: "Cefixime",
+    dose: "100 mg",
+    medicineForm: "Sirup",
+    stock: 1,
+    frequency: "2 kali sehari",
+    times: ["08:00", "20:00"],
+    mealRule: "Sesudah makan",
+    startDate: "2026-04-25",
+    endDate: "2026-05-05",
+    reminderEnabled: false,
+    instructions: "Jadwal dihentikan sementara oleh perawat.",
+    status: "Nonaktif",
+  }
 ];
