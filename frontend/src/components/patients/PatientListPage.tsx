@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Plus } from "lucide-react";
@@ -19,6 +20,7 @@ import PatientToolbar, { type PatientFilter } from "./PatientToolbar";
 const pageSize = 10;
 
 export default function PatientListPage() {
+  const router = useRouter();
   const [patientRecords, setPatientRecords] = useState(initialPatients);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<PatientFilter>("all");
@@ -88,6 +90,10 @@ export default function PatientListPage() {
   };
 
   const handlePatientAction = async (action: PatientAction, patient: PatientRecord) => {
+    if (action === "view") {
+      router.push(`/patients/${encodeURIComponent(patient.id)}`);
+    }
+
     if (action === "edit") {
       setEditingPatient(patient);
     }

@@ -12,7 +12,7 @@ export const activitySeverityTextStyles: Record<ActivitySeverity, string> = {
 export const activityCategoryTextStyles: Record<ActivityCategory, string> = {
   Reminder: "text-primary",
   Kepatuhan: "text-leaf",
-  "Scan Makanan": "text-lime",
+  "Scan Makanan": "text-leaf",
 };
 
 export const activityCategoryIcons: Record<ActivityCategory, LucideIcon> = {

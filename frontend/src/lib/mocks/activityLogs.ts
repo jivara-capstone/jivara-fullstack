@@ -1,5 +1,6 @@
 import { medicationSchedules } from "./schedules";
 import { patients } from "./patients";
+import { foodScans } from "./foodScans";
 
 export type ActivityCategory = "Reminder" | "Kepatuhan" | "Scan Makanan";
 export type ActivitySeverity = "Info" | "Sukses" | "Peringatan" | "Kritis";
@@ -16,6 +17,7 @@ export interface ActivityLogRecord {
   readonly patientAvatar?: string;
   readonly scheduleId?: string;
   readonly medicineName?: string;
+  readonly scanId?: string;
   readonly read: boolean;
 }
 
@@ -94,6 +96,7 @@ export const activityLogs: ActivityLogRecord[] = [
     patientId: patients[0].id,
     patientName: patients[0].name,
     patientAvatar: patients[0].avatar,
+    scanId: foodScans[1].id,
     read: true,
   },
   {
@@ -157,6 +160,7 @@ export const activityLogs: ActivityLogRecord[] = [
     patientAvatar: patients[1].avatar,
     scheduleId: medicationSchedules[1].id,
     medicineName: medicationSchedules[1].medicineName,
+    scanId: foodScans[3].id,
     read: false,
   },
   {

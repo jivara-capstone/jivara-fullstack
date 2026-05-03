@@ -7,6 +7,7 @@ import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import DashboardPageShell from "@/components/dashboard/DashboardPageShell";
 import Button from "@/components/ui/Button";
 import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
+import { FoodScanDetailModal } from "@/components/food-scan";
 import { getActivityDateKey } from "@/helpers/activityLogs";
 import type { ActivityCategory, ActivityLogRecord } from "@/lib/mocks/activityLogs";
 import { showToast } from "@/lib/swal";
@@ -17,16 +18,22 @@ import ActivityToolbar, { type ActivityQuickFilter } from "./ActivityToolbar";
 
 const loadBatchSize = 8;
 
-export default function ActivityLogPage() {
+interface ActivityLogPageProps {
+  readonly initialPatientName?: string;
+  readonly initialCategory?: string;
+}
+
+export default function ActivityLogPage({ initialPatientName = "", initialCategory }: ActivityLogPageProps) {
   const activities = useActivityLogStore((state) => state.activities);
   const markActivityAsRead = useActivityLogStore((state) => state.markAsRead);
   const markAllActivitiesAsRead = useActivityLogStore((state) => state.markAllAsRead);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialPatientName);
   const [quickFilter, setQuickFilter] = useState<ActivityQuickFilter>("all");
-  const [category, setCategory] = useState<ActivityCategory | "all">("all");
+  const [category, setCategory] = useState<ActivityCategory | "all">(isActivityCategory(initialCategory) ? initialCategory : "all");
   const [date, setDate] = useState("");
   const [visibleCount, setVisibleCount] = useState(loadBatchSize);
   const [selectedActivity, setSelectedActivity] = useState<ActivityLogRecord | null>(null);
+  const [selectedFoodScanId, setSelectedFoodScanId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -102,6 +109,11 @@ export default function ActivityLogPage() {
     showToast("Semua aktivitas ditandai sudah dibaca.");
   };
 
+  const viewFoodScan = (scanId: string) => {
+    setSelectedActivity(null);
+    setSelectedFoodScanId(scanId);
+  };
+
   return (
     <DashboardPageShell>
       <DashboardPageHeader
@@ -150,7 +162,12 @@ export default function ActivityLogPage() {
         />
       </motion.div>
 
-      <ActivityDetailModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
+      <ActivityDetailModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} onViewFoodScan={viewFoodScan} />
+      <FoodScanDetailModal scanId={selectedFoodScanId} onClose={() => setSelectedFoodScanId(null)} />
     </DashboardPageShell>
   );
+}
+
+function isActivityCategory(value: string | undefined): value is ActivityCategory {
+  return value === "Reminder" || value === "Kepatuhan" || value === "Scan Makanan";
 }

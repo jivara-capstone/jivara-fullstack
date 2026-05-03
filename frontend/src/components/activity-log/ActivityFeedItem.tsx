@@ -29,9 +29,9 @@ export default function ActivityFeedItem({ activity, index, onMarkRead, onViewDe
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 pr-6">
             <ActivityCategoryBadge category={activity.category} />
-            <span className="text-xs font-extrabold text-line">•</span>
+            <span className="text-xs font-extrabold text-line">-</span>
             <ActivitySeverityBadge severity={activity.severity} />
-            <span className="text-xs font-extrabold text-line">•</span>
+            <span className="text-xs font-extrabold text-line">-</span>
             <span className="text-xs font-extrabold text-muted">{formatActivityTime(activity.timestamp)}</span>
           </div>
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, ScanLine, UserRound } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import DetailItem from "@/components/ui/DetailItem";
 import FormStickyActions from "@/components/ui/FormStickyActions";
@@ -13,12 +13,17 @@ import { ActivityCategoryBadge, ActivityCategoryIcon, ActivitySeverityBadge } fr
 interface ActivityDetailModalProps {
   readonly activity: ActivityLogRecord | null;
   readonly onClose: () => void;
+  readonly onViewFoodScan?: (scanId: string) => void;
 }
 
-export default function ActivityDetailModal({ activity, onClose }: ActivityDetailModalProps) {
+export default function ActivityDetailModal({ activity, onClose, onViewFoodScan }: ActivityDetailModalProps) {
   const scheduleHref = activity?.patientName
     ? `/schedule?patientName=${encodeURIComponent(activity.patientName)}${activity.medicineName ? `&medicineName=${encodeURIComponent(activity.medicineName)}` : ""}`
     : "/schedule";
+  const patientHref = activity?.patientId && activity.category === "Kepatuhan" ? `/patients/${encodeURIComponent(activity.patientId)}` : null;
+  const shouldShowScheduleLink = Boolean(activity?.category === "Reminder");
+  const shouldShowFoodScanLink = Boolean(activity?.category === "Scan Makanan" && activity.scanId);
+  const hasStickyActions = Boolean(patientHref || shouldShowScheduleLink || shouldShowFoodScanLink);
 
   return (
     <Modal isOpen={Boolean(activity)} title="Detail Aktivitas" onClose={onClose}>
@@ -35,9 +40,9 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap gap-2">
                   <ActivityCategoryBadge category={activity.category} />
-                  <span className="text-xs font-extrabold text-line">•</span>
+                  <span className="text-xs font-extrabold text-line">-</span>
                   <ActivitySeverityBadge severity={activity.severity} />
-                  <span className="text-xs font-extrabold text-line">•</span>
+                  <span className="text-xs font-extrabold text-line">-</span>
                   <span className={`text-xs font-extrabold ${activity.read ? "text-muted" : "text-primary"}`}>{activity.read ? "Sudah dibaca" : "Belum dibaca"}</span>
                 </div>
                 <h3 className="mt-3 font-display text-2xl font-extrabold tracking-[-0.04em] text-text-main">{activity.title}</h3>
@@ -55,11 +60,23 @@ export default function ActivityDetailModal({ activity, onClose }: ActivityDetai
         </div>
       )}
 
-      {activity?.scheduleId && (
+      {hasStickyActions && (
         <FormStickyActions>
-          <Link href={scheduleHref} onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3 text-[13px] font-bold uppercase leading-none tracking-[0.1em] !text-white transition-colors hover:bg-primary-hover [&_svg]:text-white">
-            <CalendarClock size={16} /> Lihat Jadwal
-          </Link>
+          {patientHref && (
+            <Link href={patientHref} onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3 text-[13px] font-bold uppercase leading-none tracking-[0.1em] !text-white transition-colors hover:bg-primary-hover [&_svg]:text-white">
+              <UserRound size={16} /> Lihat Detail Pasien
+            </Link>
+          )}
+          {shouldShowScheduleLink && (
+            <Link href={scheduleHref} onClick={onClose} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3 text-[13px] font-bold uppercase leading-none tracking-[0.1em] !text-white transition-colors hover:bg-primary-hover [&_svg]:text-white">
+              <CalendarClock size={16} /> Lihat Jadwal
+            </Link>
+          )}
+          {shouldShowFoodScanLink && activity?.scanId && (
+            <button type="button" onClick={() => activity.scanId && onViewFoodScan?.(activity.scanId)} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3 text-[13px] font-bold uppercase leading-none tracking-[0.1em] !text-white transition-colors hover:bg-primary-hover [&_svg]:text-white">
+              <ScanLine size={16} /> Lihat Makanan
+            </button>
+          )}
         </FormStickyActions>
       )}
     </Modal>
