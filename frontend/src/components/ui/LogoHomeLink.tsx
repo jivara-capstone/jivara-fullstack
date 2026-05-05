@@ -5,10 +5,11 @@ interface LogoHomeLinkProps {
   readonly className?: string;
   readonly imageClassName?: string;
   readonly priority?: boolean;
+  readonly unoptimized?: boolean;
   readonly ariaLabel?: string;
 }
 
-export default function LogoHomeLink({ className = "", imageClassName = "", priority = false, ariaLabel = "Jivara beranda" }: LogoHomeLinkProps) {
+export default function LogoHomeLink({ className = "", imageClassName = "", priority = false, unoptimized = false, ariaLabel = "Jivara beranda" }: LogoHomeLinkProps) {
   return (
     <Link href="/" aria-label={ariaLabel} className={`flex w-full justify-center overflow-hidden ${className}`}>
       <Image
@@ -17,6 +18,8 @@ export default function LogoHomeLink({ className = "", imageClassName = "", prio
         width={1080}
         height={1080}
         priority={priority}
+        unoptimized={unoptimized}
+        sizes="(max-width: 640px) 210px, 260px"
         className={`mb-[-42px] h-auto w-[210px] translate-x-[-6px] sm:w-[260px] ${imageClassName}`}
         style={{ height: "auto" }}
       />

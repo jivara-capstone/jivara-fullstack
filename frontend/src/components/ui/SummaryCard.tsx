@@ -58,7 +58,7 @@ export default function SummaryCard({ stat }: SummaryCardProps) {
     <article className={`relative h-full min-h-[160px] overflow-hidden rounded-3xl px-4 py-5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] sm:min-h-[220px] sm:px-8 sm:py-8 ${cardColorStyles[color]}`}>
       <div className="relative z-10 flex h-full flex-col justify-between gap-5 sm:gap-7">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:gap-5">
-          <Icon className={`mt-1 h-8 w-8 shrink-0 sm:h-10 sm:w-10 ${iconColorStyles[color]}`} strokeWidth={2.4} />
+          <Icon className={`mt-1 h-8 w-8 shrink-0 sm:h-10 sm:w-10 ${iconColorStyles[color]}`} strokeWidth={2.4} aria-hidden="true" focusable="false" />
           <div className="flex flex-col gap-6 sm:gap-10">
             <p className="text-sm font-black leading-tight tracking-[-0.04em] text-text-main sm:text-xl">{stat.label}</p>
             <p className="font-body text-4xl font-black leading-none tracking-[-0.07em] text-text-main sm:text-5xl">{stat.value}</p>

@@ -19,9 +19,9 @@ function InstagramIcon({ size = 21 }: { readonly size?: number }) {
   );
 }
 
-export default function Footer() {
+export default function Footer({ className = "" }: { readonly className?: string }) {
   return (
-    <footer id="kontak" className="relative overflow-hidden mt-[70px] pt-16 lg:pt-24 px-5 lg:px-[84px] pb-10 lg:pb-16 rounded-t-[54px] bg-primary text-white border-t border-line">
+    <footer id="kontak" className={`relative overflow-hidden mt-[70px] pt-16 lg:pt-24 px-5 lg:px-[84px] pb-10 lg:pb-16 rounded-t-[54px] bg-primary text-white border-t border-line ${className}`}>
       <div className="max-w-[1440px] mx-auto">
         <motion.h2
           className="relative z-10 mb-12 lg:mb-20 font-display text-[clamp(28px,8vw,48px)] lg:text-[80px] font-extrabold leading-none lg:leading-[0.9] uppercase break-words"

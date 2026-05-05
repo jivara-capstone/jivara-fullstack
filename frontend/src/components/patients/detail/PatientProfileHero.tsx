@@ -26,7 +26,7 @@ export default function PatientProfileHero({ patient }: PatientProfileHeroProps)
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
             {patient.image ? (
-              <Image src={patient.image} alt="" width={96} height={96} className="h-20 w-20 shrink-0 rounded-full object-cover sm:h-24 sm:w-24" />
+              <Image src={patient.image} alt="" width={96} height={96} sizes="(max-width: 640px) 80px, 96px" className="h-20 w-20 shrink-0 rounded-full object-cover sm:h-24 sm:w-24" />
             ) : (
               <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white font-display text-2xl font-extrabold text-primary sm:h-24 sm:w-24 sm:text-3xl">
                 {patient.avatar}
@@ -41,7 +41,7 @@ export default function PatientProfileHero({ patient }: PatientProfileHeroProps)
           </div>
 
           <Link href={scheduleHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-[13px] font-bold uppercase leading-none tracking-[0.1em] !text-white transition-colors hover:bg-primary-hover">
-            <CalendarClock size={16} /> Lihat Jadwal
+            <CalendarClock size={16} aria-hidden="true" focusable="false" /> Lihat Jadwal
           </Link>
         </div>
 

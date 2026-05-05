@@ -26,6 +26,7 @@ export default function Features() {
             alt="Jivara"
             width={1080}
             height={1080}
+            sizes="142px"
             style={{ height: "auto" }}
           />
         </motion.div>

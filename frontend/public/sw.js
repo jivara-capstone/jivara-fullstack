@@ -1,15 +1,22 @@
 const OFFLINE_URL = "/offline";
-const CACHE_NAME = "jivara-offline-v1";
+const CACHE_NAME = "jivara-offline-v2";
+const OFFLINE_ASSETS = [OFFLINE_URL, "/images/logo/text.png", "/images/logo/splash.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.add(new Request(OFFLINE_URL, { cache: "reload" }))),
+    caches.open(CACHE_NAME).then((cache) => Promise.all(
+      OFFLINE_ASSETS.map((asset) => cache.add(new Request(asset, { cache: "reload" }))),
+    )),
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
+    )).then(() => self.clients.claim()),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -20,5 +27,5 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(fetch(event.request));
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });

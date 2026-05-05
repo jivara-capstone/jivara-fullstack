@@ -46,7 +46,7 @@ export default function HomePage() {
         <SecurityLevels />
       </main>
 
-      <Footer />
+      <Footer className={isStandalonePwa ? "pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-16" : ""} />
       {isStandalonePwa && <LandingBottomNav />}
     </div>
   );

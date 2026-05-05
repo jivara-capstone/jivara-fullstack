@@ -66,7 +66,7 @@ export default function Hero() {
       return;
     }
 
-    const result = await showConfirm("Install aplikasi Jivara?", "Pasang Aplikasi Jivara agar akses dashboard, jadwal obat, dan log aktivitas lebih mudah.", "Install App");
+    const result = await showConfirm("Install Aplikasi Jivara?", "Pasang aplikasi Jivara agar akses dashboard, jadwal obat, dan log aktivitas lebih mudah.", "Install App");
 
     if (!result.isConfirmed) return;
 
@@ -139,6 +139,7 @@ export default function Hero() {
             width={420}
             height={420}
             priority
+            sizes="(max-width: 1024px) 70vw, 40vw"
             className="w-full h-auto drop-shadow-2xl"
           />
         </motion.div>

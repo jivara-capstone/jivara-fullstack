@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 
 export type IconActionTone = "primary" | "danger" | "warning" | "blue" | "delete";
 
@@ -24,6 +24,10 @@ const sizeClasses = {
 } as const;
 
 export default function IconActionButton({ label, children, tone = "primary", size = "md", onClick }: IconActionButtonProps) {
+  const icon = isValidElement<{ "aria-hidden"?: boolean; focusable?: string }>(children)
+    ? cloneElement(children, { "aria-hidden": true, focusable: "false" })
+    : children;
+
   return (
     <button
       type="button"
@@ -31,7 +35,7 @@ export default function IconActionButton({ label, children, tone = "primary", si
       onClick={onClick}
       className={`inline-flex items-center justify-center rounded-full transition-colors ${sizeClasses[size]} ${toneClasses[tone]}`}
     >
-      {children}
+      {icon}
     </button>
   );
 }

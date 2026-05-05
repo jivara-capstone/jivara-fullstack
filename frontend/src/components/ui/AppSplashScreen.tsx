@@ -42,7 +42,7 @@ export default function AppSplashScreen() {
             exit={{ opacity: 0, scale: 1.03, y: -8 }}
             transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Image src="/images/logo/splash.png" alt="Jivara" width={180} height={180} priority className="h-[150px] w-[150px] rounded-[36px] object-contain sm:h-[180px] sm:w-[180px]" />
+            <Image src="/images/logo/splash.png" alt="Jivara" width={180} height={180} priority sizes="(max-width: 640px) 150px, 180px" className="h-[150px] w-[150px] rounded-[36px] object-contain sm:h-[180px] sm:w-[180px]" />
           </motion.div>
         </motion.div>
       )}

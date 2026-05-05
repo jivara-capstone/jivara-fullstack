@@ -23,6 +23,7 @@ export default function DashboardSidebar({ activeItem, onLogout, onNavigate }: D
             width={210}
             height={68}
             priority
+            sizes="190px"
             className="h-auto w-[190px]"
           />
         </h1>

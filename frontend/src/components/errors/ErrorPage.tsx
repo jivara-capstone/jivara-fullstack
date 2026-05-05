@@ -149,7 +149,7 @@ export default function ErrorPage({ variant, reset, children }: ErrorPageProps) 
     <div className="flex min-h-screen flex-col bg-white">
       <main className="flex flex-1 items-start justify-center px-5 pt-0 pb-28 text-center">
         <section className="flex w-full max-w-md flex-col items-center">
-          <LogoHomeLink priority />
+          <LogoHomeLink priority unoptimized={variant === "offline"} />
 
           <div className="mt-3 w-full px-6 py-10 sm:px-10">
             <p className="font-display text-[76px] font-extrabold leading-none tracking-[-0.08em] text-primary sm:text-[96px]">

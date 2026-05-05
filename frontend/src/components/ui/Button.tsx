@@ -43,6 +43,14 @@ const SPRING_TRANSITION = {
   damping: 17,
 };
 
+function DecorativeIcon({ icon }: { readonly icon: React.ReactNode }) {
+  if (React.isValidElement<{ "aria-hidden"?: boolean; focusable?: string }>(icon)) {
+    return React.cloneElement(icon, { "aria-hidden": true, focusable: "false" });
+  }
+
+  return icon;
+}
+
 export default function Button({
   children,
   className = "",
@@ -65,7 +73,7 @@ export default function Button({
     >
       {loading ? (
         <>
-          <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" />
+          <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5" aria-hidden="true" focusable="false" />
           Memuat...
         </>
       ) : (
@@ -78,7 +86,7 @@ export default function Button({
               whileHover={{ x: 4 }}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
             >
-              {icon}
+              <DecorativeIcon icon={icon} />
             </motion.span>
           )}
         </>

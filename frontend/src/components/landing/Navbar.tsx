@@ -44,6 +44,7 @@ export default function Navbar() {
               width={100}
               height={100}
               priority
+              sizes="100px"
               className="w-full h-auto drop-shadow-2xl"
             />
           </Link>
@@ -124,7 +125,7 @@ export default function Navbar() {
                   alt="Jivara"
                   width={132}
                   height={42}
-                  priority
+                  sizes="118px"
                   className="h-auto w-[118px]"
                 />
               </div>

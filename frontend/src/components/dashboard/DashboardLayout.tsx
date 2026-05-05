@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
       <div className={`flex-1 ${isStandalonePwa ? "pt-[calc(76px+env(safe-area-inset-top))] pb-28 lg:pt-0 lg:pb-0" : ""}`}>{children}</div>
-      <SimpleFooter className={`lg:ml-[280px] ${isStandalonePwa ? "pb-24 lg:pb-0" : ""}`} />
+      <SimpleFooter className={`lg:ml-[280px] ${isStandalonePwa ? "pt-12 pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pt-8 lg:pb-8" : ""}`} />
       {isStandalonePwa && <DashboardBottomNav />}
     </div>
   );
