@@ -7,36 +7,89 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16+-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19+-61DAFB?style=flat-square&logo=react&logoColor=white)](https://reactjs.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4+-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Python](https://img.shields.io/badge/Python-3.14+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![YOLOv11](https://img.shields.io/badge/YOLOv11-Computer_Vision-FF6F00?style=flat-square&logo=python&logoColor=white)](https://docs.ultralytics.com/models/yolo11/)
+[![Node.js](https://img.shields.io/badge/Node.js-22+-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express.js-5+-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-0.45+-C5F74F?style=flat-square&logo=drizzle&logoColor=black)](https://orm.drizzle.team/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18+-316192?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
 ---
 
 ## Ringkasan Proyek
-Jivara adalah platform kesehatan berbasis AI yang dirancang untuk membantu pasien menjaga kepatuhan konsumsi obat, meningkatkan pemahaman interaksi makanan-obat, dan memberikan analisis gizi serta pengingat waktu konsumsi obat secara cerdas. Platform ini juga memfasilitasi tenaga kesehatan untuk memantau pasien secara jarak jauh melalui dashboard web interaktif.
+
+Jivara adalah platform kesehatan berbasis kecerdasan buatan (AI) yang dirancang untuk membantu pasien menjaga kepatuhan konsumsi obat, meningkatkan pemahaman mengenai interaksi makanan-obat, dan memberikan analisis gizi serta pengingat waktu konsumsi obat secara cerdas. Platform ini juga memfasilitasi tenaga kesehatan (Nurse/Admin) untuk memantau pasien secara jarak jauh melalui dashboard web interaktif.
+
+Proyek ini dibangun menggunakan arsitektur *monorepo* yang memisahkan antara frontend (Next.js) dan backend (Express.js + Drizzle ORM).
 
 ---
 
-### **Fitur Utama**
+## Fitur Utama
 
-#### **Dashboard Kesehatan**
-- **Pemantauan Real-Time:** Tenaga kesehatan dapat melihat progres pasien melalui grafik analitik interaktif.
-- **Notifikasi Pintar:** Pengingat otomatis untuk konsumsi obat.
+### **Untuk Pasien**
+- **Dashboard Pasien:** Ringkasan obat aktif, pengingat, dan riwayat kepatuhan (Heatmap 12 bulan).
+- **Jadwal Obat Interaktif:** Kalender harian untuk melihat, mengonfirmasi, dan melacak status minum obat (Belum, Selesai, Terlewat).
+- **Food Scan (AI Deteksi Makanan):** Kemampuan untuk mengunggah atau memindai makanan guna mendeteksi interaksi dengan obat yang sedang dikonsumsi, lengkap dengan rekomendasi AI terkait risiko dan gizi.
+- **Notifikasi Pintar (PWA):** Pengingat otomatis untuk konsumsi obat.
 
-#### **Sistem AI untuk Pasien**
-1. **Medication Reminder:** Notifikasi cerdas untuk jadwal konsumsi obat.
-2. **Food Recognition (YOLOv11):** Foto makanan dianalisis untuk deteksi jenis makanan yang relevan.
-3. **Drug–Food Interaction Analysis:** AI membantu mengidentifikasi risiko interaksi obat dan makanan.
-4. **Dietary Insights:** Estimasi kalori dan komponen nutrisi dari makanan pasien.
+### **Untuk Tenaga Kesehatan (Nurse/Admin)**
+- **Pemantauan Real-Time:** Melihat progres dan metrik pasien melalui grafik dan analitik interaktif.
+- **Manajemen Pasien & Jadwal:** Mengatur jadwal obat pasien, memantau *adherence* (kepatuhan), dan mendapatkan notifikasi peringatan jika terdapat ketidakpatuhan atau risiko.
+
+---
+
+## Struktur Repositori
+
+Proyek ini dibagi menjadi dua bagian utama:
+
+- `/frontend` - Aplikasi Web berbasis Next.js 16 (App Router), React 19, dan Tailwind CSS 4. ([Lihat README Frontend](./frontend/README.md))
+- `/backend` - API Server berbasis Node.js 22, Express.js 5, Drizzle ORM, dan PostgreSQL. ([Lihat README Backend](./backend/README.md))
+
+---
+
+## Persiapan (Prerequisites)
+
+Sebelum memulai, pastikan Anda telah menginstal:
+- [Node.js](https://nodejs.org/en) (Minimal versi **22.x**)
+- [npm](https://www.npmjs.com/) (Biasanya sudah sepaket dengan Node.js)
+- [Supabase](https://supabase.com/) (Layanan Database PostgreSQL utama yang digunakan dalam proyek ini)
+- Akun [Vercel](https://vercel.com/) (Untuk keperluan *deployment* frontend)
+
+---
+
+## Memulai Proyek Secara Lokal
+
+Karena proyek ini menggunakan dua direktori terpisah, Anda harus menjalankan *frontend* dan *backend* secara terpisah (di dua terminal berbeda).
+
+### 1. Menjalankan Backend
+Silakan merujuk ke [Backend README](./backend/README.md) untuk konfigurasi environment dan database.
+
+```bash
+cd backend
+npm install
+cp .env.example .env # Atur variabel di dalam .env
+npm run db:push      # Push skema ke database
+npm run dev          # Menjalankan server di port 5000 (default)
+```
+
+### 2. Menjalankan Frontend
+Silakan merujuk ke [Frontend README](./frontend/README.md) untuk detail arsitektur antarmuka.
+
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local # Atur variabel di dalam .env.local
+npm run dev                      # Menjalankan aplikasi web di port 3000
+```
 
 ---
 
 ## License
+
 Jivara - Copyright © 2026. All Rights Reserved.
 
 ---
 
 <p align="center">
- Jivara Development Team
+ <b>Jivara Development Team</b>
 </p>

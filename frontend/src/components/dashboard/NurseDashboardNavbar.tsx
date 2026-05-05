@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu } from "lucide-react";
 import { useIsStandalonePwa, useLockBodyScroll } from "@/hooks";
+import { useAuthStore } from "@/store/auth";
 import DashboardSidebar from "./DashboardSidebar";
-import { DASHBOARD_NAV_ITEMS, type DashboardNavLabel } from "./navigation";
+import { getDashboardNavItems, getDashboardRole, type DashboardNavLabel, type DashboardRole } from "./navigation";
 
 interface NurseDashboardNavbarProps {
   readonly onLogout: () => void;
@@ -17,7 +18,10 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isStandalonePwa = useIsStandalonePwa();
   const pathname = usePathname();
-  const activeItem = getActiveNavLabel(pathname);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
+  const dashboardRole = getDashboardRole(userRole);
+  const activeItem = getActiveNavLabel(pathname, dashboardRole);
 
   useLockBodyScroll(isMenuOpen);
 
@@ -36,12 +40,14 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
         </div>
       </header>}
 
-      <aside className="fixed inset-y-0 left-0 z-[10000] hidden w-[280px] flex-col bg-white px-7 py-8 shadow-[8px_0_26px_rgba(15,23,42,0.06)] lg:flex">
-        <DashboardSidebar activeItem={activeItem} onLogout={onLogout} />
-      </aside>
+      {hasAuthHydrated && (
+        <aside className="fixed inset-y-0 left-0 z-[10000] hidden w-[280px] flex-col bg-white px-7 py-8 shadow-[8px_0_26px_rgba(15,23,42,0.06)] lg:flex">
+          <DashboardSidebar activeItem={activeItem} role={dashboardRole} onLogout={onLogout} />
+        </aside>
+      )}
 
       <AnimatePresence>
-        {isMenuOpen && !isStandalonePwa && (
+        {isMenuOpen && !isStandalonePwa && hasAuthHydrated && (
           <div className="fixed inset-0 z-[35000] lg:hidden">
             <motion.div
               className="absolute inset-0 bg-black/25 backdrop-blur-[6px]"
@@ -64,6 +70,7 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
 
               <DashboardSidebar
                 activeItem={activeItem}
+                role={dashboardRole}
                 onNavigate={() => setIsMenuOpen(false)}
                 onLogout={onLogout}
               />
@@ -75,6 +82,6 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
   );
 }
 
-function getActiveNavLabel(pathname: string): DashboardNavLabel | undefined {
-  return DASHBOARD_NAV_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.label;
+function getActiveNavLabel(pathname: string, role: DashboardRole): DashboardNavLabel | undefined {
+  return getDashboardNavItems(role).find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.label;
 }

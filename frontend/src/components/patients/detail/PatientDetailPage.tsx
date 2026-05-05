@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Bell, ClipboardList, Siren, TrendingUp } from "lucide-react";
+import { Bell, ClipboardList, Siren, TrendingUp } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
 import DashboardPageShell from "@/components/dashboard/DashboardPageShell";
 import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
@@ -56,11 +55,7 @@ export default function PatientDetailPage({ data }: PatientDetailPageProps) {
     <DashboardPageShell>
       <DashboardPageHeader
         title="Detail Pasien"
-        action={(
-          <Link href="/patients" className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-5 py-3 text-sm font-extrabold text-text-main transition-colors hover:bg-line/70">
-            <ArrowLeft size={16} /> Kembali ke Daftar Pasien
-          </Link>
-        )}
+    
       />
 
       <PatientProfileHero patient={data.patient} />
