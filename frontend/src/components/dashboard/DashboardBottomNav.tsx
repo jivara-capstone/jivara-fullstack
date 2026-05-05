@@ -3,18 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { Settings } from "lucide-react";
 import { useActivityLogStore } from "@/store/activityLog";
-import { DASHBOARD_NAV_ITEMS } from "./navigation";
-
-const bottomNavItems = [
-  ...DASHBOARD_NAV_ITEMS,
-  { label: "Pengaturan", href: "/settings", icon: Settings },
-] as const;
+import { useAuthStore } from "@/store/auth";
+import { getDashboardBottomNavItems, getDashboardRole } from "./navigation";
 
 export default function DashboardBottomNav() {
   const pathname = usePathname();
   const unreadActivityCount = useActivityLogStore((state) => state.activities.filter((activity) => !activity.read).length);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const dashboardRole = getDashboardRole(userRole);
+  const bottomNavItems = getDashboardBottomNavItems(dashboardRole);
 
   return (
     <motion.nav
@@ -24,11 +22,12 @@ export default function DashboardBottomNav() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="grid grid-cols-5 gap-1">
+      <div className={`grid gap-1 ${dashboardRole === "patient" ? "grid-cols-5" : "grid-cols-4"}`}>
         {bottomNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const badgeCount = item.href === "/activity-log" ? unreadActivityCount : 0;
+          const isFeatured = "featured" in item && item.featured;
 
           return (
             <motion.div
@@ -42,12 +41,16 @@ export default function DashboardBottomNav() {
               <Link
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-extrabold transition-colors ${
+                className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-extrabold transition-colors ${isFeatured ? "-mt-7 py-1" : "py-2"} ${
                   isActive ? "text-primary" : "text-muted hover:text-primary"
                 }`}
               >
-                <motion.span className="relative" animate={isActive ? { y: -1 } : { y: 0 }} transition={{ type: "spring", stiffness: 420, damping: 22 }}>
-                  <Icon size={20} strokeWidth={2.4} className={isActive ? "text-primary" : "text-text-main transition-colors group-hover:text-primary"} />
+                <motion.span
+                  className={`relative flex items-center justify-center ${isFeatured ? "h-14 w-14 rounded-full bg-primary text-white" : ""}`}
+                  animate={isActive ? { y: -1 } : { y: 0 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                >
+                  <Icon size={isFeatured ? 26 : 20} strokeWidth={2.4} className={isFeatured ? "text-white" : isActive ? "text-primary" : "text-text-main transition-colors group-hover:text-primary"} />
                   {badgeCount > 0 && (
                     <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black leading-none text-white">
                       {badgeCount > 99 ? "99+" : badgeCount}

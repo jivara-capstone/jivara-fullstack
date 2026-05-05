@@ -27,7 +27,7 @@ export const foodScans: FoodScanRecord[] = [
     id: "SCAN-001",
     patientId: patients[0].id,
     foodName: "Oatmeal pisang",
-    image: "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1494597564530-871f2b93ac55?auto=format&fit=crop&w=1200&q=80",
     scannedAt: atTime(0, 7, 10),
     risk: "Low Risk",
     aiReasoning: "Oatmeal dan pisang memiliki profil serat yang stabil serta tidak mengandung komponen yang umum mengganggu obat tekanan darah pasien.",

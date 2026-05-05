@@ -1,17 +1,19 @@
 import DashboardAccountActions from "./DashboardAccountActions";
 import DashboardNavItem from "./DashboardNavItem";
-import { DASHBOARD_NAV_ITEMS, type DashboardNavLabel } from "./navigation";
+import { getDashboardNavItems, type DashboardNavLabel, type DashboardRole } from "./navigation";
 import Image from "next/image";
 import { useActivityLogStore } from "@/store/activityLog";
 
 interface DashboardSidebarProps {
   readonly activeItem?: DashboardNavLabel;
+  readonly role: DashboardRole;
   readonly onLogout: () => void;
   readonly onNavigate?: () => void;
 }
 
-export default function DashboardSidebar({ activeItem, onLogout, onNavigate }: DashboardSidebarProps) {
+export default function DashboardSidebar({ activeItem, role, onLogout, onNavigate }: DashboardSidebarProps) {
   const unreadActivityCount = useActivityLogStore((state) => state.activities.filter((activity) => !activity.read).length);
+  const navItems = getDashboardNavItems(role);
 
   return (
     <>
@@ -30,7 +32,7 @@ export default function DashboardSidebar({ activeItem, onLogout, onNavigate }: D
       </div>
 
       <nav className="mt-9 flex flex-col gap-4" aria-label="Navigasi dashboard">
-        {DASHBOARD_NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <DashboardNavItem
             key={item.label}
             item={item}
