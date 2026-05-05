@@ -7,9 +7,13 @@ import DashboardPageShell from "@/components/dashboard/DashboardPageShell";
 import { PatientTable } from "@/components/patients";
 import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
 import { dashboardStats, recentPatients } from "@/lib/mocks/dashboard";
+import { useSplashScreen } from "@/components/ui/AppSplashScreen";
 
 export default function NurseDashboardPage() {
   const router = useRouter();
+  const { isSplashFinished } = useSplashScreen();
+
+  if (!isSplashFinished) return null;
 
   return (
     <DashboardPageShell>
