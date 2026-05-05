@@ -58,7 +58,7 @@ export default function SystemDemoVideo() {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div
-        className="relative overflow-hidden rounded-[24px] bg-dark p-1 shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:rounded-[28px] sm:p-1.5"
+        className="relative overflow-hidden rounded-[24px] bg-dark p-1 sm:rounded-[28px] sm:p-1.5"
         style={{ y: frameY, scale: frameScale }}
         transition={{ type: "spring", stiffness: 240, damping: 24 }}
       >
@@ -117,6 +117,6 @@ export default function SystemDemoVideo() {
           </motion.button>
         </div>
       </motion.div>
-      </motion.div>
+    </motion.div>
   );
 }

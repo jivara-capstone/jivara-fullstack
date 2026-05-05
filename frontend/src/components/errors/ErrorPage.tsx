@@ -2,6 +2,7 @@
 
 import { SimpleFooter } from "@/components/landing/Footer";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import LogoHomeLink from "@/components/ui/LogoHomeLink";
 
@@ -141,9 +142,22 @@ interface ErrorPageProps {
 }
 
 export default function ErrorPage({ variant, reset, children }: ErrorPageProps) {
+  const router = useRouter();
   const content = ERROR_CONTENT[variant];
   const backHref = variant === "401" ? "/login" : "/";
   const backLabel = variant === "401" ? "Masuk" : variant === "offline" ? "Coba Lagi" : "Kembali";
+  const handleBackClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (reset) {
+      event.preventDefault();
+      reset();
+      return;
+    }
+
+    if (variant === "offline") {
+      event.preventDefault();
+      router.refresh();
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -180,7 +194,7 @@ export default function ErrorPage({ variant, reset, children }: ErrorPageProps) 
             <div className="mt-8 flex justify-center">
               <Link
                 href={backHref}
-                onClick={reset ? () => reset() : undefined}
+                onClick={handleBackClick}
                 className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-sm font-extrabold uppercase tracking-[0.12em] !text-white transition-colors hover:bg-primary-hover"
               >
                 {backLabel}

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import { LogOut } from "lucide-react";
 import api from "@/lib/axios";
@@ -19,6 +20,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { logout, refreshToken } = useAuthStore();
   const isStandalonePwa = useIsStandalonePwa();
+  const router = useRouter();
 
   const handleLogout = async () => {
     const result = await showConfirm("Keluar Akun?", "Anda perlu masuk kembali untuk mengakses data Anda.", "Ya, Keluar");
@@ -34,7 +36,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       Cookies.remove("jivara-token");
       window.localStorage.removeItem("jivara-auth-storage");
       showToast("Berhasil keluar dari akun.", "success");
-      window.location.replace("/login");
+      router.push("/login");
     }
   };
 
