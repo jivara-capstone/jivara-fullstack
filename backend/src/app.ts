@@ -14,6 +14,8 @@ import medicationLogRoutes from './routes/medication-log.routes';
 import adherenceRoutes from './routes/adherence.routes';
 import foodAiRoutes from './routes/food-ai.routes';
 import prescriptionRoutes from './routes/prescription.routes';
+import notificationRoutes from './routes/notification.routes';
+import { startReminderScheduler } from './services/reminder-scheduler.service';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -81,6 +83,7 @@ app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/medication-schedules', medicationScheduleRoutes);
 app.use('/api/medication-logs', medicationLogRoutes);
 app.use('/api/adherence', adherenceRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api', foodAiRoutes);
 
 // Custom JS untuk Smooth Scroll Swagger (Lenis)
@@ -154,3 +157,5 @@ app.use((err: { status?: number; message?: string }, req: Request, res: Response
 app.listen(PORT, () => {
   // console.log(`[server]: Server berjalan di http://localhost:${PORT}`);
 });
+
+startReminderScheduler();

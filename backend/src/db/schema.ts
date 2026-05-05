@@ -245,7 +245,27 @@ export const notifications = pgTable("notifications", {
 }));
 
 // ─────────────────────────────────────────────
-// 13. AUDIT LOGS
+// 13. PUSH SUBSCRIPTIONS
+// ─────────────────────────────────────────────
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patients.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  patientIdx: index("idx_push_subscriptions_patient").on(table.patientId),
+  activeIdx: index("idx_push_subscriptions_active").on(table.isActive),
+}));
+
+// ─────────────────────────────────────────────
+// 14. AUDIT LOGS
 // ─────────────────────────────────────────────
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -290,6 +310,7 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
   medicationLogs: many(medicationLogs),
   foodScans: many(foodScans),
   notifications: many(notifications),
+  pushSubscriptions: many(pushSubscriptions),
 }));
 
 export const nursesRelations = relations(nurses, ({ one, many }) => ({
@@ -372,6 +393,13 @@ export const interactionResultsRelations = relations(interactionResults, ({ one 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   patient: one(patients, {
     fields: [notifications.patientId],
+    references: [patients.id],
+  }),
+}));
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  patient: one(patients, {
+    fields: [pushSubscriptions.patientId],
     references: [patients.id],
   }),
 }));
