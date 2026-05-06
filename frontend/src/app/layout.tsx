@@ -6,7 +6,10 @@ import PwaInstallPromptProvider from "@/providers/PwaInstallPromptProvider";
 import ScrollProvider from "@/providers/ScrollProvider";
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter } from "next/font/google";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
+
+export const dynamic = "force-dynamic";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -60,7 +63,9 @@ interface RootLayoutProps {
   readonly children: ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  await headers();
+
   return (
     <html lang="id" className={`${archivo.variable} ${inter.variable} relative`} suppressHydrationWarning>
       <body className="font-body relative overflow-x-hidden">

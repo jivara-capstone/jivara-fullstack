@@ -75,6 +75,16 @@ export default function ForcePasswordChangeModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <input
+            type="email"
+            name="username"
+            value={user.email}
+            readOnly
+            autoComplete="username"
+            className="hidden"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
           <AuthInput
             id="forcedNewPassword"
             label="Kata Sandi Baru"

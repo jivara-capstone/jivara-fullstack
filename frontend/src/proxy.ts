@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
-function createContentSecurityPolicy() {
+function createContentSecurityPolicy(nonce: string) {
   const isDev = process.env.NODE_ENV === 'development';
   const directives = [
     "default-src 'self'",
@@ -10,8 +10,8 @@ function createContentSecurityPolicy() {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-    "script-src-elem 'self' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src-elem 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://images.unsplash.com",
@@ -34,8 +34,10 @@ const authRoutes = ['/login', '/register'];
 export async function proxy(request: NextRequest) {
   await updateSession(request);
 
-  const contentSecurityPolicy = createContentSecurityPolicy();
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const contentSecurityPolicy = createContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
 
   const token = request.cookies.get('jivara-token')?.value;
