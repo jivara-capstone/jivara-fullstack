@@ -70,12 +70,13 @@ export default function SystemDemoVideo() {
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             aria-label="Demo penggunaan sistem Jivara"
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           >
             <source src="/videos/demo.mp4" type="video/mp4" />
+            <track kind="captions" src="/videos/demo.vtt" srcLang="id" label="Bahasa Indonesia" default />
           </motion.video>
 
 

@@ -30,7 +30,7 @@ export default function Features() {
             style={{ height: "auto" }}
           />
         </motion.div>
-        <p className="pointer-events-none absolute left-0 right-0 top-[180px] z-[1] block whitespace-nowrap text-center font-display text-[clamp(100px,11vw,178px)] font-extrabold leading-none text-white/10 md:top-[304px]" aria-hidden="true">JIVARA</p>
+        <p className="pointer-events-none absolute left-0 right-0 top-[180px] z-[1] block whitespace-nowrap text-center font-display text-[clamp(100px,11vw,178px)] font-extrabold leading-none text-white/25 md:top-[304px]" aria-hidden="true">JIVARA</p>
         <div className="relative z-[2] w-[min(850px,calc(100%-48px))]">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -43,7 +43,7 @@ export default function Features() {
               whileHover={{ scale: 1.02, y: -5 }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
-              Mencegah interaksi obat dan makanan dengan <span className="text-(--lime)">cerdas</span> dan <i className="font-(--font-body) italic font-medium leaf text-(--lime)">mudah</i> digunakan.
+              Mencegah interaksi obat dan makanan dengan <span className="text-[#bef264]">cerdas</span> dan <i className="font-(--font-body) italic font-medium text-[#bef264]">mudah</i> digunakan.
             </motion.h2>
           </motion.div>
           <motion.div

@@ -143,7 +143,7 @@ export default function AddPatientForm({ initialValues, mode = "add", onSubmit }
                     value={option}
                     checked={gender === option}
                     onChange={() => setGender(option)}
-                    className="h-5 w-5 appearance-none rounded-full border-2 border-muted bg-white bg-clip-content p-[3px] transition-all checked:border-primary checked:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="h-5 w-5 appearance-none rounded-full border-2 border-muted bg-white bg-clip-content p-[3px] transition-colors checked:border-primary checked:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                   <span className={gender === option ? "text-text-main" : "text-muted"}>{option}</span>
                 </label>
