@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Dokumentasi API",
-  description: "Dokumentasi API Jivara — akses Swagger UI untuk melihat endpoint, autentikasi, dan fitur integrasi platform kesehatan Jivara.",
+  description: "Dokumentasi API Jivara - akses Swagger UI untuk melihat endpoint, autentikasi, dan fitur integrasi platform kesehatan Jivara.",
   alternates: {
     canonical: "https://www.jivara.web.id/docs",
   },

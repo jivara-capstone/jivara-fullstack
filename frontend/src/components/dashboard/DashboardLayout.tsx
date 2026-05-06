@@ -40,12 +40,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       // Bersihkan state lokal
       logout();
       Cookies.remove("jivara-token");
-      window.localStorage.removeItem("jivara-auth-storage");
 
       // 1. Lakukan navigasi client-side DULU agar transisi mulus tanpa layar putih
       router.replace("/login");
 
-      // 2. SETELAH pindah halaman (atau sedang transisi), eksekusi Clear-Site-Data di background
+      // 2. SETELAH pindah halaman, bersihkan cache browser di background
       window.setTimeout(() => {
         fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         showToast("Berhasil keluar dari akun.", "success");
@@ -58,7 +57,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Keluar akun">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm font-medium text-text-secondary">Sedang keluar...</p>
+          <p className="text-sm font-medium text-text-secondary">Sedang keluar ...</p>
         </div>
       </div>
     );

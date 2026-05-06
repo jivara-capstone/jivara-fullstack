@@ -26,7 +26,7 @@ function createContentSecurityPolicy(nonce: string) {
 }
 
 // Route yang memerlukan axutentikasi.
-const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan'];
+// const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan'];
 
 // Route yang TIDAK boleh diakses jika sudah login
 const authRoutes = ['/login', '/register'];
@@ -44,16 +44,16 @@ export async function proxy(request: NextRequest) {
   const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 0;
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  // const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
-  if (isProtectedRoute && !hasValidToken) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', pathname);
-    const response = NextResponse.redirect(url);
-    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
-    return response;
-  }
+  // if (isProtectedRoute && !hasValidToken) {
+  //   const url = new URL('/login', request.url);
+  //   url.searchParams.set('callbackUrl', pathname);
+  //   const response = NextResponse.redirect(url);
+  //   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  //   return response;
+  // }
 
   if (isAuthRoute && hasValidToken) {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));

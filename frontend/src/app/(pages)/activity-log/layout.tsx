@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Log Aktivitas",
-  description: "Log aktivitas kesehatan — riwayat minum obat, hasil scan makanan, dan catatan perawatan pasien.",
+  description: "Log aktivitas kesehatan - riwayat minum obat, hasil scan makanan, dan catatan perawatan pasien.",
   robots: { index: false, follow: false },
 };
 
