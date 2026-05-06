@@ -64,10 +64,14 @@ interface RootLayoutProps {
 }
 
 export default async function RootLayout({ children }: RootLayoutProps) {
-  await headers();
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') || '';
 
   return (
     <html lang="id" className={`${archivo.variable} ${inter.variable} relative`} suppressHydrationWarning>
+      <head>
+        {nonce && <meta property="csp-nonce" nonce={nonce} />}
+      </head>
       <body className="font-body relative overflow-x-hidden">
         <ScrollProvider>
           <PwaInstallPromptProvider>
