@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
+function createContentSecurityPolicy(nonce: string) {
+  const isDev = process.env.NODE_ENV === 'development';
+  const directives = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    `style-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-inline'" : ''}`,
+    "img-src 'self' data: blob: https://images.unsplash.com",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.jivara.web.id http://localhost:3001 ws://localhost:3000 ws://127.0.0.1:3000",
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
+    "upgrade-insecure-requests",
+  ];
+
+  return directives.join('; ');
+}
+
 // Route yang memerlukan axutentikasi.
 const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan'];
 
@@ -10,6 +31,12 @@ const authRoutes = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
   await updateSession(request);
+
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const contentSecurityPolicy = createContentSecurityPolicy(nonce);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
 
   const token = request.cookies.get('jivara-token')?.value;
   const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 0;
@@ -21,14 +48,24 @@ export async function proxy(request: NextRequest) {
   if (isProtectedRoute && !hasValidToken) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    return response;
   }
 
   if (isAuthRoute && hasValidToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  return response;
 }
 
 export const config = {
