@@ -50,32 +50,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         // Jika gagal, lanjutkan logout lokal.
       }
 
-      // Re-register SW dan preload /login agar halaman bisa dirender.
-      if (isStandalonePwa && "serviceWorker" in navigator) {
-        try {
-          const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-          // Tunggu SW aktif
-          await new Promise<void>((resolve) => {
-            const sw = reg.installing || reg.waiting || reg.active;
-            if (sw?.state === "activated") { resolve(); return; }
-            sw?.addEventListener("statechange", function handler() {
-              if (sw.state === "activated") { sw.removeEventListener("statechange", handler); resolve(); }
-            });
-            // Timeout fallback agar tidak menggantung selamanya
-            window.setTimeout(resolve, 3000);
-          });
-        } catch {
-          // SW gagal re-register, lanjutkan redirect biasa
-        }
-      }
-
-      router.replace("/login");
-      window.setTimeout(() => showToast("Berhasil keluar dari akun.", "success"), 120);
+      // Gunakan hard redirect agar Next.js tidak crash karena cache/storage-nya baru saja dihapus
+      window.location.href = "/login";
     }
   };
 
   if (isLoggingOut) {
-    return <div className="min-h-screen bg-surface" aria-label="Keluar akun" />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Keluar akun">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-sm font-medium text-text-secondary">Sedang keluar...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
