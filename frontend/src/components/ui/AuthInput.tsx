@@ -25,7 +25,7 @@ const AuthInput = ({ label, id, required = true, icon, className = '', labelClas
         <input
           id={id}
           name={name ?? id}
-          className={`w-full py-4 ${icon ? 'pl-14 pr-5' : 'px-5'} bg-surface shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-body disabled:cursor-not-allowed disabled:bg-line/35 disabled:text-muted disabled:opacity-100 ${className}`}
+          className={`w-full py-4 ${icon ? 'pl-14 pr-5' : 'px-5'} bg-surface shadow-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition font-body disabled:cursor-not-allowed disabled:bg-line/35 disabled:text-muted disabled:opacity-100 ${className}`}
           {...props}
         />
       </div>

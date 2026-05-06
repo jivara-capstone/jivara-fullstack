@@ -26,7 +26,7 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed inset-x-0 top-0 z-[10000] transition-all duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] px-4 lg:px-[84px] ${isStandalonePwa ? "hidden lg:block" : ""} ${isScrolled
+        className={`fixed inset-x-0 top-0 z-[10000] transition-[background-color,box-shadow,backdrop-filter] duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] px-4 lg:px-[84px] ${isStandalonePwa ? "hidden lg:block" : ""} ${isScrolled
           ? "h-[72px] bg-white/85 backdrop-blur-[20px] shadow-[0_8px_26px_rgba(15,23,42,0.06)]"
           : "h-[72px] lg:h-[90px] bg-bg"
           }`}
@@ -58,57 +58,65 @@ export default function Navbar() {
                 >
                   <Link
                     href={link.href}
-                    className="group text-xs font-bold tracking-[0.16em] uppercase text-text-main relative transition-colors duration-200 hover:text-primary"
+                    className="group w-fit text-sm font-medium tracking-[0.16em] uppercase text-text-main relative transition-colors duration-200 hover:text-primary"
                   >
                     {link.name}
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"></span>
                   </Link>
                 </motion.div>
               ))}
             </div>
 
-            <Link href="/login" className="hidden lg:block">
-              <Button size="sm" icon={<LogIn size={16} strokeWidth={2.5} />}>
-                Masuk
-              </Button>
-            </Link>
+            <div className="hidden lg:block">
+              <Link href="/login">
+                <Button size="lg" icon={<LogIn size={18} />}>
+                  Masuk
+                </Button>
+              </Link>
+            </div>
 
             <button
-              className={`flex lg:hidden flex-col gap-[5px] w-11 h-11 justify-center items-center z-[40000] rounded-xl cursor-pointer transition-all duration-300 shrink-0`}
+              className="lg:hidden p-2 text-text-main hover:bg-surface rounded-full transition-colors z-[10001] relative"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label={isMenuOpen ? "Tutup menu" : "Buka menu"}
+              aria-expanded={isMenuOpen}
             >
-              <span
-                className={`w-5 h-0.5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ${isMenuOpen ? "bg-white translate-y-[7px] rotate-45" : "bg-text-main"}`}
-              />
-              <span
-                className={`w-5 h-0.5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ${isMenuOpen ? "bg-white opacity-0 translate-x-[10px]" : "bg-text-main"}`}
-              />
-              <span
-                className={`w-5 h-0.5 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none ${isMenuOpen ? "bg-white -translate-y-[7px] -rotate-45" : "bg-text-main"}`}
-              />
+              <div className="w-5 h-[14px] relative">
+                <span
+                  className={`h-0.5 w-5 bg-current rounded-full absolute top-0 left-0 transition-transform duration-300 ease-out ${
+                    isMenuOpen ? "translate-y-[6px] rotate-45" : ""
+                  }`}
+                />
+                <span
+                  className={`h-0.5 w-4 bg-current rounded-full absolute top-[6px] right-0 transition-opacity duration-300 ease-out ${
+                    isMenuOpen ? "opacity-0" : "opacity-100"
+                  }`}
+                />
+                <span
+                  className={`h-0.5 w-5 bg-current rounded-full absolute top-[12px] left-0 transition-transform duration-300 ease-out ${
+                    isMenuOpen ? "-translate-y-[6px] -rotate-45" : ""
+                  }`}
+                />
+              </div>
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Drawer with AnimatePresence */}
       <AnimatePresence>
-        {isMenuOpen && !isStandalonePwa && (
-          <div className="fixed inset-0 z-[35000] lg:hidden">
-            {/* Backdrop */}
+        {isMenuOpen && (
+          <div className="fixed inset-0 z-[9999] lg:hidden">
             <motion.div
-              className="absolute inset-0 bg-black/40 backdrop-blur-[8px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.35 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setIsMenuOpen(false)}
             />
-
-            {/* Drawer Panel */}
+            
             <motion.div
-              className="absolute top-0 right-0 w-4/5 max-w-[340px] h-full bg-bg pt-5 px-8 pb-10 flex flex-col shadow-[-10px_0_50px_rgba(0,0,0,0.1)]"
+              className="absolute top-0 right-0 bottom-0 w-[280px] bg-bg shadow-2xl p-6 flex flex-col sm:w-[320px]"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -152,7 +160,7 @@ export default function Navbar() {
                         className="group w-fit text-xs font-medium tracking-[0.16em] uppercase text-text-main relative transition-colors duration-200 hover:text-primary"
                       >
                         {link.name}
-                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+                        <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100"></span>
                       </Link>
                     </motion.div>
                   </motion.div>

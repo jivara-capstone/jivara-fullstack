@@ -8,7 +8,7 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, Inter } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
-
+import WebVitals from "@/components/WebVitals";
 export const dynamic = "force-dynamic";
 
 const archivo = Archivo({
@@ -32,6 +32,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.jivara.web.id"),
   title: "Jivara",
   description:
     "Platform kesehatan berbasis AI untuk pengingat obat, deteksi interaksi makanan-obat, dan pemantauan pasien jarak jauh.",
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="id" className={`${archivo.variable} ${inter.variable} relative`} suppressHydrationWarning>
       <body className="font-body relative overflow-x-hidden">
+        <WebVitals />
         <ScrollProvider>
           <PwaInstallPromptProvider>
             {children}

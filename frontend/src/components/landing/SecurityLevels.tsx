@@ -5,12 +5,12 @@ import SecurityCard from "@/components/ui/SecurityCard";
 const levels = [
   {
     title: "Low Risk",
-    color: "text-leaf",
+    color: "text-[#166534]",
     description: "Tidak ada interaksi signifikan. Makanan aman dikonsumsi sesuai anjuran obat yang sedang aktif."
   },
   {
     title: "High Risk",
-    color: "text-danger",
+    color: "text-[#b91c1c]",
     description: "Risiko tinggi interaksi serius. Pasien dilarang mengonsumsi makanan ini, dan peringatan dikirim ke perawat."
   }
 ];
