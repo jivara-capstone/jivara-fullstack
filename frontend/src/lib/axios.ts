@@ -81,7 +81,7 @@ api.interceptors.response.use(
         updateToken(newToken);
 
         Cookies.set('jivara-token', newToken, {
-          expires: 1,
+          expires: 7,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict'
         });

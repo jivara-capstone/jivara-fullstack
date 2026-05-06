@@ -39,7 +39,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Jivara — Platform Kesehatan AI: Pengingat Obat & Deteksi Interaksi Makanan",
+    default: "Jivara - Platform Kesehatan AI: Pengingat Obat & Deteksi Interaksi Makanan",
     template: "%s | Jivara",
   },
   description:
@@ -86,9 +86,9 @@ export const metadata: Metadata = {
     canonical: BASE_URL,
   },
   openGraph: {
-    title: "Jivara — Stay on Track, Stay Healthy",
+    title: "Jivara - Stay on Track, Stay Healthy",
     description:
-      "Platform kesehatan berbasis AI — pengingat obat otomatis, deteksi interaksi makanan-obat dengan Computer Vision, dan monitoring pasien jarak jauh oleh perawat.",
+      "Platform kesehatan berbasis AI - pengingat obat otomatis, deteksi interaksi makanan-obat dengan Computer Vision, dan monitoring pasien jarak jauh oleh perawat.",
     url: BASE_URL,
     siteName: "Jivara",
     locale: "id_ID",
@@ -98,14 +98,14 @@ export const metadata: Metadata = {
         url: "/images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Jivara — Platform Kesehatan AI untuk Pengingat Obat dan Deteksi Interaksi Makanan",
+        alt: "Jivara - Platform Kesehatan AI untuk Pengingat Obat dan Deteksi Interaksi Makanan",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Jivara — Platform Kesehatan AI",
+    title: "Jivara - Platform Kesehatan AI",
     description:
       "Pengingat obat otomatis, deteksi interaksi makanan-obat menggunakan AI Computer Vision, dan monitoring pasien oleh perawat.",
     images: ["/images/og-image.png"],
@@ -130,11 +130,11 @@ export const metadata: Metadata = {
     google: "cA4OyhUu359dNPpjiHWaSN2-ELXIsjC1qdBmu-dDsKM",
   },
 };
-// JSON-LD Structured Data — menggunakan tipe yang didukung Google Rich Results
+// JSON-LD Structured Data - menggunakan tipe yang didukung Google Rich Results
 const jsonLdGraph = {
   "@context": "https://schema.org",
   "@graph": [
-    // 1. WebSite — untuk Sitelinks Search Box di Google
+    // 1. WebSite - untuk Sitelinks Search Box di Google
     {
       "@type": "WebSite",
       "@id": `${BASE_URL}/`,
@@ -146,7 +146,7 @@ const jsonLdGraph = {
       inLanguage: "id",
       publisher: { "@id": `${BASE_URL}/team` },
     },
-    // 2. Organization — untuk Knowledge Panel Google
+    // 2. Organization - untuk Knowledge Panel Google
     {
       "@type": "Organization",
       "@id": `${BASE_URL}/team`,
@@ -159,7 +159,7 @@ const jsonLdGraph = {
         height: 1080,
       },
       description:
-        "Tim pengembang platform kesehatan AI Jivara — pengingat obat, deteksi interaksi makanan-obat, dan monitoring pasien.",
+        "Tim pengembang platform kesehatan AI Jivara - pengingat obat, deteksi interaksi makanan-obat, dan monitoring pasien.",
       contactPoint: {
         "@type": "ContactPoint",
         email: "hello@jivara.id",
@@ -168,7 +168,7 @@ const jsonLdGraph = {
       },
       sameAs: ["https://instagram.com/jivara.id"],
     },
-    // 3. SoftwareApplication — untuk App Rich Results
+    // 3. SoftwareApplication - untuk App Rich Results
     {
       "@type": "SoftwareApplication",
       "@id": `${BASE_URL}/docs`,
@@ -219,7 +219,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           type="application/ld+json"
           nonce={nonce || undefined}
           suppressHydrationWarning
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
         />
       </head>

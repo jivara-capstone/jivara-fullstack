@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Pengaturan",
-  description: "Kelola pengaturan akun Jivara — profil, notifikasi, dan preferensi aplikasi.",
+  description: "Kelola pengaturan akun Jivara - profil, notifikasi, dan preferensi aplikasi.",
   robots: { index: false, follow: false },
 };
 
