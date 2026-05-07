@@ -13,6 +13,8 @@ router.use(authenticateToken);
  *   description: Statistik kepatuhan minum obat
  */
 
+router.get("/aggregate", authorizeRoles("admin"), adherenceController.getAggregateAdherence);
+
 /**
  * @swagger
  * /api/adherence:
