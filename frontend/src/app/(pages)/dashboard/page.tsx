@@ -2,12 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { DashboardLayout } from "@/components/dashboard";
+import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { useAuthStore } from "@/store/auth";
 import { useSplashScreen } from "@/components/ui/AppSplashScreen";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 
-const NurseDashboardPage = dynamic(() => import("@/components/dashboard/NurseDashboardPage"), { ssr: false });
-const PatientDashboardPage = dynamic(() => import("@/components/patient-dashboard/PatientDashboardPage"), { ssr: false });
+const NurseDashboardPage = dynamic(() => import("@/components/dashboard/NurseDashboardPage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
+const PatientDashboardPage = dynamic(() => import("@/components/patient-dashboard/PatientDashboardPage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);

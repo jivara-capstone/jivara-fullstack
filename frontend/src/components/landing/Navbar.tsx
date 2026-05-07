@@ -58,6 +58,7 @@ export default function Navbar() {
                 >
                   <Link
                     href={link.href}
+                    prefetch
                     className="group text-xs font-bold tracking-[0.16em] uppercase text-text-main relative transition-colors duration-200 hover:text-primary"
                   >
                     {link.name}
@@ -67,7 +68,7 @@ export default function Navbar() {
               ))}
             </div>
 
-            <Link href="/login" className="hidden lg:block">
+            <Link href="/login" prefetch className="hidden lg:block">
               <Button size="sm" icon={<LogIn size={16} strokeWidth={2.5} />}>
                 Masuk
               </Button>
@@ -130,13 +131,13 @@ export default function Navbar() {
               </div>
 
               <div className="flex flex-col gap-7">
-                {NAV_LINKS.map((link, i) => (
+                {NAV_LINKS.map((link) => (
                   <motion.div
                     key={link.name}
                     initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{
-                      delay: 0.1 + i * 0.08,
+                      delay: 0.04,
                       type: "spring",
                       stiffness: 300,
                       damping: 25,
@@ -148,6 +149,7 @@ export default function Navbar() {
                     >
                       <Link
                         href={link.href}
+                        prefetch
                         onClick={() => setIsMenuOpen(false)}
                         className="group w-fit text-xs font-medium tracking-[0.16em] uppercase text-text-main relative transition-colors duration-200 hover:text-primary"
                       >
@@ -163,9 +165,9 @@ export default function Navbar() {
                 className="mt-auto"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35, type: "spring", stiffness: 300, damping: 25 }}
+                transition={{ delay: 0.08, type: "spring", stiffness: 300, damping: 25 }}
               >
-                <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                <Link href="/login" prefetch onClick={() => setIsMenuOpen(false)}>
                   <Button className="w-full" size="lg" icon={<LogIn size={18} />}>
                     Masuk
                   </Button>

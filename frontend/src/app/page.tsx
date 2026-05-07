@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import LandingBottomNav from "@/components/landing/LandingBottomNav";
@@ -12,11 +13,16 @@ import Features from "@/components/landing/Features";
 import Workflow from "@/components/landing/Workflow";
 import SecurityLevels from "@/components/landing/SecurityLevels";
 import Footer from "@/components/landing/Footer";
-import { useIsStandalonePwa } from "@/hooks";
+import { useIdleRoutePrefetch, useIsStandalonePwa } from "@/hooks";
 import { initScrollAnimations } from "@/lib/animations";
 
+const landingPrefetchRoutes = ["/login", "/register", "/team", "/dashboard"] as const;
+
 export default function HomePage() {
+  const router = useRouter();
   const isStandalonePwa = useIsStandalonePwa();
+
+  useIdleRoutePrefetch(router, landingPrefetchRoutes);
 
   useEffect(() => {
     const cleanup = initScrollAnimations();
@@ -29,7 +35,7 @@ export default function HomePage() {
       {isStandalonePwa && (
         <PwaTopLogoBar
           rightAction={(
-            <Link href="/login" className="group inline-flex h-10 items-center gap-2 rounded-full px-3 py-2 text-[13px] font-extrabold uppercase tracking-[0.1em] text-text-main transition-colors hover:!text-primary">
+            <Link href="/login" prefetch className="group inline-flex h-10 items-center gap-2 rounded-full px-3 py-2 text-[13px] font-extrabold uppercase tracking-[0.1em] text-text-main transition-colors hover:!text-primary">
               Masuk <LogIn size={19} className="transition-colors group-hover:!text-primary" />
             </Link>
           )}

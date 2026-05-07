@@ -38,12 +38,13 @@ export default function LandingBottomNav() {
               key={item.href}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: 0.04 + landingBottomItems.indexOf(item) * 0.035 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               whileHover={isActive ? undefined : { y: -2 }}
               whileTap={{ scale: 0.94 }}
             >
               <Link
                 href={item.href}
+                prefetch
                 aria-current={isActive ? "page" : undefined}
                 className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-extrabold transition-colors ${
                   isActive ? "text-primary" : "text-muted hover:text-primary"

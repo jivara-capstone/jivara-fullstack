@@ -11,8 +11,10 @@ import { useAuthStore } from "@/store/auth";
 import AuthCard from "@/components/ui/AuthCard";
 import AuthInput from "@/components/ui/AuthInput";
 import Button from "@/components/ui/Button";
+import { useIdleRoutePrefetch } from "@/hooks";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const loginPrefetchRoutes = ["/register", "/dashboard"] as const;
 
 export default function LoginForm() {
   const [identifier, setIdentifier] = useState("");
@@ -20,6 +22,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  useIdleRoutePrefetch(router, loginPrefetchRoutes);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -74,7 +77,7 @@ export default function LoginForm() {
       footer={
         <p className="text-muted font-body">
           Belum punya akun?{" "}
-          <Link href="/register" className="font-bold underline hover-text-primary transition-colors hover:text-primary-dark">
+          <Link href="/register" prefetch className="font-bold underline hover-text-primary transition-colors hover:text-primary-dark">
             Daftar
           </Link>
         </p>

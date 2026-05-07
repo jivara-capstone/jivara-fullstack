@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu } from "lucide-react";
-import { useIsStandalonePwa, useLockBodyScroll } from "@/hooks";
+import { useIdleRoutePrefetch, useIsStandalonePwa, useLockBodyScroll } from "@/hooks";
 import { useAuthStore } from "@/store/auth";
 import DashboardSidebar from "./DashboardSidebar";
-import { getDashboardNavItems, getDashboardRole, type DashboardNavLabel, type DashboardRole } from "./navigation";
+import { getDashboardBottomNavItems, getDashboardNavItems, getDashboardRole, type DashboardNavLabel, type DashboardRole } from "./navigation";
 
 interface NurseDashboardNavbarProps {
   readonly onLogout: () => void;
@@ -16,14 +16,17 @@ interface NurseDashboardNavbarProps {
 
 export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
   const isStandalonePwa = useIsStandalonePwa();
   const pathname = usePathname();
   const userRole = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const dashboardRole = getDashboardRole(userRole);
   const activeItem = getActiveNavLabel(pathname, dashboardRole);
+  const prefetchRoutes = useMemo(() => getDashboardBottomNavItems(dashboardRole).map((item) => item.href), [dashboardRole]);
 
   useLockBodyScroll(isMenuOpen);
+  useIdleRoutePrefetch(router, prefetchRoutes);
 
   return (
     <>

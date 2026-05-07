@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 import PatientListPage from "./PatientListPage";
@@ -18,7 +19,7 @@ export default function PatientsRouteClient() {
     router.replace("/dashboard");
   }, [dashboardRole, hasAuthHydrated, router]);
 
-  if (!hasAuthHydrated || dashboardRole !== "nurse") return null;
+  if (!hasAuthHydrated || dashboardRole !== "nurse") return <DashboardRouteFallback />;
 
   return (
     <DashboardLayout>

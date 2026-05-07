@@ -215,7 +215,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     <html lang="id" className={`${archivo.variable} ${inter.variable} relative`} suppressHydrationWarning>
       <head>
         {nonce && <meta property="csp-nonce" nonce={nonce} />}
-        <link rel="preload" href="/models/maskot.glb" as="fetch" crossOrigin="anonymous" />
         <script
           type="application/ld+json"
           nonce={nonce || undefined}

@@ -12,8 +12,9 @@ import PatientMedicineList from "./PatientMedicineList";
 import PatientProfileHero from "./PatientProfileHero";
 import PatientRecentActivity from "./PatientRecentActivity";
 
-const PatientAdherenceChart = dynamic(() => import("./PatientAdherenceChart"), { ssr: false });
-const PatientActivityDistributionChart = dynamic(() => import("./PatientActivityDistributionChart"), { ssr: false });
+const chartFallback = () => <div className="h-80 animate-pulse rounded-[32px] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]" />;
+const PatientAdherenceChart = dynamic(() => import("./PatientAdherenceChart"), { ssr: false, loading: chartFallback });
+const PatientActivityDistributionChart = dynamic(() => import("./PatientActivityDistributionChart"), { ssr: false, loading: chartFallback });
 
 interface PatientDetailPageProps {
   readonly data: PatientDetailData;

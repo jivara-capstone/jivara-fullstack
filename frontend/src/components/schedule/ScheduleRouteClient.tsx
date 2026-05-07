@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 
-const PatientSchedulePage = dynamic(() => import("./PatientSchedulePage"), { ssr: false });
-const SchedulePage = dynamic(() => import("./SchedulePage"), { ssr: false });
+const PatientSchedulePage = dynamic(() => import("./PatientSchedulePage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
+const SchedulePage = dynamic(() => import("./SchedulePage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
 
 interface ScheduleRouteClientProps {
   readonly initialPatientName?: string;

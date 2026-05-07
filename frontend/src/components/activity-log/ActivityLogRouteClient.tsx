@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 
-const ActivityLogPage = dynamic(() => import("./ActivityLogPage"), { ssr: false });
-const PatientActivityLogPage = dynamic(() => import("./PatientActivityLogPage"), { ssr: false });
+const ActivityLogPage = dynamic(() => import("./ActivityLogPage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
+const PatientActivityLogPage = dynamic(() => import("./PatientActivityLogPage"), { ssr: false, loading: () => <DashboardRouteFallback /> });
 
 interface ActivityLogRouteClientProps {
   readonly initialPatientName?: string;

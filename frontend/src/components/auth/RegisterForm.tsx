@@ -9,8 +9,10 @@ import { closeAlert, showError, showLoading, showToast, showWarning } from "@/li
 import AuthCard from "@/components/ui/AuthCard";
 import AuthInput from "@/components/ui/AuthInput";
 import Button from "@/components/ui/Button";
+import { useIdleRoutePrefetch } from "@/hooks";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const registerPrefetchRoutes = ["/login", "/dashboard"] as const;
 
 export default function RegisterForm() {
   const [fullName, setFullName] = useState("");
@@ -20,6 +22,7 @@ export default function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  useIdleRoutePrefetch(router, registerPrefetchRoutes);
 
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,7 +73,7 @@ export default function RegisterForm() {
       footer={
         <p className="text-muted font-body">
           Sudah punya akun?{" "}
-          <Link href="/login" className="font-bold underline hover-text-primary transition-colors hover:text-primary-dark">
+          <Link href="/login" prefetch className="font-bold underline hover-text-primary transition-colors hover:text-primary-dark">
             Masuk
           </Link>
         </p>

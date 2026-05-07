@@ -1,21 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { useMemo } from "react";
 import { getUnreadActivityCount } from "@/helpers/activityLogs";
 import { patients } from "@/lib/mocks/patients";
 import { useActivityLogStore } from "@/store/activityLog";
 import { useAuthStore } from "@/store/auth";
+import { useIdleRoutePrefetch } from "@/hooks";
 import { getDashboardBottomNavItems, getDashboardRole } from "./navigation";
 
 export default function DashboardBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const userRole = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const dashboardRole = getDashboardRole(userRole);
   const unreadActivityCount = useActivityLogStore((state) => getUnreadActivityCount(state.activities, dashboardRole === "patient" ? patients[0].id : undefined));
   const bottomNavItems = getDashboardBottomNavItems(dashboardRole);
+  const prefetchRoutes = useMemo(() => bottomNavItems.map((item) => item.href), [bottomNavItems]);
+
+  useIdleRoutePrefetch(router, prefetchRoutes);
 
   if (!hasAuthHydrated) return null;
 
@@ -39,12 +45,13 @@ export default function DashboardBottomNav() {
               key={item.href}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: 0.04 + bottomNavItems.indexOf(item) * 0.035 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               whileHover={isActive ? undefined : { y: -2 }}
               whileTap={{ scale: 0.94 }}
             >
               <Link
                 href={item.href}
+                prefetch
                 aria-current={isActive ? "page" : undefined}
                 className={`group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] font-extrabold transition-colors ${isFeatured ? "-mt-7 py-1" : "py-2"} ${
                   isActive ? "text-primary" : "text-muted hover:text-primary"
