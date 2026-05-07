@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
@@ -20,9 +19,5 @@ export default function ScheduleRouteClient({ initialPatientName }: ScheduleRout
 
   if (!hasAuthHydrated) return null;
 
-  return (
-    <DashboardLayout>
-      {dashboardRole === "nurse" ? <SchedulePage initialPatientName={initialPatientName} /> : <PatientSchedulePage />}
-    </DashboardLayout>
-  );
+  return dashboardRole === "nurse" ? <SchedulePage initialPatientName={initialPatientName} /> : <PatientSchedulePage />;
 }

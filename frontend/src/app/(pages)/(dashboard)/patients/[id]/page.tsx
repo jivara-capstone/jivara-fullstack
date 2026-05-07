@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { PatientDetailPage } from "@/components/patients/detail";
 import { getPatientDetailData } from "@/helpers/patientDetails";
 
@@ -15,9 +14,5 @@ export default async function PatientDetailRoute({ params }: PatientDetailRouteP
 
   if (!data) notFound();
 
-  return (
-    <DashboardLayout>
-      <PatientDetailPage data={data} />
-    </DashboardLayout>
-  );
+  return <PatientDetailPage data={data} />;
 }

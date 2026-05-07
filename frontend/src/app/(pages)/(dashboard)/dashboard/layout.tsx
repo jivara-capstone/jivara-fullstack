@@ -7,6 +7,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function DashboardLayout({ children }: { readonly children: ReactNode }) {
+export default function DashboardRouteLayout({ children }: { readonly children: ReactNode }) {
   return children;
 }

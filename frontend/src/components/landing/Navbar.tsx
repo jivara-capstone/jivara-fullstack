@@ -28,14 +28,27 @@ export default function Navbar() {
   useEffect(() => {
     if (!isMenuOpen) return;
 
-    const closeButton = drawerRef.current?.querySelector<HTMLAnchorElement | HTMLButtonElement>("a, button");
-    closeButton?.focus({ preventScroll: true });
+    const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    const firstElement = focusableElements?.[0];
+    const lastElement = focusableElements?.[focusableElements.length - 1];
+    firstElement?.focus({ preventScroll: true });
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setIsMenuOpen(false);
-      menuButtonRef.current?.focus({ preventScroll: true });
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (event.key !== "Tab" || !firstElement || !lastElement) return;
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -53,18 +66,18 @@ export default function Navbar() {
       >
         <div className="max-w-[1440px] mx-auto h-full flex justify-between items-center relative w-full">
           <Link
-            className="font-display text-2xl font-extrabold tracking-[-0.02em] text-text-main"
+            className="block w-[118px] shrink-0"
             href="/"
             aria-label="Jivara home"
           >
               <Image
                 src="/images/logo/notext.png"
-                alt="Jiva - maskot Jivara"
-                width={100}
-                height={100}
+                alt="Jivara"
+                width={132}
+                height={42}
                 priority
-                sizes="100px"
-                className="w-full h-auto drop-shadow-2xl"
+                sizes="118px"
+                className="h-auto w-[118px] drop-shadow-2xl"
               />
           </Link>
 

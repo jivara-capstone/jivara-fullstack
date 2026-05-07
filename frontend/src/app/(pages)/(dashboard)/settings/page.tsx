@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardLayout } from "@/components/dashboard";
 import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { NurseSettingsPage, PatientSettingsPage } from "@/components/settings";
@@ -13,9 +12,5 @@ export default function SettingsPage() {
 
   if (!hasAuthHydrated) return <DashboardRouteFallback />;
 
-  return (
-    <DashboardLayout>
-      {dashboardRole === "nurse" ? <NurseSettingsPage /> : <PatientSettingsPage />}
-    </DashboardLayout>
-  );
+  return dashboardRole === "nurse" ? <NurseSettingsPage /> : <PatientSettingsPage />;
 }

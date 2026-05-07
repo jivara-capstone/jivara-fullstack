@@ -79,7 +79,7 @@ const nextConfig: NextConfig = {
         headers: baseSecurityHeaders,
       },
       {
-        source: "/((?!dashboard|patients|schedule|activity-log|settings|food-scan).*)",
+        source: "/:path((?!dashboard|patients|schedule|activity-log|settings|food-scan).*)",
         headers: [...baseSecurityHeaders, ...crossOriginIsolationHeaders],
       },
       {

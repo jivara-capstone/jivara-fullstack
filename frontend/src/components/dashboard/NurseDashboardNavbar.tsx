@@ -30,14 +30,27 @@ export default function NurseDashboardNavbar({ onLogout }: NurseDashboardNavbarP
   useEffect(() => {
     if (!isMenuOpen) return;
 
-    const firstFocusable = drawerRef.current?.querySelector<HTMLAnchorElement | HTMLButtonElement>("a, button");
-    firstFocusable?.focus({ preventScroll: true });
+    const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    const firstElement = focusableElements?.[0];
+    const lastElement = focusableElements?.[focusableElements.length - 1];
+    firstElement?.focus({ preventScroll: true });
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setIsMenuOpen(false);
-      menuButtonRef.current?.focus({ preventScroll: true });
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (event.key !== "Tab" || !firstElement || !lastElement) return;
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     };
 
     document.addEventListener("keydown", handleKeyDown);

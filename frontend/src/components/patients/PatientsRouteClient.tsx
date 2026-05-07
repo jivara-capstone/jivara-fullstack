@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { getDashboardRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
@@ -21,9 +20,5 @@ export default function PatientsRouteClient() {
 
   if (!hasAuthHydrated || dashboardRole !== "nurse") return <DashboardRouteFallback />;
 
-  return (
-    <DashboardLayout>
-      <PatientListPage />
-    </DashboardLayout>
-  );
+  return <PatientListPage />;
 }

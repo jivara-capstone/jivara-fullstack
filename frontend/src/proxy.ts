@@ -45,7 +45,7 @@ const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log'
 const authRoutes = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
-  await updateSession(request);
+  const supabaseResponse = await updateSession(request);
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const requestHeaders = new Headers(request.headers);
@@ -65,12 +65,14 @@ export async function proxy(request: NextRequest) {
     url.searchParams.set('callbackUrl', pathname);
     const response = NextResponse.redirect(url);
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
     return response;
   }
 
   if (isAuthRoute && hasValidToken) {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
     return response;
   }
 
@@ -80,6 +82,7 @@ export async function proxy(request: NextRequest) {
     },
   });
   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
   return response;
 }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { DashboardLayout } from "@/components/dashboard";
 import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
 import { useAuthStore } from "@/store/auth";
 import { useSplashScreen } from "@/components/ui/AppSplashScreen";
@@ -18,9 +17,5 @@ export default function DashboardPage() {
 
   if (!hasAuthHydrated || !isSplashFinished) return null;
 
-  return (
-    <DashboardLayout>
-      {dashboardRole === "nurse" ? <NurseDashboardPage /> : <PatientDashboardPage />}
-    </DashboardLayout>
-  );
+  return dashboardRole === "nurse" ? <NurseDashboardPage /> : <PatientDashboardPage />;
 }
