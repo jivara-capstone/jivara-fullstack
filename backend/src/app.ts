@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express, { Request, Response, NextFunction } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -56,6 +57,9 @@ app.use('/api/', limiter);
 
 // Body parser dengan limit untuk mencegah payload attack
 app.use(express.json({ limit: '1mb' }));
+
+// Public access for locally stored uploaded files.
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // Routes
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
