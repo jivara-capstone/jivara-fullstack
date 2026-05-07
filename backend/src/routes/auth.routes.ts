@@ -1,14 +1,29 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import * as authController from "../controllers/auth.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
+import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
 import {
   validateRegister,
   validateLogin,
+  validateLoginIdentifier,
   validateRefreshToken,
   validateCompletePasswordChange,
 } from "../validators/auth.validator";
 
 const router = Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    status: "gagal",
+    message: "Terlalu banyak percobaan login, silakan coba lagi nanti.",
+    error_code: "LOGIN_RATE_LIMITED",
+  },
+});
 
 /**
  * @swagger
@@ -21,9 +36,10 @@ const router = Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Daftarkan pengguna baru
+ *     summary: Daftarkan pengguna baru (admin only)
  *     tags: [Auth]
- *     security: []
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -61,7 +77,13 @@ const router = Router();
  *       409:
  *         description: Pengguna sudah terdaftar
  */
-router.post("/register", validateRegister, authController.register);
+router.post(
+  "/register",
+  authenticateToken,
+  authorizeRoles("admin"),
+  validateRegister,
+  authController.register
+);
 
 /**
  * @swagger
@@ -89,10 +111,17 @@ router.post("/register", validateRegister, authController.register);
  *       400:
  *         description: Kredensial tidak valid
  */
-router.post("/login", validateLogin, authController.login);
+router.post("/login", loginLimiter, validateLoginIdentifier, validateLogin, authController.login);
 
 router.post(
   "/complete-password-change",
+  authenticateToken,
+  validateCompletePasswordChange,
+  authController.completePasswordChange
+);
+
+router.put(
+  "/change-password",
   authenticateToken,
   validateCompletePasswordChange,
   authController.completePasswordChange
