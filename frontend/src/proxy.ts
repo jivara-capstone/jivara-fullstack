@@ -12,9 +12,9 @@ function createContentSecurityPolicy(nonce: string) {
     "object-src 'none'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     `script-src-elem 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
-    `style-src 'self' 'unsafe-inline'`,
-    `style-src-elem 'self' 'unsafe-inline'`,
-    "style-src-attr 'self' 'unsafe-inline'",
+    `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
+    `style-src-elem 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
+    `style-src-attr 'self'${isDev ? " 'unsafe-inline'" : ""}`,
     "img-src 'self' data: blob: https://images.unsplash.com",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.jivara.web.id https://jivara-production.up.railway.app http://localhost:3001 ws://localhost:3000 ws://127.0.0.1:3000",
@@ -27,7 +27,7 @@ function createContentSecurityPolicy(nonce: string) {
 }
 
 // Route yang memerlukan axutentikasi.
-const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan'];
+// const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan'];
 
 // Route yang TIDAK boleh diakses jika sudah login
 const authRoutes = ['/login', '/register'];
@@ -45,16 +45,16 @@ export async function proxy(request: NextRequest) {
   const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 0;
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  // const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
-  if (isProtectedRoute && !hasValidToken) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', pathname);
-    const response = NextResponse.redirect(url);
-    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
-    return response;
-  }
+  // if (isProtectedRoute && !hasValidToken) {
+  //   const url = new URL('/login', request.url);
+  //   url.searchParams.set('callbackUrl', pathname);
+  //   const response = NextResponse.redirect(url);
+  //   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  //   return response;
+  // }
 
   if (isAuthRoute && hasValidToken) {
     const response = NextResponse.redirect(new URL('/dashboard', request.url));

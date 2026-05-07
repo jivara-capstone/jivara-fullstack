@@ -3,8 +3,8 @@ import path from "node:path";
 
 const securityHeaders = [
   {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
+    key: "X-DNS-Prefetch-Control",
+    value: "on",
   },
   {
     key: "X-Frame-Options",
@@ -41,6 +41,14 @@ const securityHeaders = [
   {
     key: "Access-Control-Allow-Origin",
     value: "https://www.jivara.web.id",
+  },
+  {
+    key: "Cache-Control",
+    value: "private, no-cache, no-store, max-age=0, must-revalidate",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
 ];
 
