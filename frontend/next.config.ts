@@ -38,10 +38,6 @@ const baseSecurityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-];
-
-// Strict cross-origin isolation headers — breaks model-viewer blob texture loading
-const crossOriginIsolationHeaders = [
   {
     key: "Cross-Origin-Opener-Policy",
     value: "same-origin",
@@ -76,10 +72,9 @@ const nextConfig: NextConfig = {
         source: "/",
         headers: baseSecurityHeaders,
       },
-      // All other routes — full cross-origin isolation
       {
         source: "/((?!$).*)",
-        headers: [...baseSecurityHeaders, ...crossOriginIsolationHeaders],
+        headers: baseSecurityHeaders,
       },
     ];
   },

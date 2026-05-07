@@ -6,14 +6,15 @@ function createContentSecurityPolicy(nonce: string, pathname: string) {
   const isDev = process.env.NODE_ENV === 'development';
   const isLandingPage = pathname === '/';
   const allowInlineStyles = isDev || isLandingPage;
+  const allowEval = isDev || isLandingPage;
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://ajax.googleapis.com${isDev ? " 'unsafe-eval'" : ''}`,
-    `script-src-elem 'self' 'nonce-${nonce}' https://ajax.googleapis.com${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://ajax.googleapis.com${allowEval ? " 'unsafe-eval'" : ''}`,
+    `script-src-elem 'self' 'nonce-${nonce}' https://ajax.googleapis.com${allowEval ? " 'unsafe-eval'" : ''}`,
     `style-src 'self' ${allowInlineStyles ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
     `style-src-elem 'self' ${allowInlineStyles ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
     `style-src-attr 'self'${allowInlineStyles ? " 'unsafe-inline'" : ""}`,
