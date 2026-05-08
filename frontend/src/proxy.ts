@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { updateSession } from './lib/supabase/middleware';
 
+function getConfiguredApiOrigin() {
+  try {
+    return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : null;
+  } catch {
+    return null;
+  }
+}
+
 function createContentSecurityPolicy(nonce: string, pathname: string) {
   const isDev = process.env.NODE_ENV === 'development';
   const isLandingPage = pathname === '/';
   const allowInlineStyles = isDev || isLandingPage;
   const allowEval = isDev || isLandingPage;
+  const apiOrigin = getConfiguredApiOrigin();
+  const shouldUpgradeInsecureRequests = !apiOrigin?.startsWith('http://');
   const connectSources = [
     "'self'",
     'blob:',
@@ -14,7 +24,15 @@ function createContentSecurityPolicy(nonce: string, pathname: string) {
     'https://*.supabase.in',
     'https://api.jivara.web.id',
     'https://jivara-production.up.railway.app',
+    ...(apiOrigin ? [apiOrigin] : []),
     ...(isDev ? ['http://localhost:3001', 'ws://localhost:3000', 'ws://127.0.0.1:3000'] : []),
+  ].join(' ');
+  const imageSources = [
+    "'self'",
+    'data:',
+    'blob:',
+    'https://images.unsplash.com',
+    ...(apiOrigin ? [apiOrigin] : []),
   ].join(' ');
 
   const directives = [
@@ -28,12 +46,12 @@ function createContentSecurityPolicy(nonce: string, pathname: string) {
     `style-src 'self' ${allowInlineStyles ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
     `style-src-elem 'self' ${allowInlineStyles ? "'unsafe-inline'" : `'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-RpGvlRbRQP1LZDBLDKCjN1VY9+ac/RHqgjmDHc2Y6PA='`}`,
     `style-src-attr 'self'${allowInlineStyles ? " 'unsafe-inline'" : ""}`,
-    "img-src 'self' data: blob: https://images.unsplash.com",
+    `img-src ${imageSources}`,
     "font-src 'self' data:",
     `connect-src ${connectSources}`,
     "manifest-src 'self'",
     "worker-src 'self' blob:",
-    "upgrade-insecure-requests",
+    ...(shouldUpgradeInsecureRequests ? ["upgrade-insecure-requests"] : []),
   ];
 
   return directives.join('; ');
