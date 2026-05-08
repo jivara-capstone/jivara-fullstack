@@ -1,0 +1,65 @@
+yolo_class,nutrition_key,dataset,status,calories_check
+asinan-jakarta,Asinan bogor sayuran,Makanan Indonesia,VERIFIED,98.0
+ayam-betutu,Ayam betutu,Makanan Indonesia,VERIFIED,165.0
+ayam-bumbu-rujak,Ayam bumbu rujak,Makanan Indonesia,VERIFIED,180.0
+ayam-goreng-lengkuas,Ayam goreng lengkuas,Makanan Indonesia,VERIFIED,240.0
+bika-ambon,Bika ambon,Makanan Indonesia,VERIFIED,199.0
+bir-pletok,Bir pletok,Makanan Indonesia,VERIFIED,45.0
+bubur-manado,Bubur sagu,Makanan Indonesia,VERIFIED,167.0
+cendol,Cendol,Makanan Indonesia,VERIFIED,135.0
+es-dawet,Es dawet,Makanan Indonesia,VERIFIED,130.0
+gado-gado,Gado-gado,Makanan Indonesia,VERIFIED,137.0
+gudeg,Gudeg,Makanan Indonesia,VERIFIED,53.0
+gulai-ikan-mas,Gulai ikan masakan,Makanan Indonesia,VERIFIED,106.0
+keladi,Keladi,Makanan Indonesia,VERIFIED,112.0
+kerak-telor,Kerak telor,Makanan Indonesia,VERIFIED,250.0
+klappertart,Klappertart,Makanan Indonesia,VERIFIED,310.0
+kolak,Kolak,Makanan Indonesia,VERIFIED,180.0
+kue-lumpur,Kue ali,Makanan Indonesia,VERIFIED,440.0
+kunyit-asam,Kunyit asam,Makanan Indonesia,VERIFIED,55.0
+laksa-bogor,Laksa bogor,Makanan Indonesia,VERIFIED,165.0
+lumpia-semarang,Lumpia semarang,Makanan Indonesia,VERIFIED,220.0
+mie-aceh,Mie basah,Makanan Indonesia,VERIFIED,86.0
+nagasari,Nagasari,Makanan Indonesia,VERIFIED,175.0
+nasi-goreng-kampung,Nasi Goreng,Makanan Indonesia,VERIFIED,276.0
+papeda,Papeda,Makanan Indonesia,VERIFIED,61.0
+pempek-palembang,Pempek kelesan,Makanan Indonesia,VERIFIED,211.0
+rawon-surabaya,Rawon masakan,Makanan Indonesia,VERIFIED,60.0
+rendang,Rendang sapi masakan,Makanan Indonesia,VERIFIED,193.0
+rujak-cingur,Rujak cingur,Makanan Indonesia,VERIFIED,153.0
+sate-ayam-madura,Sate ayam madura,Makanan Indonesia,VERIFIED,210.0
+sate-lilit,Sate lilit,Makanan Indonesia,VERIFIED,190.0
+sate-maranggi,Sate maranggi,Makanan Indonesia,VERIFIED,230.0
+soerabi,Soerabi,Makanan Indonesia,VERIFIED,195.0
+soto-ayam-lamongan,Soto ayam lamongan,Makanan Indonesia,VERIFIED,120.0
+soto-banjar,Soto banjar,Makanan Indonesia,VERIFIED,140.0
+tahu-telur,Tahu telur,Makanan Indonesia,VERIFIED,328.0
+Apel,Apel malang,Roboflow,MISSING,
+Ayam Goreng,Ayam goreng kentucky dada,Roboflow,VERIFIED,298.0
+Bakso,Bakso daging sapi,Roboflow,MISSING,
+Biskuit Choco Chips,Biskuit,Roboflow,VERIFIED,458.0
+Burger,Hamburger,Roboflow,VERIFIED,625.0
+Capcay,Capcay,Roboflow,VERIFIED,85.0
+Donat,Donat,Roboflow,VERIFIED,452.0
+Ikan Goreng,Ikan Goreng,Roboflow,VERIFIED,199.0
+Kentang Goreng,Kentang,Roboflow,VERIFIED,83.0
+Kiwi,Kiwi,Roboflow,VERIFIED,61.0
+Mie Goreng,Mie goreng,Roboflow,VERIFIED,468.0
+Nanas,Nanas,Roboflow,VERIFIED,52.0
+Nasi Goreng,Nasi goreng biasa,Roboflow,MISSING,
+Nasi Putih,Nasi,Roboflow,VERIFIED,180.0
+Nugget,Nugget,Roboflow,VERIFIED,296.0
+Pempek,Pempek tenggiri,Roboflow,VERIFIED,173.0
+Pisang,Pisang ambon,Roboflow,VERIFIED,99.0
+Pizza,Pizza,Roboflow,VERIFIED,750.0
+Rendang Sapi,Rendang sapi masakan,Roboflow,VERIFIED,193.0
+Sate,Sate penyu masakan,Roboflow,VERIFIED,179.0
+Spaghetti,Spaghetti,Roboflow,VERIFIED,139.0
+Steak,Steak,Roboflow,VERIFIED,625.0
+Stroberi,Stroberi,Roboflow,VERIFIED,32.0
+Tahu Goreng,Tahu goreng,Roboflow,VERIFIED,115.0
+Telur Goreng,Telur Goreng,Roboflow,VERIFIED,196.0
+Telur Rebus,Telur Rebus,Roboflow,VERIFIED,155.0
+Tempe Goreng,Tempe goreng,Roboflow,VERIFIED,328.0
+Terong Balado,Terong,Roboflow,VERIFIED,24.0
+Tumis Kangkung,Kangkung,Roboflow,VERIFIED,29.0
