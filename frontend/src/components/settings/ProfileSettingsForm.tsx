@@ -16,7 +16,7 @@ const previewUser = {
 const numericPhone = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
 
 export default function ProfileSettingsForm() {
-  const { user, token, refreshToken, setAuth } = useAuthStore();
+  const { user, token, setAuth } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? previewUser.fullName);
   const [email, setEmail] = useState(user?.email ?? previewUser.email);
   const [phone, setPhone] = useState(numericPhone(user?.phone ?? previewUser.phone));
@@ -39,8 +39,8 @@ export default function ProfileSettingsForm() {
       return;
     }
 
-    if (user && token && refreshToken) {
-      setAuth({ ...user, fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone }, token, refreshToken);
+    if (user) {
+      setAuth({ ...user, fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone }, token);
     }
 
     showToast("Profil berhasil diperbarui.");

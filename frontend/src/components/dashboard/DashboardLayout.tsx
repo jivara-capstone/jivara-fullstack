@@ -4,10 +4,8 @@ import type { ReactNode } from "react";
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import axios from "axios";
 import { LogOut } from "lucide-react";
-import api from "@/lib/axios";
 import { SimpleFooter } from "@/components/landing/Footer";
 import ForcePasswordChangeModal from "@/components/auth/ForcePasswordChangeModal";
 import { showConfirm, showToast } from "@/lib/swal";
@@ -43,10 +41,12 @@ function isPathAllowedForRole(pathname: string, role?: string) {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { logout, refreshToken, user, hasHydrated, updateUser } = useAuthStore();
+  const { logout, user, hasHydrated, setAuth, updateUser } = useAuthStore();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
   const isSyncingRef = useRef(false);
+  const hasTriedSessionRestoreRef = useRef(false);
   const hasBlockedInitialAccountCheckRef = useRef(false);
   const isStandalonePwa = useIsStandalonePwa();
   const pathname = usePathname();
@@ -92,29 +92,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (blockRender) setIsCheckingAccount(true);
 
     try {
-      let currentUser: User;
-
-      if (refreshToken) {
-        const response = await axios.post(`${api.defaults.baseURL}/auth/status`, { refresh_token: refreshToken });
-        currentUser = response.data.data.user;
-      } else {
-        const response = await api.get("/auth/me");
-        currentUser = response.data.data;
-      }
+      const response = await axios.post("/api/auth/status");
+      const currentUser: User = response.data.data.user;
 
       updateUser(currentUser);
-      Cookies.set("jivara-role", currentUser.role ?? "", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
-      Cookies.set("jivara-account-status", currentUser.accountStatus ?? "active", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
 
       if (currentUser.role === "admin" && (currentUser.accountStatus ?? "active") !== "active") {
         router.replace("/account-status");
@@ -127,7 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       isSyncingRef.current = false;
       if (blockRender) setIsCheckingAccount(false);
     }
-  }, [hasHydrated, isLoggingOut, refreshToken, router, updateUser, userRole]);
+  }, [hasHydrated, isLoggingOut, router, updateUser, userRole]);
 
   useEffect(() => {
     if (!hasHydrated || !userRole) return;
@@ -161,12 +142,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!hasHydrated) return;
 
     if (!user) {
-      router.replace("/login");
+      if (hasTriedSessionRestoreRef.current) {
+        router.replace("/login");
+        return;
+      }
+
+      hasTriedSessionRestoreRef.current = true;
+      setIsRestoringSession(true);
+      axios.post("/api/auth/status", undefined, { timeout: 8000 })
+        .then((response) => {
+          const restoredUser: User | undefined = response.data.data.user;
+          if (restoredUser) setAuth(restoredUser, null);
+          else router.replace("/login");
+        })
+        .catch(() => {
+          router.replace("/login");
+        })
+        .finally(() => {
+          setIsRestoringSession(false);
+        });
+
       return;
     }
 
     if (!isCurrentRouteAllowed) router.replace(fallbackPath);
-  }, [fallbackPath, hasHydrated, isCurrentRouteAllowed, router, user]);
+  }, [fallbackPath, hasHydrated, isCurrentRouteAllowed, router, setAuth, user]);
 
   const handleLogout = async () => {
     const result = await showConfirm("Keluar Akun?", "Anda perlu masuk kembali untuk mengakses data Anda.", "Ya, Keluar");
@@ -175,23 +175,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setIsLoggingOut(true);
 
       try {
-        await api.post("/auth/logout", { refresh_token: refreshToken });
+        await axios.post("/api/auth/logout");
       } catch {
         // Logout backend gagal, lanjutkan logout lokal.
       }
 
       // Bersihkan state lokal
       logout();
-      Cookies.remove("jivara-token", { path: "/" });
-      Cookies.remove("jivara-role", { path: "/" });
-      Cookies.remove("jivara-account-status", { path: "/" });
       window.localStorage.removeItem("jivara-auth-storage");
 
       window.location.replace("/login");
 
       // 2. SETELAH pindah halaman, bersihkan cache browser di background
       window.setTimeout(() => {
-        fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         showToast("Berhasil keluar dari akun.", "success");
       }, 800);
     }
@@ -208,7 +204,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!hasHydrated || !user || isCheckingAccount) {
+  if (!hasHydrated || !user || isCheckingAccount || isRestoringSession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Memeriksa status akun">
         <div className="flex flex-col items-center space-y-4">

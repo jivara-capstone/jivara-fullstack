@@ -29,8 +29,10 @@ export const metadata: Metadata = {
 export default async function AccountStatusRoute() {
   const cookieStore = await cookies();
   const token = cookieStore.get("jivara-token")?.value;
+  const refreshToken = cookieStore.get("jivara-refresh-token")?.value;
+  const hasRefreshToken = Boolean(refreshToken && refreshToken !== "undefined" && refreshToken !== "null");
 
-  if (!isTokenUsable(token)) {
+  if (!isTokenUsable(token) && !hasRefreshToken) {
     redirect("/login");
   }
 

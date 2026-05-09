@@ -12,7 +12,7 @@ const mockPatient = patients[0];
 const numericPhone = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
 
 export default function PatientProfileSettingsForm() {
-  const { user, token, refreshToken, setAuth } = useAuthStore();
+  const { user, token, setAuth } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? mockPatient.name);
   const [phone, setPhone] = useState(numericPhone(user?.phone ?? mockPatient.phone));
   const [address, setAddress] = useState(user?.address ?? mockPatient.address ?? "");
@@ -36,8 +36,8 @@ export default function PatientProfileSettingsForm() {
       return;
     }
 
-    if (user && token && refreshToken) {
-      setAuth({ ...user, fullName: trimmedName, phone: trimmedPhone, address: trimmedAddress }, token, refreshToken);
+    if (user) {
+      setAuth({ ...user, fullName: trimmedName, phone: trimmedPhone, address: trimmedAddress }, token);
     }
 
     showToast("Profil pasien berhasil diperbarui.");

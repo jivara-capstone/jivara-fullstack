@@ -117,9 +117,12 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
 
   const token = request.cookies.get('jivara-token')?.value;
+  const refreshToken = request.cookies.get('jivara-refresh-token')?.value;
   const roleCookie = request.cookies.get('jivara-role')?.value;
   const accountStatusCookie = request.cookies.get('jivara-account-status')?.value;
   const hasValidToken = isTokenUsable(token);
+  const hasRefreshToken = Boolean(refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null');
+  const hasSession = hasValidToken || hasRefreshToken;
   const tokenPayload = decodeJwtPayload(token);
   const { pathname } = request.nextUrl;
   const contentSecurityPolicy = createContentSecurityPolicy(nonce, pathname);
@@ -129,7 +132,7 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
-  if (isProtectedRoute && !hasValidToken) {
+  if (isProtectedRoute && !hasSession) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
     const response = NextResponse.redirect(url);
@@ -138,7 +141,7 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (isAuthRoute && hasValidToken) {
+  if (isAuthRoute && hasSession) {
     const response = NextResponse.redirect(new URL(getDefaultPathForRole(tokenPayload?.role), request.url));
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
     supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
@@ -147,14 +150,14 @@ export async function proxy(request: NextRequest) {
 
   const effectiveRole = roleCookie || tokenPayload?.role;
 
-  if (isProtectedRoute && hasValidToken && shouldRedirectAdminToAccountStatus(pathname, effectiveRole, accountStatusCookie)) {
+  if (isProtectedRoute && hasSession && shouldRedirectAdminToAccountStatus(pathname, effectiveRole, accountStatusCookie)) {
     const response = NextResponse.redirect(new URL('/account-status', request.url));
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
     supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
     return response;
   }
 
-  if (isProtectedRoute && hasValidToken && !isRouteAllowedForRole(pathname, effectiveRole)) {
+  if (isProtectedRoute && hasSession && !isRouteAllowedForRole(pathname, effectiveRole)) {
     const response = NextResponse.redirect(new URL(getDefaultPathForRole(effectiveRole), request.url));
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
     supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));

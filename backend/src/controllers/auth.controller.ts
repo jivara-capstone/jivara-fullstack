@@ -6,6 +6,17 @@ function getParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function getCookieValue(cookieHeader: string | undefined, name: string) {
+  if (!cookieHeader) return undefined;
+  const cookies = cookieHeader.split(";").map((cookie) => cookie.trim());
+  const target = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+  return target ? decodeURIComponent(target.slice(name.length + 1)) : undefined;
+}
+
+function getRefreshToken(req: AuthRequest) {
+  return req.body?.refresh_token || getCookieValue(req.headers.cookie, "jivara-refresh-token");
+}
+
 /**
  * POST /api/auth/register
  * Mendaftarkan akun perawat baru oleh admin.
@@ -299,7 +310,11 @@ export const completePasswordChange = async (req: AuthRequest, res: Response) =>
  */
 export const refresh = async (req: AuthRequest, res: Response) => {
   try {
-    const data = await authService.refreshAccessToken(req.body.refresh_token);
+    const refreshToken = getRefreshToken(req);
+    if (!refreshToken) {
+      return res.status(400).json({ status: "gagal", message: "Token refresh wajib diisi", error_code: "VALIDATION_ERROR" });
+    }
+    const data = await authService.refreshAccessToken(refreshToken);
 
     res.status(200).json({ status: "berhasil", data });
   } catch (error: unknown) {
@@ -319,7 +334,11 @@ export const refresh = async (req: AuthRequest, res: Response) => {
 
 export const getStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await authService.getUserProfileByRefreshToken(req.body.refresh_token);
+    const refreshToken = getRefreshToken(req);
+    if (!refreshToken) {
+      return res.status(400).json({ status: "gagal", message: "Token refresh wajib diisi", error_code: "VALIDATION_ERROR" });
+    }
+    const user = await authService.getUserProfileByRefreshToken(refreshToken);
 
     res.status(200).json({ status: "berhasil", data: { user } });
   } catch (error: unknown) {
@@ -341,7 +360,8 @@ export const getStatus = async (req: AuthRequest, res: Response) => {
  */
 export const logout = async (req: AuthRequest, res: Response) => {
   try {
-    await authService.invalidateRefreshToken(req.body.refresh_token);
+    const refreshToken = getRefreshToken(req);
+    if (refreshToken) await authService.invalidateRefreshToken(refreshToken);
 
     res.status(200).json({
       status: "berhasil",
