@@ -45,7 +45,7 @@ export default function DashboardSidebar({ activeItem, role, onLogout, onNavigat
       </nav>
 
       <div className="mt-auto space-y-3">
-        <DashboardAccountActions onLogout={onLogout} hideSettings={role === "super_admin"} />
+        <DashboardAccountActions onLogout={onLogout} />
       </div>
     </>
   );

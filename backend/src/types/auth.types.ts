@@ -2,6 +2,7 @@
 
 export interface RegisterDTO {
   fullName: string;
+  organizationName: string;
   email: string;
   password: string;
   phone?: string;
@@ -44,6 +45,8 @@ export interface UserProfile {
   fullName: string;
   email: string;
   phone: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
   role: string;
   accountStatus?: string;
   age: number;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import * as authController from "../controllers/auth.controller";
-import { authenticateToken } from "../middleware/auth.middleware";
+import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
 import {
   validateRegister,
   validateLogin,
@@ -15,7 +15,7 @@ const router = Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === "production" ? 10 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -28,7 +28,7 @@ const loginLimiter = rateLimit({
 
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === "production" ? 10 : 100,
+  max: process.env.NODE_ENV === "production" ? 10 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -94,32 +94,44 @@ router.post(
 
 router.get(
   "/admin-approvals",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   authController.listAdminApprovals
 );
 
 router.post(
   "/admin-approvals/:id/approve",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   authController.approveAdminApproval
 );
 
 router.post(
   "/admin-approvals/:id/reject",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   validateRejectAdminApproval,
   authController.rejectAdminApproval
 );
 
 router.post(
   "/admin-approvals/:id/activate",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   authController.activateSuspendedAdmin
 );
 
 router.post(
   "/admin-approvals/:id/restore",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   authController.restoreRejectedAdmin
 );
 
 router.post(
   "/admin-approvals/:id/suspend",
+  authenticateToken,
+  authorizeRoles("super_admin"),
   authController.suspendActiveAdmin
 );
 

@@ -3,6 +3,8 @@ export type AccountStatus = "pending" | "active" | "rejected" | "suspended";
 
 export interface User {
   id: string;
+  organizationId?: string | null;
+  organizationName?: string | null;
   fullName: string;
   email: string;
   phone?: string | null;

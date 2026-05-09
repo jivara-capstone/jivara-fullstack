@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
@@ -13,12 +14,32 @@ import { showConfirm, showToast } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 import type { User } from "@/types/auth";
 import { useIsStandalonePwa } from "@/hooks";
+import { TEMP_ADMIN_TEST_MODE } from "@/lib/tempAdminTestMode";
 import PwaTopLogoBar from "@/components/ui/PwaTopLogoBar";
 import DashboardBottomNav from "./DashboardBottomNav";
 import DashboardNavbar from "./DashboardNavbar";
+import DashboardRouteFallback from "./DashboardRouteFallback";
 
 interface DashboardLayoutProps {
   readonly children: ReactNode;
+}
+
+function getFallbackPathForRole(role?: string) {
+  return role === "super_admin" ? "/admin-approvals" : "/dashboard";
+}
+
+function isPathAllowedForRole(pathname: string, role?: string) {
+  if (!role) return false;
+  if (pathname.startsWith("/account-status")) return role === "admin";
+  if (pathname.startsWith("/settings")) return true;
+  if (pathname.startsWith("/dashboard")) return true;
+  if (pathname.startsWith("/admin-approvals")) return role === "super_admin";
+  if (pathname.startsWith("/nurses")) return role === "admin" || role === "nurse";
+  if (pathname.startsWith("/patients")) return role === "admin" || role === "nurse";
+  if (pathname.startsWith("/schedule")) return role === "admin" || role === "nurse" || role === "patient";
+  if (pathname.startsWith("/activity-log")) return role === "admin" || role === "nurse" || role === "patient";
+  if (pathname.startsWith("/food-scan")) return role === "patient";
+  return true;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -26,19 +47,40 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
   const isSyncingRef = useRef(false);
+  const hasBlockedInitialAccountCheckRef = useRef(false);
   const isStandalonePwa = useIsStandalonePwa();
   const pathname = usePathname();
   const router = useRouter();
   const userRole = user?.role;
-  const isApprovalTestRoute = pathname.startsWith("/admin-approvals");
 
-  const syncCurrentUser = useCallback(async (blockRender = false) => {
-    if (!hasHydrated || isLoggingOut) return;
+  const isCurrentRouteAllowed = isPathAllowedForRole(pathname, userRole);
+  const fallbackPath = getFallbackPathForRole(userRole);
 
-    if (isApprovalTestRoute) {
-      setIsCheckingAccount(false);
+  const handleRouteClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!userRole || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    const link = (event.target as Element | null)?.closest("a[href]");
+    const href = link?.getAttribute("href");
+    if (!href || href.startsWith("#")) return;
+
+    let nextUrl: URL;
+    try {
+      nextUrl = new URL(href, window.location.origin);
+    } catch {
       return;
     }
+
+    if (nextUrl.origin !== window.location.origin) return;
+    if (isPathAllowedForRole(nextUrl.pathname, userRole)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    router.replace(getFallbackPathForRole(userRole));
+  };
+
+  const syncCurrentUser = useCallback(async (blockRender = false) => {
+    if (TEMP_ADMIN_TEST_MODE) return;
+    if (!hasHydrated || isLoggingOut) return;
 
     if (userRole !== "admin") {
       setIsCheckingAccount(false);
@@ -62,23 +104,39 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }
 
       updateUser(currentUser);
+      Cookies.set("jivara-role", currentUser.role ?? "", {
+        expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      Cookies.set("jivara-account-status", currentUser.accountStatus ?? "active", {
+        expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
 
       if (currentUser.role === "admin" && (currentUser.accountStatus ?? "active") !== "active") {
         router.replace("/account-status");
         return;
       }
     } catch {
-      router.replace("/account-status");
+      // Kegagalan jaringan/refresh bukan bukti akun belum aktif. Jangan redirect agar tidak loop
+      // antara /dashboard dan /account-status saat status check transient gagal.
     } finally {
       isSyncingRef.current = false;
       if (blockRender) setIsCheckingAccount(false);
     }
-  }, [hasHydrated, isApprovalTestRoute, isLoggingOut, refreshToken, router, updateUser, userRole]);
+  }, [hasHydrated, isLoggingOut, refreshToken, router, updateUser, userRole]);
 
   useEffect(() => {
     if (!hasHydrated || !userRole) return;
 
-    if (userRole === "admin") void Promise.resolve().then(() => syncCurrentUser(true));
+    if (userRole === "admin" && !hasBlockedInitialAccountCheckRef.current) {
+      hasBlockedInitialAccountCheckRef.current = true;
+      void Promise.resolve().then(() => syncCurrentUser(true));
+    }
     const intervalId = window.setInterval(() => {
       void syncCurrentUser();
     }, 15000);
@@ -101,9 +159,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [hasHydrated, syncCurrentUser, userRole]);
 
   useEffect(() => {
-    if (!hasHydrated || !userRole) return;
-    if (userRole === "admin") void Promise.resolve().then(() => syncCurrentUser(true));
-  }, [hasHydrated, pathname, syncCurrentUser, userRole]);
+    if (!hasHydrated) return;
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!isCurrentRouteAllowed) router.replace(fallbackPath);
+  }, [fallbackPath, hasHydrated, isCurrentRouteAllowed, router, user]);
 
   const handleLogout = async () => {
     const result = await showConfirm("Keluar Akun?", "Anda perlu masuk kembali untuk mengakses data Anda.", "Ya, Keluar");
@@ -119,11 +183,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       // Bersihkan state lokal
       logout();
-      Cookies.remove("jivara-token");
+      Cookies.remove("jivara-token", { path: "/" });
+      Cookies.remove("jivara-role", { path: "/" });
+      Cookies.remove("jivara-account-status", { path: "/" });
       window.localStorage.removeItem("jivara-auth-storage");
 
-      // 1. Lakukan navigasi client-side DULU agar transisi mulus tanpa layar putih
-      router.replace("/login");
+      window.location.replace("/login");
 
       // 2. SETELAH pindah halaman, bersihkan cache browser di background
       window.setTimeout(() => {
@@ -144,7 +209,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!hasHydrated || (!user && !isApprovalTestRoute) || isCheckingAccount) {
+  if (!hasHydrated || !user || isCheckingAccount) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Memeriksa status akun">
         <div className="flex flex-col items-center space-y-4">
@@ -155,8 +220,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
+  if (!isCurrentRouteAllowed) return <DashboardRouteFallback />;
+
   return (
-    <div className="flex min-h-screen flex-col bg-surface">
+    <div className="flex min-h-screen flex-col bg-surface" onClickCapture={handleRouteClickCapture}>
       <DashboardNavbar onLogout={handleLogout} />
       {isStandalonePwa && (
         <PwaTopLogoBar

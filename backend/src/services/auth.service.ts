@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { users, refreshTokens } from "../db/schema";
+import { organizations, users, refreshTokens } from "../db/schema";
 import { and, desc, eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -35,6 +35,7 @@ export const generateRefreshToken = async (userId: string): Promise<string> => {
 
 const publicUserFields = {
   id: users.id,
+  organizationId: users.organizationId,
   fullName: users.fullName,
   email: users.email,
   phone: users.phone,
@@ -73,35 +74,46 @@ export const registerUser = async (dto: RegisterDTO) => {
 
   const hashedPassword = await bcrypt.hash(dto.password, AUTH_CONSTANTS.BCRYPT_SALT_ROUNDS);
 
-  const [newUser] = await db
-    .insert(users)
-    .values({
-      fullName: dto.fullName,
-      email: dto.email,
-      password: hashedPassword,
-      role: "admin",
-      accountStatus: "pending",
-      phone: dto.phone || null,
-      gender: dto.gender || null,
-      address: dto.address || null,
-      age: dto.age || 0,
-      mustChangePassword: false,
-    })
-    .returning({
-      id: users.id,
-      fullName: users.fullName,
-      email: users.email,
-      role: users.role,
-      accountStatus: users.accountStatus,
-      createdAt: users.createdAt,
-    });
+  const newUser = await db.transaction(async (tx) => {
+    const [organization] = await tx
+      .insert(organizations)
+      .values({ name: dto.organizationName.trim() })
+      .returning({ id: organizations.id, name: organizations.name });
+
+    const [user] = await tx
+      .insert(users)
+      .values({
+        organizationId: organization.id,
+        fullName: dto.fullName,
+        email: dto.email,
+        password: hashedPassword,
+        role: "admin",
+        accountStatus: "pending",
+        phone: dto.phone || null,
+        gender: dto.gender || null,
+        address: dto.address || null,
+        age: dto.age || 0,
+        mustChangePassword: false,
+      })
+      .returning({
+        id: users.id,
+        organizationId: users.organizationId,
+        fullName: users.fullName,
+        email: users.email,
+        role: users.role,
+        accountStatus: users.accountStatus,
+        createdAt: users.createdAt,
+      });
+
+    return { ...user, organizationName: organization.name };
+  });
 
   await writeAuditLog({
     userId: newUser.id,
     action: "auth.register.pending",
     resourceType: "user",
     resourceId: newUser.id,
-    changes: { after: { id: newUser.id, email: newUser.email, role: newUser.role, accountStatus: newUser.accountStatus } },
+    changes: { after: { id: newUser.id, email: newUser.email, role: newUser.role, accountStatus: newUser.accountStatus, organizationId: newUser.organizationId } },
   });
 
   return newUser;
@@ -240,6 +252,7 @@ export const loginUser = async (dto: LoginDTO) => {
     expires_in: 3600,
     user: {
       id: foundUser.id,
+      organizationId: foundUser.organizationId,
       fullName: foundUser.fullName,
       email: foundUser.email,
       phone: foundUser.phone,
@@ -398,6 +411,7 @@ export const completePasswordChange = async (userId: string, dto: CompletePasswo
     .where(eq(users.id, userId))
     .returning({
       id: users.id,
+      organizationId: users.organizationId,
       fullName: users.fullName,
       email: users.email,
       phone: users.phone,
@@ -493,6 +507,7 @@ export const getUserProfile = async (userId: string) => {
   const user = await db
     .select({
       id: users.id,
+      organizationId: users.organizationId,
       fullName: users.fullName,
       email: users.email,
       phone: users.phone,

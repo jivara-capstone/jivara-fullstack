@@ -91,7 +91,7 @@ export const approveAdminApproval = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ status: "gagal", message: "ID admin wajib diisi", error_code: "VALIDATION_ERROR" });
     }
 
-    const user = await authService.approveAdminApproval(adminId, req.user?.id ?? null);
+    const user = await authService.approveAdminApproval(adminId, req.user!.id);
 
     res.status(200).json({
       status: "berhasil",
@@ -145,7 +145,7 @@ export const activateSuspendedAdmin = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ status: "gagal", message: "ID admin wajib diisi", error_code: "VALIDATION_ERROR" });
     }
 
-    const user = await authService.activateSuspendedAdmin(adminId, req.user?.id ?? null);
+    const user = await authService.activateSuspendedAdmin(adminId, req.user!.id);
 
     res.status(200).json({
       status: "berhasil",
@@ -380,4 +380,3 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     });
   }
 };
-

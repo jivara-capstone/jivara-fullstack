@@ -13,7 +13,7 @@ export default function DashboardBottomNav() {
   const pathname = usePathname();
   const userRole = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
-  const dashboardRole = pathname.startsWith("/admin-approvals") ? "super_admin" : getDashboardRole(userRole);
+  const dashboardRole = getDashboardRole(userRole);
   const unreadActivityCount = useActivityLogStore((state) => isAdminDashboardRole(dashboardRole) ? 0 : getUnreadActivityCount(state.activities, dashboardRole === "patient" ? patients[0].id : undefined));
   const bottomNavItems = getDashboardBottomNavItems(dashboardRole);
   const columnCount = bottomNavItems.length;

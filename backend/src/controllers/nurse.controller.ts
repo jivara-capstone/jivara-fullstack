@@ -17,7 +17,7 @@ const getParam = (value: string | string[] | undefined) => Array.isArray(value) 
 
 export const listNurses = async (req: AuthRequest, res: Response) => {
   try {
-    const result = await nurseService.listNurses(req.query);
+    const result = await nurseService.listNurses(req.query, req.user);
     res.status(200).json({ status: "berhasil", data: result.data, meta: result.meta });
   } catch (error) {
     sendError(res, error);
@@ -26,7 +26,7 @@ export const listNurses = async (req: AuthRequest, res: Response) => {
 
 export const getNurse = async (req: AuthRequest, res: Response) => {
   try {
-    const data = await nurseService.getNurseById(getParam(req.params.id));
+    const data = await nurseService.getNurseById(getParam(req.params.id), req.user);
     res.status(200).json({ status: "berhasil", data });
   } catch (error) {
     sendError(res, error);
@@ -44,7 +44,7 @@ export const createNurse = async (req: AuthRequest, res: Response) => {
 
 export const updateNurse = async (req: AuthRequest, res: Response) => {
   try {
-    const data = await nurseService.updateNurse(getParam(req.params.id), req.body, req.user?.id);
+    const data = await nurseService.updateNurse(getParam(req.params.id), req.body, req.user);
     res.status(200).json({ status: "berhasil", data, message: "Data perawat berhasil diperbarui" });
   } catch (error) {
     sendError(res, error);
@@ -53,7 +53,7 @@ export const updateNurse = async (req: AuthRequest, res: Response) => {
 
 export const deactivateNurse = async (req: AuthRequest, res: Response) => {
   try {
-    await nurseService.deactivateNurse(getParam(req.params.id), req.user?.id);
+    await nurseService.deactivateNurse(getParam(req.params.id), req.user);
     res.status(200).json({ status: "berhasil", message: "Perawat berhasil dinonaktifkan" });
   } catch (error) {
     sendError(res, error);

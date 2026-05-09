@@ -14,6 +14,8 @@ import { activityMatchesNurse } from "@/helpers/nurses";
 import { getAlertActivitiesFromApi, resolveAlertViaApi } from "@/lib/alertsApi";
 import { getAuditActivitiesFromApi } from "@/lib/auditLogApi";
 import type { ActivityCategory, ActivityLogRecord } from "@/lib/mocks/activityLogs";
+import { activityLogs } from "@/lib/mocks/activityLogs";
+import { TEMP_ADMIN_TEST_MODE } from "@/lib/tempAdminTestMode";
 import { showToast } from "@/lib/swal";
 import { useActivityLogStore } from "@/store/activityLog";
 import { useNurseStore } from "@/store/nurses";
@@ -49,6 +51,11 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
 
   useEffect(() => {
     let isMounted = true;
+
+    if (TEMP_ADMIN_TEST_MODE) {
+      setActivities(activityLogs);
+      return;
+    }
 
     const activityRequest = readOnly
       ? Promise.all([getAuditActivitiesFromApi(), getAlertActivitiesFromApi()]).then(([auditActivities, alertActivities]) => [...alertActivities, ...auditActivities])

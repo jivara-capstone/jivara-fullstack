@@ -4,6 +4,7 @@ import { db } from "../db";
 import { nurses, patientNurseAssignments, users } from "../db/schema";
 import { AUTH_CONSTANTS } from "../types/auth.types";
 import { NurseCreateDTO, NurseListQuery, NurseUpdateDTO } from "../types/nurse.types";
+import { AccessUser, getOrganizationIdForUser } from "./access-control.service";
 import { writeAuditLog } from "./audit-log.service";
 
 const parsePagination = (query: NurseListQuery) => {
@@ -12,10 +13,18 @@ const parsePagination = (query: NurseListQuery) => {
   return { page, limit, offset: (page - 1) * limit };
 };
 
-const getNurseByIdInternal = async (nurseId: string) => {
+const getNurseByIdInternal = async (nurseId: string, user?: AccessUser) => {
+  const organizationId = user?.role === "admin" ? await getOrganizationIdForUser(user.id) : null;
+  const conditions = [eq(nurses.id, nurseId)];
+  if (user?.role === "admin" && !organizationId) {
+    throw { status: 403, message: "Admin belum terhubung ke organisasi", code: "ORGANIZATION_REQUIRED" };
+  }
+  if (organizationId) conditions.push(eq(nurses.organizationId, organizationId));
+
   const rows = await db
     .select({
       id: nurses.id,
+      organizationId: nurses.organizationId,
       userId: nurses.userId,
       fullName: users.fullName,
       email: users.email,
@@ -31,7 +40,7 @@ const getNurseByIdInternal = async (nurseId: string) => {
     })
     .from(nurses)
     .innerJoin(users, eq(nurses.userId, users.id))
-    .where(eq(nurses.id, nurseId))
+    .where(and(...conditions))
     .limit(1);
 
   if (rows.length === 0) {
@@ -41,9 +50,16 @@ const getNurseByIdInternal = async (nurseId: string) => {
   return rows[0];
 };
 
-export const listNurses = async (query: NurseListQuery) => {
+export const listNurses = async (query: NurseListQuery, user?: AccessUser) => {
   const { page, limit, offset } = parsePagination(query);
   const conditions = [eq(users.role, "nurse")];
+  const organizationId = user?.role === "admin" ? await getOrganizationIdForUser(user.id) : null;
+
+  if (user?.role === "admin" && !organizationId) {
+    return { data: [], meta: { page, limit, total: 0 } };
+  }
+
+  if (organizationId) conditions.push(eq(nurses.organizationId, organizationId));
 
   if (query.status === "active") {
     conditions.push(eq(nurses.isActive, true));
@@ -69,6 +85,7 @@ export const listNurses = async (query: NurseListQuery) => {
     db
       .select({
         id: nurses.id,
+        organizationId: nurses.organizationId,
         userId: nurses.userId,
         fullName: users.fullName,
         email: users.email,
@@ -113,8 +130,8 @@ export const listNurses = async (query: NurseListQuery) => {
   };
 };
 
-export const getNurseById = async (nurseId: string) => {
-  const nurse = await getNurseByIdInternal(nurseId);
+export const getNurseById = async (nurseId: string, user?: AccessUser) => {
+  const nurse = await getNurseByIdInternal(nurseId, user);
   const assignedRows = await db
     .select({ total: count() })
     .from(patientNurseAssignments)
@@ -127,6 +144,12 @@ export const getNurseById = async (nurseId: string) => {
 };
 
 export const createNurse = async (dto: NurseCreateDTO, createdBy?: string) => {
+  const organizationId = createdBy ? await getOrganizationIdForUser(createdBy) : null;
+
+  if (!organizationId) {
+    throw { status: 403, message: "Admin belum terhubung ke organisasi", code: "ORGANIZATION_REQUIRED" };
+  }
+
   const existingUser = await db
     .select({ id: users.id })
     .from(users)
@@ -144,6 +167,7 @@ export const createNurse = async (dto: NurseCreateDTO, createdBy?: string) => {
       .insert(users)
       .values({
         fullName: dto.fullName,
+        organizationId,
         email: dto.email,
         phone: dto.phone || null,
         password: hashedPassword,
@@ -159,6 +183,7 @@ export const createNurse = async (dto: NurseCreateDTO, createdBy?: string) => {
       .insert(nurses)
       .values({
         userId: newUser.id,
+        organizationId,
         employeeId: dto.employeeId || null,
         department: dto.department || null,
       })
@@ -178,8 +203,8 @@ export const createNurse = async (dto: NurseCreateDTO, createdBy?: string) => {
   return nurse;
 };
 
-export const updateNurse = async (nurseId: string, dto: NurseUpdateDTO, updatedBy?: string) => {
-  const existing = await getNurseByIdInternal(nurseId);
+export const updateNurse = async (nurseId: string, dto: NurseUpdateDTO, user?: AccessUser) => {
+  const existing = await getNurseByIdInternal(nurseId, user);
 
   const userUpdates: Partial<typeof users.$inferInsert> = {};
   if (dto.fullName !== undefined) userUpdates.fullName = dto.fullName;
@@ -206,18 +231,18 @@ export const updateNurse = async (nurseId: string, dto: NurseUpdateDTO, updatedB
   });
 
   await writeAuditLog({
-    userId: updatedBy || null,
+    userId: user?.id || null,
     action: "nurse.updated",
     resourceType: "nurse",
     resourceId: nurseId,
     changes: { before: existing, requested: dto },
   });
 
-  return getNurseById(nurseId);
+  return getNurseById(nurseId, user);
 };
 
-export const deactivateNurse = async (nurseId: string, deactivatedBy?: string) => {
-  const existing = await getNurseByIdInternal(nurseId);
+export const deactivateNurse = async (nurseId: string, user?: AccessUser) => {
+  const existing = await getNurseByIdInternal(nurseId, user);
 
   await db.transaction(async (tx) => {
     await tx.update(nurses).set({ isActive: false }).where(eq(nurses.id, nurseId));
@@ -232,7 +257,7 @@ export const deactivateNurse = async (nurseId: string, deactivatedBy?: string) =
   });
 
   await writeAuditLog({
-    userId: deactivatedBy || null,
+    userId: user?.id || null,
     action: "nurse.deactivated",
     resourceType: "nurse",
     resourceId: nurseId,

@@ -1,4 +1,5 @@
 import { NurseDetailPage } from "@/components/admin";
+import DashboardRoleGate from "@/components/dashboard/DashboardRoleGate";
 
 interface NurseDetailRouteProps {
   readonly params: Promise<{
@@ -8,5 +9,5 @@ interface NurseDetailRouteProps {
 
 export default async function NurseDetailRoute({ params }: NurseDetailRouteProps) {
   const { id } = await params;
-  return <NurseDetailPage nurseId={decodeURIComponent(id)} />;
+  return <DashboardRoleGate allowedRoles={["admin", "nurse"]}><NurseDetailPage nurseId={decodeURIComponent(id)} /></DashboardRoleGate>;
 }

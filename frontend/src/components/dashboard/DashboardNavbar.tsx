@@ -22,7 +22,7 @@ export default function DashboardNavbar({ onLogout }: DashboardNavbarProps) {
   const pathname = usePathname();
   const userRole = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
-  const dashboardRole = pathname.startsWith("/admin-approvals") ? "super_admin" : getDashboardRole(userRole);
+  const dashboardRole = getDashboardRole(userRole);
   const activeItem = getActiveNavLabel(pathname, dashboardRole);
 
   useLockBodyScroll(isMenuOpen);

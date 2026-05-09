@@ -48,7 +48,7 @@ const limiter = rateLimit({
   max: 100, // Maksimal 100 request per IP per window
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.path === '/auth/status' || req.path.startsWith('/auth/admin-approvals'),
+  skip: (req) => req.path === '/auth/login' || req.path === '/auth/register' || req.path === '/auth/status' || req.path.startsWith('/auth/admin-approvals'),
   message: {
     status: 'gagal',
     message: 'Terlalu banyak permintaan, silakan coba lagi nanti.',

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react";
 import axios from "axios";
+import Cookies from "js-cookie";
 import AuthCard from "@/components/ui/AuthCard";
 import Button from "@/components/ui/Button";
 import api from "@/lib/axios";
@@ -45,12 +47,15 @@ function getReviewStatus(status?: string | null): ReviewStatus | null {
 }
 
 export default function AccountStatusPage() {
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const updateUser = useAuthStore((state) => state.updateUser);
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const hasAutoRefreshedRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
+  const [statusCheckSucceeded, setStatusCheckSucceeded] = useState(false);
   const reviewStatus = getReviewStatus(user?.accountStatus);
   const content = reviewStatus ? statusContent[reviewStatus] : statusContent.pending;
   const Icon = content.icon;
@@ -62,27 +67,63 @@ export default function AccountStatusPage() {
       const statusResponse = await axios.post(`${api.defaults.baseURL}/auth/status`, { refresh_token: refreshToken });
       const updatedUser = statusResponse.data.data.user;
       updateUser(updatedUser);
+      Cookies.set("jivara-role", updatedUser.role ?? "", {
+        expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      Cookies.set("jivara-account-status", updatedUser.accountStatus ?? "active", {
+        expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      setStatusCheckSucceeded(true);
 
       if (updatedUser.role === "admin" && (updatedUser.accountStatus ?? "active") === "active") {
         if (showFeedback) showToast("Akun Anda sudah aktif.", "success");
+        router.replace("/dashboard");
+        return;
+      }
+
+      if (updatedUser.role !== "admin") {
+        router.replace("/dashboard");
         return;
       }
 
       if (showFeedback) showToast("Status akun berhasil diperbarui.");
     } catch {
+      setStatusCheckSucceeded(false);
       if (showFeedback) showError("Gagal memperbarui status akun.");
     } finally {
       setRefreshing(false);
+      setHasCheckedStatus(true);
     }
-  }, [refreshToken, updateUser]);
+  }, [refreshToken, router, updateUser]);
 
   useEffect(() => {
-    if (!hasAuthHydrated || !user || hasAutoRefreshedRef.current) return;
+    if (!hasAuthHydrated) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      router.replace("/dashboard");
+    }
+
+    if (hasCheckedStatus && statusCheckSucceeded && (user.accountStatus ?? "active") === "active") {
+      router.replace("/dashboard");
+    }
+  }, [hasAuthHydrated, hasCheckedStatus, router, statusCheckSucceeded, user]);
+
+  useEffect(() => {
+    if (!hasAuthHydrated || !user || user.role !== "admin" || hasAutoRefreshedRef.current) return;
     hasAutoRefreshedRef.current = true;
     void Promise.resolve().then(() => refreshStatus(false));
-  }, [hasAuthHydrated, refreshStatus, reviewStatus, user]);
+  }, [hasAuthHydrated, refreshStatus, user]);
 
-  if (!hasAuthHydrated) return null;
+  if (!hasAuthHydrated || !user || user.role !== "admin" || !hasCheckedStatus || (statusCheckSucceeded && (user.accountStatus ?? "active") === "active")) return null;
 
   return (
     <AuthCard

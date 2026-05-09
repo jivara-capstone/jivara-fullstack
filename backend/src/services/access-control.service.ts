@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
-import { nurses, patientNurseAssignments, patients } from "../db/schema";
+import { nurses, patientNurseAssignments, patients, users } from "../db/schema";
 
 export type AccessUser = {
   id: string;
@@ -34,6 +34,16 @@ export const getNurseIdForUser = async (userId: string) => {
   return row[0]?.id || null;
 };
 
+export const getOrganizationIdForUser = async (userId: string) => {
+  const row = await db
+    .select({ organizationId: users.organizationId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return row[0]?.organizationId || null;
+};
+
 export const getAssignedPatientIdsForNurse = async (nurseId: string) => {
   const rows = await db
     .select({ patientId: patientNurseAssignments.patientId })
@@ -48,7 +58,19 @@ export const getAssignedPatientIdsForNurse = async (nurseId: string) => {
 
 export const getAccessiblePatientIds = async (user?: AccessUser) => {
   if (!user) return [];
-  if (user.role === "admin") return null;
+  if (user.role === "super_admin") return null;
+
+  if (user.role === "admin") {
+    const organizationId = await getOrganizationIdForUser(user.id);
+    if (!organizationId) return [];
+
+    const rows = await db
+      .select({ id: patients.id })
+      .from(patients)
+      .where(eq(patients.organizationId, organizationId));
+
+    return rows.map((row) => row.id);
+  }
 
   if (user.role === "patient") {
     const patientId = await getPatientIdForUser(user.id);

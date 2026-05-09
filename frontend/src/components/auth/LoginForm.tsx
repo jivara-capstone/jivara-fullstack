@@ -60,6 +60,19 @@ export default function LoginForm() {
       setAuth(user, access_token, refresh_token);
       Cookies.set("jivara-token", access_token, {
         expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      Cookies.set("jivara-role", user.role ?? "", {
+        expires: 7,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      Cookies.set("jivara-account-status", user.accountStatus ?? "active", {
+        expires: 7,
+        path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });

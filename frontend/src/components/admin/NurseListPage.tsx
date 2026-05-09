@@ -21,6 +21,7 @@ import { createNurseViaApi, deactivateNurseViaApi, getNursesFromApi, updateNurse
 import { showConfirm, showError, showToast, showWarning } from "@/lib/swal";
 import { useNurseStore, type NurseFormValues } from "@/store/nurses";
 import { useAuthStore } from "@/store/auth";
+import { TEMP_ADMIN_TEST_MODE } from "@/lib/tempAdminTestMode";
 import NurseModal from "./NurseModal";
 import NurseStatusBadge from "./NurseStatusBadge";
 
@@ -61,6 +62,7 @@ export default function NurseListPage() {
 
   useEffect(() => {
     if (!hasAuthHydrated || (dashboardRole !== "admin" && dashboardRole !== "nurse")) return;
+    if (TEMP_ADMIN_TEST_MODE) return;
 
     let isMounted = true;
 
@@ -216,6 +218,13 @@ export default function NurseListPage() {
                   </tr>
                 );
               })}
+              {paginatedNurses.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-14 text-center text-sm font-bold text-muted">
+                    Tidak ada perawat yang sesuai dengan pencarian atau filter.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -237,6 +246,11 @@ export default function NurseListPage() {
               </article>
             );
           })}
+          {paginatedNurses.length === 0 && (
+            <div className="px-5 py-12 text-center text-sm font-bold text-muted">
+              Tidak ada perawat yang sesuai dengan pencarian atau filter.
+            </div>
+          )}
         </div>
         <PatientPagination
           currentPage={currentPage}

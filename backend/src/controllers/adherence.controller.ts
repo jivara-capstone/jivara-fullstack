@@ -24,7 +24,7 @@ export const getAdherence = async (req: AuthRequest, res: Response) => {
 
 export const getAggregateAdherence = async (req: AuthRequest, res: Response) => {
   try {
-    const data = await adherenceService.getAggregateAdherenceStats(req.query);
+    const data = await adherenceService.getAggregateAdherenceStats(req.query, req.user);
     res.status(200).json({ status: "berhasil", data });
   } catch (error) {
     sendError(res, error);

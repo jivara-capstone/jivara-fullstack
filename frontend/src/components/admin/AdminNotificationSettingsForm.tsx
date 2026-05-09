@@ -22,7 +22,7 @@ export default function AdminNotificationSettingsForm() {
       <ToggleRow
         id={isSuperAdmin ? "superAdminApprovalNotification" : "adminCriticalActivity"}
         title={isSuperAdmin ? "Approval Admin Baru" : "Aktivitas Kritis"}
-        description={isSuperAdmin ? "Notifikasi saat ada pendaftaran admin baru yang perlu disetujui." : "Notifikasi saat sistem mendeteksi aktivitas kritis atau pasien berisiko tinggi."}
+        description={isSuperAdmin ? "Notifikasi saat ada pendaftaran admin baru yang perlu disetujui." : "Notifikasi saat ada aktivitas penting yang membutuhkan perhatian admin."}
         checked={notificationEnabled}
         onChange={setNotificationEnabled}
       />

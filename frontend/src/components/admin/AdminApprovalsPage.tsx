@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Ban, CheckCircle2, Clock3, PauseCircle, Power, RotateCcw, XCircle } from "lucide-react";
 import DashboardPageHeader from "@/components/dashboard/DashboardPageHeader";
@@ -40,11 +41,13 @@ const approvalFilters: { readonly label: string; readonly value: ApprovalFilter 
 const pageSize = 10;
 
 export default function AdminApprovalsPage() {
+  const router = useRouter();
+  const role = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const [approvals, setApprovals] = useState<User[]>([]);
   const [summary, setSummary] = useState<AdminApprovalSummary>(emptySummary);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ApprovalFilter>("all");
+  const [filter, setFilter] = useState<ApprovalFilter>("pending");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -85,10 +88,14 @@ export default function AdminApprovalsPage() {
 
   useEffect(() => {
     if (!hasAuthHydrated) return;
+    if (role !== "super_admin") {
+      router.replace("/dashboard");
+      return;
+    }
     void Promise.resolve().then(loadApprovals);
-  }, [hasAuthHydrated, loadApprovals]);
+  }, [hasAuthHydrated, loadApprovals, role, router]);
 
-  if (!hasAuthHydrated) return null;
+  if (!hasAuthHydrated || role !== "super_admin") return null;
 
   const handleApprove = async (user: User) => {
     const result = await showConfirm("Setujui Admin?", `${user.fullName} akan aktif sebagai admin Jivara.`, "Ya, Setujui");
@@ -176,7 +183,7 @@ export default function AdminApprovalsPage() {
 
   const resetFilters = () => {
     setSearch("");
-    setFilter("all");
+    setFilter("pending");
     setCurrentPage(1);
   };
 
@@ -189,7 +196,7 @@ export default function AdminApprovalsPage() {
         <ToolbarCard>
           <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
             <SearchField id="adminApprovalSearch" value={search} placeholder="Cari admin ..." onChange={(value) => { setSearch(value); setCurrentPage(1); }} />
-            {(search || filter !== "all") && <Button type="button" size="sm" variant="outline" onClick={resetFilters}>Reset</Button>}
+            {(search || filter !== "pending") && <Button type="button" size="sm" variant="outline" onClick={resetFilters}>Reset</Button>}
           </div>
           <FilterPills options={approvalFilters} activeValue={filter} onChange={(value) => { setFilter(value); setCurrentPage(1); }} className="mt-4" />
         </ToolbarCard>

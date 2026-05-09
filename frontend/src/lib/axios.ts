@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/auth';
 import Cookies from 'js-cookie';
+import { TEMP_ADMIN_TEST_MODE } from '@/lib/tempAdminTestMode';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
@@ -47,6 +48,10 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (TEMP_ADMIN_TEST_MODE) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -67,7 +72,9 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         logout();
-        Cookies.remove('jivara-token');
+        Cookies.remove('jivara-token', { path: '/' });
+        Cookies.remove('jivara-role', { path: '/' });
+        Cookies.remove('jivara-account-status', { path: '/' });
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('jivara-auth-storage');
           window.location.href = '/login';
@@ -85,6 +92,7 @@ api.interceptors.response.use(
 
         Cookies.set('jivara-token', newToken, {
           expires: 7,
+          path: '/',
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict'
         });
@@ -96,7 +104,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         logout();
-        Cookies.remove('jivara-token');
+        Cookies.remove('jivara-token', { path: '/' });
+        Cookies.remove('jivara-role', { path: '/' });
+        Cookies.remove('jivara-account-status', { path: '/' });
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('jivara-auth-storage');
           window.location.href = '/login';
