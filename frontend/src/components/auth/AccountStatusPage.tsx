@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle2, Clock3 } from "lucide-react";
 import axios from "axios";
-import Cookies from "js-cookie";
 import AuthCard from "@/components/ui/AuthCard";
 import Button from "@/components/ui/Button";
-import api from "@/lib/axios";
 import { showError, showToast } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 
@@ -51,7 +49,6 @@ export default function AccountStatusPage() {
   const user = useAuthStore((state) => state.user);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const updateUser = useAuthStore((state) => state.updateUser);
-  const refreshToken = useAuthStore((state) => state.refreshToken);
   const hasAutoRefreshedRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
@@ -63,22 +60,9 @@ export default function AccountStatusPage() {
   const refreshStatus = useCallback(async (showFeedback = true) => {
     setRefreshing(true);
     try {
-      if (!refreshToken) throw new Error("Refresh token tidak tersedia.");
-      const statusResponse = await axios.post(`${api.defaults.baseURL}/auth/status`, { refresh_token: refreshToken });
+      const statusResponse = await axios.post("/api/auth/status");
       const updatedUser = statusResponse.data.data.user;
       updateUser(updatedUser);
-      Cookies.set("jivara-role", updatedUser.role ?? "", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
-      Cookies.set("jivara-account-status", updatedUser.accountStatus ?? "active", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
       setStatusCheckSucceeded(true);
 
       if (updatedUser.role === "admin" && (updatedUser.accountStatus ?? "active") === "active") {
@@ -100,7 +84,7 @@ export default function AccountStatusPage() {
       setRefreshing(false);
       setHasCheckedStatus(true);
     }
-  }, [refreshToken, router, updateUser]);
+  }, [router, updateUser]);
 
   useEffect(() => {
     if (!hasAuthHydrated) return;

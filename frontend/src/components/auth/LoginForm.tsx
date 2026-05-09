@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import Cookies from "js-cookie";
 import { Lock, LogIn, Mail } from "lucide-react";
-import api from "@/lib/axios";
+import axios from "axios";
 import { closeAlert, showError, showLoading, showToast, showWarning } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 import AuthCard from "@/components/ui/AuthCard";
@@ -25,7 +24,38 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { hasHydrated, user, setAuth, updateToken, updateUser, logout } = useAuthStore();
+  const hasTriedRestoreRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasHydrated || hasTriedRestoreRef.current) return;
+    hasTriedRestoreRef.current = true;
+
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      try {
+        const response = await axios.post("/api/auth/refresh");
+        const accessToken = response.data.data.access_token;
+        if (!accessToken || !isMounted) return;
+
+        updateToken(accessToken);
+        if (response.data.data.user) updateUser(response.data.data.user);
+
+        const callbackUrl = searchParams.get("callbackUrl");
+        router.replace(getPostLoginPath(response.data.data.user ?? user ?? {}, callbackUrl));
+      } catch {
+        logout();
+        window.localStorage.removeItem("jivara-auth-storage");
+      }
+    };
+
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasHydrated, logout, router, searchParams, updateToken, updateUser, user]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,36 +76,18 @@ export default function LoginForm() {
     showLoading("Mohon Tunggu", "Sedang masuk ke akun Anda...");
 
     try {
-      const response = await api.post("/auth/login", {
+      const response = await axios.post("/api/auth/login", {
         identifier,
         password,
       });
 
-      const { user, access_token, refresh_token } = response.data.data;
+      const { user, access_token } = response.data.data;
 
       if (!access_token || !user) {
         throw new Error("Data autentikasi tidak valid dari server.");
       }
 
-      setAuth(user, access_token, refresh_token);
-      Cookies.set("jivara-token", access_token, {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
-      Cookies.set("jivara-role", user.role ?? "", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
-      Cookies.set("jivara-account-status", user.accountStatus ?? "active", {
-        expires: 7,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
+      setAuth(user, access_token);
 
       showToast("Anda berhasil masuk.", "success");
       const callbackUrl = searchParams.get("callbackUrl");

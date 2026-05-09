@@ -22,8 +22,10 @@ function isTokenUsable(token?: string) {
 export default async function ProtectedDashboardLayout({ children }: { readonly children: ReactNode }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("jivara-token")?.value;
+  const refreshToken = cookieStore.get("jivara-refresh-token")?.value;
+  const hasRefreshToken = Boolean(refreshToken && refreshToken !== "undefined" && refreshToken !== "null");
 
-  if (!isTokenUsable(token)) {
+  if (!isTokenUsable(token) && !hasRefreshToken) {
     redirect("/login");
   }
 

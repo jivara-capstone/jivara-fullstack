@@ -6,7 +6,6 @@ import {
   validateRegister,
   validateLogin,
   validateLoginIdentifier,
-  validateRefreshToken,
   validateCompletePasswordChange,
   validateRejectAdminApproval,
 } from "../validators/auth.validator";
@@ -258,9 +257,9 @@ router.put(
  *       401:
  *         description: Token refresh tidak valid atau kedaluwarsa
  */
-router.post("/refresh", validateRefreshToken, authController.refresh);
+router.post("/refresh", authController.refresh);
 
-router.post("/status", validateRefreshToken, authController.getStatus);
+router.post("/status", authController.getStatus);
 
 /**
  * @swagger
@@ -284,7 +283,7 @@ router.post("/status", validateRefreshToken, authController.getStatus);
  *       200:
  *         description: Berhasil keluar
  */
-router.post("/logout", validateRefreshToken, authController.logout);
+router.post("/logout", authController.logout);
 
 /**
  * @swagger
