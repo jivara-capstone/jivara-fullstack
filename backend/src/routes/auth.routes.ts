@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import * as authController from "../controllers/auth.controller";
-import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
+import { authenticateToken } from "../middleware/auth.middleware";
 import {
   validateRegister,
   validateLogin,

@@ -101,7 +101,7 @@ export const registerUser = async (dto: RegisterDTO) => {
     action: "auth.register.pending",
     resourceType: "user",
     resourceId: newUser.id,
-    changes: { after: { id: newUser.id, email: newUser.email, role: newUser.role, approvalStatus: newUser.approvalStatus } },
+    changes: { after: { id: newUser.id, email: newUser.email, role: newUser.role, accountStatus: newUser.accountStatus } },
   });
 
   return newUser;
@@ -118,11 +118,11 @@ export const listPendingRegistrations = async () => {
       age: users.age,
       gender: users.gender,
       address: users.address,
-      approvalStatus: users.approvalStatus,
+      accountStatus: users.accountStatus,
       createdAt: users.createdAt,
     })
     .from(users)
-    .where(eq(users.approvalStatus, "pending"));
+    .where(eq(users.accountStatus, "pending"));
 };
 
 export const approveRegistration = async (userId: string, approvedBy?: string) => {
@@ -132,41 +132,30 @@ export const approveRegistration = async (userId: string, approvedBy?: string) =
     throw { status: 404, message: "Pengguna tidak ditemukan", code: "USER_NOT_FOUND" };
   }
 
-  if (existing[0].approvalStatus !== "pending") {
+  if (existing[0].accountStatus !== "pending") {
     throw { status: 400, message: "Registrasi pengguna ini tidak sedang menunggu persetujuan", code: "REGISTRATION_NOT_PENDING" };
   }
 
-  const approvedUser = await db.transaction(async (tx) => {
-    const [updatedUser] = await tx
-      .update(users)
-      .set({ approvalStatus: "approved", isActive: true, updatedAt: new Date() })
-      .where(eq(users.id, userId))
-      .returning({
-        id: users.id,
-        fullName: users.fullName,
-        email: users.email,
-        phone: users.phone,
-        role: users.role,
-        approvalStatus: users.approvalStatus,
-        isActive: users.isActive,
-      });
-
-    if (updatedUser.role === "nurse") {
-      const existingNurse = await tx.select({ id: nurses.id }).from(nurses).where(eq(nurses.userId, userId)).limit(1);
-      if (existingNurse.length === 0) {
-        await tx.insert(nurses).values({ userId, isActive: true });
-      }
-    }
-
-    return updatedUser;
-  });
+  const [approvedUser] = await db
+    .update(users)
+    .set({ accountStatus: "active", isActive: true, approvedBy: approvedBy || null, approvedAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({
+      id: users.id,
+      fullName: users.fullName,
+      email: users.email,
+      phone: users.phone,
+      role: users.role,
+      accountStatus: users.accountStatus,
+      isActive: users.isActive,
+    });
 
   await writeAuditLog({
     userId: approvedBy || null,
     action: "auth.register.approved",
     resourceType: "user",
     resourceId: userId,
-    changes: { before: { approvalStatus: existing[0].approvalStatus, isActive: existing[0].isActive }, after: { approvalStatus: "approved", isActive: true } },
+    changes: { before: { accountStatus: existing[0].accountStatus, isActive: existing[0].isActive }, after: { accountStatus: "active", isActive: true } },
   });
 
   return approvedUser;
@@ -179,20 +168,20 @@ export const rejectRegistration = async (userId: string, rejectedBy?: string) =>
     throw { status: 404, message: "Pengguna tidak ditemukan", code: "USER_NOT_FOUND" };
   }
 
-  if (existing[0].approvalStatus !== "pending") {
+  if (existing[0].accountStatus !== "pending") {
     throw { status: 400, message: "Registrasi pengguna ini tidak sedang menunggu persetujuan", code: "REGISTRATION_NOT_PENDING" };
   }
 
   const [rejectedUser] = await db
     .update(users)
-    .set({ approvalStatus: "rejected", isActive: false, updatedAt: new Date() })
+    .set({ accountStatus: "rejected", rejectedAt: new Date(), updatedAt: new Date() })
     .where(eq(users.id, userId))
     .returning({
       id: users.id,
       fullName: users.fullName,
       email: users.email,
       role: users.role,
-      approvalStatus: users.approvalStatus,
+      accountStatus: users.accountStatus,
       isActive: users.isActive,
     });
 
@@ -201,7 +190,7 @@ export const rejectRegistration = async (userId: string, rejectedBy?: string) =>
     action: "auth.register.rejected",
     resourceType: "user",
     resourceId: userId,
-    changes: { before: { approvalStatus: existing[0].approvalStatus, isActive: existing[0].isActive }, after: { approvalStatus: "rejected", isActive: false } },
+    changes: { before: { accountStatus: existing[0].accountStatus, isActive: existing[0].isActive }, after: { accountStatus: "rejected" } },
   });
 
   return rejectedUser;
@@ -227,14 +216,6 @@ export const loginUser = async (dto: LoginDTO) => {
   }
 
   const foundUser = user[0];
-
-  if (foundUser.approvalStatus === "pending") {
-    throw { status: 403, message: "Akun Anda menunggu persetujuan administrator", code: "ACCOUNT_PENDING_APPROVAL" };
-  }
-
-  if (foundUser.approvalStatus === "rejected") {
-    throw { status: 403, message: "Pendaftaran akun Anda ditolak", code: "ACCOUNT_REGISTRATION_REJECTED" };
-  }
 
   if (!foundUser.isActive) {
     throw { status: 403, message: "Akun telah dinonaktifkan", code: "ACCOUNT_DEACTIVATED" };
@@ -460,7 +441,7 @@ export const refreshAccessToken = async (token: string) => {
     throw { status: 401, message: "Pengguna tidak ditemukan", code: "INVALID_TOKEN" };
   }
 
-  if (user[0].approvalStatus !== "approved") {
+  if (user[0].role === "admin" && user[0].accountStatus !== "active") {
     await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken[0].id));
     throw { status: 403, message: "Akun belum disetujui administrator", code: "ACCOUNT_NOT_APPROVED" };
   }
@@ -521,7 +502,6 @@ export const getUserProfile = async (userId: string) => {
       gender: users.gender,
       address: users.address,
       isActive: users.isActive,
-      approvalStatus: users.approvalStatus,
       mustChangePassword: users.mustChangePassword,
       approvedBy: users.approvedBy,
       approvedAt: users.approvedAt,
