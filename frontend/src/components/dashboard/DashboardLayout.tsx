@@ -21,7 +21,6 @@ interface DashboardLayoutProps {
   readonly children: ReactNode;
 }
 
-/** Batas waktu maksimal untuk loading state (detik) */
 const MAX_LOADING_SECONDS = 8;
 
 function getFallbackPathForRole(role?: string) {
@@ -80,7 +79,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     router.replace(getFallbackPathForRole(userRole));
   };
 
-  /** Navigasi keluar dengan hard redirect, cegah semua operasi lanjutan */
   const navigateToLogin = useCallback(async () => {
     if (isNavigatingAwayRef.current) return;
     isNavigatingAwayRef.current = true;
@@ -92,10 +90,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } catch {
     }
 
-    window.location.replace("/login");
+    window.location.replace("/login?loggedOut=1");
   }, [logout]);
 
-  /** Sync status akun admin — jalan di background, TIDAK block render */
   const syncCurrentUser = useCallback(async () => {
     if (!hasHydrated || isLoggingOut || isNavigatingAwayRef.current) return;
 
@@ -127,8 +124,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [hasHydrated, isLoggingOut, router, updateUser, userRole, navigateToLogin]);
 
-  // Safety: pastikan hasHydrated jadi true dalam 3 detik
-  // Di PWA, localStorage bisa corrupt/stale yang mencegah onRehydrateStorage fire
   useEffect(() => {
     if (hasHydrated) return;
     const timer = window.setTimeout(() => {
@@ -139,32 +134,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => window.clearTimeout(timer);
   }, [hasHydrated, setHasHydrated]);
 
-  // Safety: jika loading terlalu lama, paksa redirect ke login
   useEffect(() => {
-    if (user && hasHydrated) return; // sudah ready, tidak perlu timeout
+    if (user && hasHydrated) return;
     if (isNavigatingAwayRef.current) return;
 
     const timer = window.setTimeout(async () => {
-      // Masih loading setelah MAX_LOADING_SECONDS → langsung redirect
-      // Tidak pakai navigateToLogin karena bisa ada state yang block
       logout();
       window.localStorage.removeItem("jivara-auth-storage");
       try {
         await axios.post("/api/auth/logout", undefined, { timeout: 2000 });
       } catch {
-        // Gagal pun tetap redirect
       }
-      window.location.href = "/login";
+      window.location.replace("/login?loggedOut=1");
     }, MAX_LOADING_SECONDS * 1000);
     return () => window.clearTimeout(timer);
   }, [user, hasHydrated, logout]);
 
-  // Sync status akun admin secara berkala (background, tanpa block render)
   useEffect(() => {
     if (!hasHydrated || !userRole || isNavigatingAwayRef.current) return;
 
     if (userRole === "admin") {
-      // Initial check di background
       void syncCurrentUser();
     }
 
@@ -189,12 +178,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [hasHydrated, syncCurrentUser, userRole]);
 
-  // Session restore jika user null
   useEffect(() => {
     if (!hasHydrated || isLoggingOut || isNavigatingAwayRef.current) return;
 
     if (!user) {
-      // Sudah pernah coba restore dan gagal → langsung navigasi keluar
       if (hasTriedSessionRestoreRef.current) {
         navigateToLogin();
         return;
@@ -241,7 +228,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       } catch {
       }
 
-      window.location.replace("/login");
+      window.location.replace("/login?loggedOut=1");
     }
   };
 
@@ -256,7 +243,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // Render gate: hanya block untuk hydration dan session restore
   if (!hasHydrated || !user || isRestoringSession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Memuat halaman">

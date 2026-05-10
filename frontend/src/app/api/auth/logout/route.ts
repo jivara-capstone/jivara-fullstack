@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { clearAuthCookies, getBackendApiUrl, REFRESH_COOKIE } from '../cookies';
+import { clearAuthCookies, getBackendApiUrl, REFRESH_COOKIE, setLogoutCookie } from '../cookies';
 
 export async function POST() {
   const cookieStore = await cookies();
@@ -8,6 +8,7 @@ export async function POST() {
 
   const response = NextResponse.json({ message: 'Logged out' }, { status: 200 });
   clearAuthCookies(response);
+  setLogoutCookie(response);
   response.headers.set('Cache-Control', 'no-store, max-age=0');
   response.headers.set('Clear-Site-Data', '"cache"');
 
