@@ -48,6 +48,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isSyncingRef = useRef(false);
   const hasTriedSessionRestoreRef = useRef(false);
   const hasBlockedInitialAccountCheckRef = useRef(false);
+  const isNavigatingAwayRef = useRef(false);
   const isStandalonePwa = useIsStandalonePwa();
   const pathname = usePathname();
   const router = useRouter();
@@ -78,8 +79,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     router.replace(getFallbackPathForRole(userRole));
   };
 
+  /** Navigasi keluar dengan hard redirect, cegah semua operasi lanjutan */
+  const navigateToLogin = useCallback(() => {
+    if (isNavigatingAwayRef.current) return;
+    isNavigatingAwayRef.current = true;
+    logout();
+    window.localStorage.removeItem("jivara-auth-storage");
+
+    // Hapus cookies via API agar server-side layout tidak lolos
+    axios.post("/api/auth/logout", undefined, { timeout: 2000 })
+      .catch(() => {})
+      .finally(() => {
+        window.location.replace("/login");
+      });
+  }, [logout]);
+
   const syncCurrentUser = useCallback(async (blockRender = false) => {
-    if (!hasHydrated || isLoggingOut) return;
+    if (!hasHydrated || isLoggingOut || isNavigatingAwayRef.current) return;
 
     if (userRole !== "admin") {
       setIsCheckingAccount(false);
@@ -95,6 +111,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       const response = await axios.post("/api/auth/status", undefined, { timeout: 8000 });
       const currentUser: User = response.data.data.user;
 
+      if (isNavigatingAwayRef.current) return;
+
       updateUser(currentUser);
 
       if (currentUser.role === "admin" && (currentUser.accountStatus ?? "active") !== "active") {
@@ -102,19 +120,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         return;
       }
     } catch (error: any) {
+      if (isNavigatingAwayRef.current) return;
       if (error.response?.status === 401 || error.response?.status === 403) {
-        logout();
-        window.localStorage.removeItem("jivara-auth-storage");
-        window.location.replace("/login");
+        navigateToLogin();
+        return;
       }
     } finally {
       isSyncingRef.current = false;
       if (blockRender) setIsCheckingAccount(false);
     }
-  }, [hasHydrated, isLoggingOut, router, updateUser, userRole, logout]);
+  }, [hasHydrated, isLoggingOut, router, updateUser, userRole, navigateToLogin]);
 
+  // Effect 1: Sync status akun admin secara berkala
   useEffect(() => {
-    if (!hasHydrated || !userRole) return;
+    if (!hasHydrated || !userRole || isNavigatingAwayRef.current) return;
 
     if (userRole === "admin" && !hasBlockedInitialAccountCheckRef.current) {
       hasBlockedInitialAccountCheckRef.current = true;
@@ -141,12 +160,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [hasHydrated, syncCurrentUser, userRole]);
 
+  // Effect 2: Session restore jika user null
   useEffect(() => {
-    if (!hasHydrated || isLoggingOut) return;
+    if (!hasHydrated || isLoggingOut || isNavigatingAwayRef.current) return;
 
     if (!user) {
+      // Sudah pernah coba restore dan gagal → langsung navigasi keluar
       if (hasTriedSessionRestoreRef.current) {
-        window.location.replace("/login");
+        navigateToLogin();
         return;
       }
 
@@ -154,15 +175,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setIsRestoringSession(true);
       axios.post("/api/auth/status", undefined, { timeout: 8000 })
         .then((response) => {
+          if (isNavigatingAwayRef.current) return;
           const restoredUser: User | undefined = response.data.data.user;
           if (restoredUser) {
             setAuth(restoredUser, null);
           } else {
-            window.location.replace("/login");
+            navigateToLogin();
           }
         })
         .catch(() => {
-          window.location.replace("/login");
+          if (isNavigatingAwayRef.current) return;
+          navigateToLogin();
         })
         .finally(() => {
           setIsRestoringSession(false);
@@ -172,13 +195,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     if (!isCurrentRouteAllowed) router.replace(fallbackPath);
-  }, [fallbackPath, hasHydrated, isCurrentRouteAllowed, router, setAuth, user, isLoggingOut]);
+  }, [fallbackPath, hasHydrated, isCurrentRouteAllowed, router, setAuth, user, isLoggingOut, navigateToLogin]);
 
   const handleLogout = async () => {
     const result = await showConfirm("Keluar Akun?", "Anda perlu masuk kembali untuk mengakses data Anda.", "Ya, Keluar");
 
     if (result.isConfirmed) {
       setIsLoggingOut(true);
+      isNavigatingAwayRef.current = true;
 
       // Bersihkan state lokal
       logout();
@@ -210,13 +234,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   if (!hasHydrated || !user || isCheckingAccount || isRestoringSession) {
-    const isRedirecting = !user && hasTriedSessionRestoreRef.current && !isRestoringSession;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface" aria-label={isRedirecting ? "Mengarahkan ke halaman masuk" : "Memeriksa status akun"}>
+      <div className="flex min-h-screen items-center justify-center bg-surface" aria-label="Memeriksa status akun">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="text-sm font-medium text-text-secondary">
-            {isRedirecting ? "Mengarahkan ke halaman masuk ..." : "Memeriksa status akun ..."}
+            Mohon tunggu ...
           </p>
         </div>
       </div>
