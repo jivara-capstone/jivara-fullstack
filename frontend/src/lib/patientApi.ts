@@ -3,6 +3,7 @@ import type { PatientRecord, PatientStatus } from "@/lib/mocks/patients";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import type { PatientDetailData } from "@/helpers/patientDetails";
 import type { AddPatientValues } from "@/components/patients/AddPatientForm";
+import { getFoodScansForPatientFromApi } from "@/lib/foodScanApi";
 
 interface PatientListResponse {
   id: string;
@@ -158,12 +159,13 @@ export const getPatientDetailFromApi = async (patientId: string): Promise<Patien
   const adherence = Math.round(detail.adherenceRate30d ?? detail.adherenceRate7d ?? 100);
   const patient = mapPatient({ ...detail, createdAt: detail.registeredAt ?? detail.createdAt }, adherence);
   const schedules = detail.activeMedications?.map((medication) => mapMedication(patient, medication)) ?? [];
+  const scans = await getFoodScansForPatientFromApi(patientId).catch(() => []);
 
   return {
     patient,
     schedules,
     activities: [],
-    scans: [],
+    scans,
   };
 };
 

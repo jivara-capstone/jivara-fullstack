@@ -43,6 +43,38 @@ interface InteractionResponse {
   disclaimer: string;
 }
 
+interface FoodScanDetailResponse {
+  id: string;
+  patientId: string;
+  imageUrl: string;
+  overallRiskLevel?: string | null;
+  modelVersion?: string | null;
+  inferenceTimeMs?: number | null;
+  createdAt?: string | null;
+  detectedItems?: Array<{
+    id: string;
+    label: string;
+    labelDisplay: string;
+    confidence: number;
+  }>;
+  interactions?: Array<{
+    id: string;
+    foodItem: string;
+    medication: string;
+    severity: string;
+    interactionDescription?: string | null;
+    recommendation?: string | null;
+  }>;
+}
+
+interface FoodScanDetailApiResponse {
+  data: FoodScanDetailResponse;
+}
+
+interface FoodScanListApiResponse {
+  data: FoodScanDetailResponse[];
+}
+
 const getInitials = (name?: string | null) => name?.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "PX";
 
 const getBackendOrigin = () => {
@@ -69,6 +101,53 @@ const toFoodName = (items: DetectedItemResponse[]) => {
 const toRisk = (riskLevel: string): FoodScanRisk => {
   if (["tinggi", "critical", "high"].includes(riskLevel.toLowerCase())) return "High Risk";
   return "Low Risk";
+};
+
+const getBackendImageUrl = (imageUrl: string) => imageUrl.startsWith("http") ? imageUrl : `${getBackendOrigin()}${imageUrl}`;
+
+const mapScanDetail = (detail: FoodScanDetailResponse, patientName = "Pasien"): FoodScanAnalysis => {
+  const foodName = detail.detectedItems?.map((item) => item.labelDisplay).join(", ") || "Makanan terdeteksi";
+  const risk = toRisk(detail.overallRiskLevel || "rendah");
+  const scan: FoodScanRecord = {
+    id: detail.id,
+    patientId: detail.patientId,
+    foodName,
+    image: getBackendImageUrl(detail.imageUrl),
+    scannedAt: detail.createdAt || new Date().toISOString(),
+    risk,
+    aiReasoning: `Model ${detail.modelVersion || "AI"} menganalisis ${foodName}${detail.inferenceTimeMs ? ` dalam ${detail.inferenceTimeMs} ms` : ""}.`,
+    result: detail.interactions?.length ? "Ditemukan potensi interaksi obat-makanan." : "Tidak ditemukan interaksi signifikan pada makanan yang terdeteksi.",
+    recommendation: detail.interactions?.[0]?.recommendation || "Ikuti jadwal obat dan pantau gejala setelah makan.",
+  };
+  const interactions = (detail.interactions || []).map((interaction) => ({
+    schedule: {
+      id: interaction.id,
+      patientId: detail.patientId,
+      patientName,
+      patientAvatar: getInitials(patientName),
+      medicineName: interaction.medication,
+      dose: "-",
+      medicineForm: "Tablet" as const,
+      stock: 0,
+      frequency: "Sesuai jadwal aktif",
+      times: [],
+      mealRule: "Tidak tergantung makan" as const,
+      startDate: new Date().toISOString().slice(0, 10),
+      reminderEnabled: true,
+      status: "Aktif" as const,
+    },
+    risk: toRisk(interaction.severity),
+    reasoning: interaction.interactionDescription || "Interaksi terdeteksi dari hasil analisis makanan-obat.",
+    recommendation: interaction.recommendation || "Ikuti rekomendasi tenaga kesehatan.",
+  }));
+
+  return {
+    scan,
+    patientName,
+    schedules: interactions.map((interaction) => interaction.schedule),
+    interactions,
+    overallRisk: interactions.some((interaction) => interaction.risk === "High Risk") ? "High Risk" : risk,
+  };
 };
 
 const createSchedule = (interaction: InteractionResponse["interactions"][number], patient: PatientResponse, index: number): MedicationScheduleRecord => ({
@@ -118,7 +197,7 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
 
   const interactionData = interactionResponse.data.data;
   const risk = toRisk(interactionData.overall_risk_level);
-  const image = upload.upload_url.startsWith("http") ? upload.upload_url : `${getBackendOrigin()}${upload.upload_url}`;
+  const image = getBackendImageUrl(upload.upload_url);
   const foodName = toFoodName(detection.detected_items);
   const scan: FoodScanRecord = {
     id: upload.image_id,
@@ -140,8 +219,24 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
 
   return {
     scan,
+    patientName: patient.fullName || "Pasien",
     schedules: interactions.map((interaction) => interaction.schedule),
     interactions,
     overallRisk: risk,
   };
+};
+
+export const getFoodScansFromApi = async (): Promise<FoodScanRecord[]> => {
+  const response = await api.get<FoodScanListApiResponse>("/food-scans");
+  return response.data.data.map((detail) => mapScanDetail(detail).scan);
+};
+
+export const getFoodScansForPatientFromApi = async (patientId: string): Promise<FoodScanRecord[]> => {
+  const scans = await getFoodScansFromApi();
+  return scans.filter((scan) => scan.patientId === patientId);
+};
+
+export const getFoodScanAnalysisFromApi = async (scanId: string): Promise<FoodScanAnalysis> => {
+  const response = await api.get<FoodScanDetailApiResponse>(`/food-scans/${encodeURIComponent(scanId)}`);
+  return mapScanDetail(response.data.data);
 };

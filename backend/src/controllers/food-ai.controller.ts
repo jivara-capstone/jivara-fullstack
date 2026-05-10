@@ -14,6 +14,25 @@ const sendError = (res: Response, error: unknown) => {
   });
 };
 
+export const listFoodScans = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await foodAiService.listFoodScans(req.user);
+    res.status(200).json({ status: "berhasil", data });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+export const getFoodScan = async (req: AuthRequest, res: Response) => {
+  try {
+    const scanId = Array.isArray(req.params.scanId) ? req.params.scanId[0] : req.params.scanId;
+    const data = await foodAiService.getFoodScanById(scanId, req.user);
+    res.status(200).json({ status: "berhasil", data });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
 export const uploadFoodImage = async (req: AuthRequest, res: Response) => {
   try {
     const file = req.file;

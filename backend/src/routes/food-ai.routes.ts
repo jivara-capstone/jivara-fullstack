@@ -25,6 +25,9 @@ const attachScanIdParam = (req: Request, _res: Response, next: NextFunction) => 
  *   description: Mock AI food detection, interaction check, dan nutrition insight
  */
 
+router.get("/food-scans", authorizeRoles("patient", "nurse", "admin"), foodAiController.listFoodScans);
+router.get("/food-scans/:scanId", authorizeRoles("patient", "nurse", "admin"), foodAiController.getFoodScan);
+
 /**
  * @swagger
  * /api/food-scans:

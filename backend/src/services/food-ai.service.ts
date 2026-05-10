@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
   detectedItems,
@@ -60,6 +60,50 @@ const ensureScanExists = async (scanId: string, patientId?: string) => {
   }
 
   return scan[0];
+};
+
+const mapScanSummary = (scan: typeof foodScans.$inferSelect) => ({
+  id: scan.id,
+  patientId: scan.patientId,
+  imageUrl: scan.imageUrl,
+  imageSizeKb: scan.imageSizeKb,
+  inferenceTimeMs: scan.inferenceTimeMs,
+  modelVersion: scan.modelVersion,
+  overallRiskScore: scan.overallRiskScore,
+  overallRiskLevel: scan.overallRiskLevel,
+  createdAt: scan.createdAt,
+});
+
+export const listFoodScans = async (user?: AccessUser) => {
+  const rows = await db.select().from(foodScans).orderBy(desc(foodScans.createdAt)).limit(100);
+  const accessibleRows = [];
+
+  for (const scan of rows) {
+    try {
+      if (user) await assertCanAccessPatient(user, scan.patientId);
+      accessibleRows.push(mapScanSummary(scan));
+    } catch {
+      // Skip rows outside the user's patient scope.
+    }
+  }
+
+  return accessibleRows;
+};
+
+export const getFoodScanById = async (scanId: string, user?: AccessUser) => {
+  const scan = await ensureScanExists(scanId);
+  if (user) await assertCanAccessPatient(user, scan.patientId);
+
+  const [items, interactions] = await Promise.all([
+    db.select().from(detectedItems).where(eq(detectedItems.scanId, scanId)),
+    db.select().from(interactionResults).where(eq(interactionResults.scanId, scanId)),
+  ]);
+
+  return {
+    ...mapScanSummary(scan),
+    detectedItems: items,
+    interactions,
+  };
 };
 
 export const uploadFoodImage = async (dto: FoodUploadDTO, user?: AccessUser) => {
