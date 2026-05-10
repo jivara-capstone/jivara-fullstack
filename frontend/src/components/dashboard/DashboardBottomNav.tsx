@@ -7,14 +7,14 @@ import { getUnreadActivityCount } from "@/helpers/activityLogs";
 import { patients } from "@/lib/mocks/patients";
 import { useActivityLogStore } from "@/store/activityLog";
 import { useAuthStore } from "@/store/auth";
-import { getDashboardBottomNavItems, getDashboardRole } from "./navigation";
+import { getDashboardBottomNavItems, getDashboardRole, isAdminDashboardRole } from "./navigation";
 
 export default function DashboardBottomNav() {
   const pathname = usePathname();
   const userRole = useAuthStore((state) => state.user?.role);
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const dashboardRole = getDashboardRole(userRole);
-  const unreadActivityCount = useActivityLogStore((state) => dashboardRole === "admin" ? 0 : getUnreadActivityCount(state.activities, dashboardRole === "patient" ? patients[0].id : undefined));
+  const unreadActivityCount = useActivityLogStore((state) => isAdminDashboardRole(dashboardRole) ? 0 : getUnreadActivityCount(state.activities, dashboardRole === "patient" ? patients[0].id : undefined));
   const bottomNavItems = getDashboardBottomNavItems(dashboardRole);
   const columnCount = bottomNavItems.length;
 

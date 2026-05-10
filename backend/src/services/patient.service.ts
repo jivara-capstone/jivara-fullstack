@@ -11,7 +11,7 @@ import {
   users,
 } from "../db/schema";
 import { AUTH_CONSTANTS } from "../types/auth.types";
-import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
+import { AccessUser, assertCanAccessPatient, ensureOrganizationIdForUser, getOrganizationIdForUser, scopedPatientFilter } from "./access-control.service";
 import { writeAuditLog } from "./audit-log.service";
 import {
   PatientCreateDTO,
@@ -60,6 +60,7 @@ export const listPatients = async (query: PatientListQuery, user?: AccessUser) =
     db
       .select({
         id: patients.id,
+        organizationId: patients.organizationId,
         userId: patients.userId,
         fullName: users.fullName,
         phone: users.phone,
@@ -101,6 +102,7 @@ export const getPatientById = async (patientId: string, user?: AccessUser) => {
   const row = await db
     .select({
       id: patients.id,
+      organizationId: patients.organizationId,
       userId: patients.userId,
       fullName: users.fullName,
       phone: users.phone,
@@ -184,6 +186,12 @@ export const getPatientById = async (patientId: string, user?: AccessUser) => {
 };
 
 export const createPatient = async (dto: PatientCreateDTO, createdBy?: string) => {
+  const organizationId = createdBy ? await ensureOrganizationIdForUser(createdBy) : null;
+
+  if (!organizationId) {
+    throw { status: 403, message: "Pengguna belum terhubung ke organisasi", code: "ORGANIZATION_REQUIRED" };
+  }
+
   const existingUser = await db
     .select({ id: users.id })
     .from(users)
@@ -195,7 +203,7 @@ export const createPatient = async (dto: PatientCreateDTO, createdBy?: string) =
   }
 
   if (dto.assignedNurseId) {
-    const nurse = await db.select({ id: nurses.id }).from(nurses).where(eq(nurses.id, dto.assignedNurseId)).limit(1);
+    const nurse = await db.select({ id: nurses.id }).from(nurses).where(and(eq(nurses.id, dto.assignedNurseId), eq(nurses.organizationId, organizationId))).limit(1);
     if (nurse.length === 0) {
       throw { status: 404, message: "Perawat tidak ditemukan", code: "NURSE_NOT_FOUND" };
     }
@@ -208,6 +216,7 @@ export const createPatient = async (dto: PatientCreateDTO, createdBy?: string) =
       .insert(users)
       .values({
         fullName: dto.fullName,
+        organizationId,
         email: dto.email,
         phone: dto.phone || null,
         password: hashedPassword,
@@ -222,6 +231,7 @@ export const createPatient = async (dto: PatientCreateDTO, createdBy?: string) =
       .insert(patients)
       .values({
         userId: newUser.id,
+        organizationId,
         dateOfBirth: dto.dateOfBirth || null,
         gender: dto.gender || null,
         address: dto.address || null,
@@ -293,13 +303,18 @@ export const updatePatient = async (patientId: string, dto: PatientUpdateDTO, us
     changes: { before: existing, requested: dto },
   });
 
-  return getPatientById(patientId);
+  return getPatientById(patientId, user);
 };
 
 export const assignPatient = async (patientId: string, nurseId: string, assignedBy?: string) => {
-  await getPatientById(patientId);
+  const organizationId = assignedBy ? await getOrganizationIdForUser(assignedBy) : null;
+  const patient = await getPatientById(patientId, assignedBy ? { id: assignedBy, email: "", role: "admin" } : undefined);
 
-  const nurse = await db.select({ id: nurses.id }).from(nurses).where(eq(nurses.id, nurseId)).limit(1);
+  if (!organizationId || patient.organizationId !== organizationId) {
+    throw { status: 403, message: "Pasien tidak berada dalam organisasi admin", code: "FORBIDDEN" };
+  }
+
+  const nurse = await db.select({ id: nurses.id }).from(nurses).where(and(eq(nurses.id, nurseId), eq(nurses.organizationId, organizationId))).limit(1);
   if (nurse.length === 0) {
     throw { status: 404, message: "Perawat tidak ditemukan", code: "NURSE_NOT_FOUND" };
   }
@@ -328,11 +343,11 @@ export const assignPatient = async (patientId: string, nurseId: string, assigned
     changes: { nurseId },
   });
 
-  return getPatientById(patientId);
+  return getPatientById(patientId, assignedBy ? { id: assignedBy, email: "", role: "admin" } : undefined);
 };
 
-export const deactivatePatient = async (patientId: string) => {
-  const existing = await getPatientById(patientId);
+export const deactivatePatient = async (patientId: string, user?: AccessUser) => {
+  const existing = await getPatientById(patientId, user);
 
   await db.transaction(async (tx) => {
     await tx.update(patients).set({ isActive: false }).where(eq(patients.id, patientId));
@@ -340,7 +355,7 @@ export const deactivatePatient = async (patientId: string) => {
   });
 
   await writeAuditLog({
-    userId: null,
+    userId: user?.id || null,
     action: "patient.deactivated",
     resourceType: "patient",
     resourceId: patientId,

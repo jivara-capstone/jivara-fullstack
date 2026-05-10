@@ -6,11 +6,14 @@ import SummaryCard, { type SummaryCardItem } from "./SummaryCard";
 interface SummaryCardGridProps {
   readonly stats: readonly SummaryCardItem[];
   readonly className?: string;
+  readonly desktopColumns?: 3 | 4;
 }
 
-export default function SummaryCardGrid({ stats, className = "" }: SummaryCardGridProps) {
+export default function SummaryCardGrid({ stats, className = "", desktopColumns = 3 }: SummaryCardGridProps) {
+  const desktopGridClass = desktopColumns === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3";
+
   return (
-    <section className={`mt-6 grid auto-rows-fr grid-cols-2 items-stretch gap-4 xl:grid-cols-3 ${className}`}>
+    <section className={`mt-6 grid auto-rows-fr grid-cols-2 items-stretch gap-4 ${desktopGridClass} ${className}`}>
       {stats.map((stat, index) => (
         <motion.div
           key={stat.label}

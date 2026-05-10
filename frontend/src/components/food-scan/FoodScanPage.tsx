@@ -12,7 +12,7 @@ import { foodScans, type FoodScanRecord } from "@/lib/mocks/foodScans";
 import { patients } from "@/lib/mocks/patients";
 import { showToast } from "@/lib/swal";
 import { usePatientDashboardStore } from "@/store/patientDashboard";
-import { getDashboardRole } from "@/components/dashboard/navigation";
+import { getDashboardRole, isOperationalAdminRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
 import FoodScanAnalysisView from "./FoodScanAnalysisView";
@@ -32,11 +32,12 @@ export default function FoodScanPage() {
   const setLastScan = usePatientDashboardStore((state) => state.setLastScan);
 
   useEffect(() => {
-    if (!hasAuthHydrated || dashboardRole !== "admin") return;
+    const isBlockedRole = isOperationalAdminRole(dashboardRole) || dashboardRole === "super_admin";
+    if (!hasAuthHydrated || !isBlockedRole) return;
     router.replace("/dashboard");
   }, [dashboardRole, hasAuthHydrated, router]);
 
-  if (!hasAuthHydrated || dashboardRole === "admin") return null;
+  if (!hasAuthHydrated || isOperationalAdminRole(dashboardRole) || dashboardRole === "super_admin") return null;
 
   const runScan = () => {
     if (!isScanning) fileInputRef.current?.click();

@@ -1,3 +1,5 @@
+export { default as AccountStatusBadge } from "./AccountStatusBadge";
+export { default as AdminApprovalsPage } from "./AdminApprovalsPage";
 export { default as AdminDashboardPage } from "./AdminDashboardPage";
 export { default as AdminNotificationSettingsForm } from "./AdminNotificationSettingsForm";
 export { default as AdminProfileSettingsForm } from "./AdminProfileSettingsForm";

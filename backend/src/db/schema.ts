@@ -15,31 +15,47 @@ import {
 import { relations } from "drizzle-orm";
 
 // ─────────────────────────────────────────────
-// 1. USERS
+// 1. ORGANIZATIONS
+// ─────────────────────────────────────────────
+export const organizations = pgTable("organizations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ─────────────────────────────────────────────
+// 2. USERS
 // ─────────────────────────────────────────────
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   fullName: varchar("full_name", { length: 256 }).notNull(),
   phone: varchar("phone", { length: 20 }).unique(),
   email: varchar("email", { length: 256 }).notNull().unique(),
   password: text("password").notNull(),
   role: varchar("role", { length: 50 }).notNull().default("nurse"),
+  accountStatus: varchar("account_status", { length: 20 }).notNull().default("active"),
   age: integer("age").notNull().default(0),
   gender: varchar("gender", { length: 10 }),
   address: text("address"),
   isActive: boolean("is_active").default(true),
-  approvalStatus: varchar("approval_status", { length: 20 }).notNull().default("approved"),
   mustChangePassword: boolean("must_change_password").default(false),
+  approvedBy: uuid("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedReason: text("rejected_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("idx_users_organization").on(table.organizationId),
   roleIdx: index("idx_users_role").on(table.role),
+  accountStatusIdx: index("idx_users_account_status").on(table.accountStatus),
   phoneIdx: index("idx_users_phone").on(table.phone),
-  approvalStatusIdx: index("idx_users_approval_status").on(table.approvalStatus),
 }));
 
 // ─────────────────────────────────────────────
-// 2. REFRESH TOKENS
+// 3. REFRESH TOKENS
 // ─────────────────────────────────────────────
 export const refreshTokens = pgTable("refresh_tokens", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -52,10 +68,11 @@ export const refreshTokens = pgTable("refresh_tokens", {
 });
 
 // ─────────────────────────────────────────────
-// 3. PATIENTS
+// 4. PATIENTS
 // ─────────────────────────────────────────────
 export const patients = pgTable("patients", {
   id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -67,14 +84,16 @@ export const patients = pgTable("patients", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("idx_patients_organization").on(table.organizationId),
   userIdx: index("idx_patients_user").on(table.userId),
 }));
 
 // ─────────────────────────────────────────────
-// 4. NURSES
+// 5. NURSES
 // ─────────────────────────────────────────────
 export const nurses = pgTable("nurses", {
   id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -83,6 +102,7 @@ export const nurses = pgTable("nurses", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
+  organizationIdx: index("idx_nurses_organization").on(table.organizationId),
   userIdx: index("idx_nurses_user").on(table.userId),
 }));
 

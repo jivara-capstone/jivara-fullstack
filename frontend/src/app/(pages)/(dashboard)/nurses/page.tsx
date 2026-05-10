@@ -1,5 +1,6 @@
 import { NurseListPage } from "@/components/admin";
+import DashboardRoleGate from "@/components/dashboard/DashboardRoleGate";
 
 export default function NursesRoute() {
-  return <NurseListPage />;
+  return <DashboardRoleGate allowedRoles={["admin", "nurse"]}><NurseListPage /></DashboardRoleGate>;
 }

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import DashboardRouteFallback from "@/components/dashboard/DashboardRouteFallback";
-import { getDashboardRole } from "@/components/dashboard/navigation";
+import { getDashboardRole, isOperationalAdminRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 import PatientListPage from "./PatientListPage";
 
@@ -14,11 +14,11 @@ export default function PatientsRouteClient() {
   const dashboardRole = getDashboardRole(userRole);
 
   useEffect(() => {
-    if (!hasAuthHydrated || dashboardRole === "nurse" || dashboardRole === "admin") return;
+    if (!hasAuthHydrated || dashboardRole === "nurse" || isOperationalAdminRole(dashboardRole)) return;
     router.replace("/dashboard");
   }, [dashboardRole, hasAuthHydrated, router]);
 
-  if (!hasAuthHydrated || (dashboardRole !== "nurse" && dashboardRole !== "admin")) return <DashboardRouteFallback />;
+  if (!hasAuthHydrated || (dashboardRole !== "nurse" && !isOperationalAdminRole(dashboardRole))) return <DashboardRouteFallback />;
 
-  return <PatientListPage mode={dashboardRole === "admin" ? "readonly" : "manage"} />;
+  return <PatientListPage mode={isOperationalAdminRole(dashboardRole) ? "readonly" : "manage"} />;
 }

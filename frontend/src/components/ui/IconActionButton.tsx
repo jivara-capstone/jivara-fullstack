@@ -7,6 +7,7 @@ interface IconActionButtonProps {
   readonly children: ReactNode;
   readonly tone?: IconActionTone;
   readonly size?: "sm" | "md";
+  readonly disabled?: boolean;
   readonly onClick?: () => void;
 }
 
@@ -23,7 +24,7 @@ const sizeClasses = {
   md: "h-9 w-9",
 } as const;
 
-export default function IconActionButton({ label, children, tone = "primary", size = "md", onClick }: IconActionButtonProps) {
+export default function IconActionButton({ label, children, tone = "primary", size = "md", disabled = false, onClick }: IconActionButtonProps) {
   const icon = isValidElement<{ "aria-hidden"?: boolean; focusable?: string }>(children)
     ? cloneElement(children, { "aria-hidden": true, focusable: "false" })
     : children;
@@ -33,7 +34,8 @@ export default function IconActionButton({ label, children, tone = "primary", si
       type="button"
       aria-label={label}
       onClick={onClick}
-      className={`inline-flex items-center justify-center rounded-full transition-colors ${sizeClasses[size]} ${toneClasses[tone]}`}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizeClasses[size]} ${toneClasses[tone]}`}
     >
       {icon}
     </button>

@@ -57,10 +57,57 @@ function createContentSecurityPolicy(nonce: string, pathname: string) {
   return directives.join('; ');
 }
 
-const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan', '/nurses'];
+const protectedRoutes = ['/dashboard', '/patients', '/schedule', '/activity-log', '/settings', '/food-scan', '/nurses', '/admin-approvals', '/account-status'];
 
 // Route yang TIDAK boleh diakses jika sudah login
 const authRoutes = ['/login', '/register'];
+
+function decodeJwtPayload(token?: string) {
+  if (!token) return null;
+
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    return JSON.parse(Buffer.from(paddedPayload, 'base64').toString('utf8')) as { role?: string; exp?: number };
+  } catch {
+    return null;
+  }
+}
+
+function isTokenUsable(token?: string) {
+  if (!token || token === 'undefined' || token === 'null') return false;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return false;
+  if (payload.exp && payload.exp * 1000 <= Date.now()) return false;
+  return true;
+}
+
+function getDefaultPathForRole(role?: string) {
+  return role === 'super_admin' ? '/admin-approvals' : '/dashboard';
+}
+
+function isRouteAllowedForRole(pathname: string, role?: string) {
+  if (!role) return false;
+  if (pathname.startsWith('/account-status')) return role === 'admin';
+  if (pathname.startsWith('/settings')) return ['super_admin', 'admin', 'nurse', 'patient'].includes(role);
+  if (pathname.startsWith('/dashboard')) return ['super_admin', 'admin', 'nurse', 'patient'].includes(role);
+  if (pathname.startsWith('/admin-approvals')) return role === 'super_admin';
+  if (pathname.startsWith('/nurses')) return role === 'admin' || role === 'nurse';
+  if (pathname.startsWith('/patients')) return role === 'admin' || role === 'nurse';
+  if (pathname.startsWith('/schedule')) return role === 'admin' || role === 'nurse' || role === 'patient';
+  if (pathname.startsWith('/activity-log')) return role === 'super_admin' || role === 'admin' || role === 'nurse' || role === 'patient';
+  if (pathname.startsWith('/food-scan')) return role === 'patient';
+  return true;
+}
+
+function shouldRedirectAdminToAccountStatus(pathname: string, role?: string, accountStatus?: string) {
+  if (role !== 'admin') return false;
+  if (!accountStatus || accountStatus === 'active') return false;
+  return !pathname.startsWith('/account-status') && protectedRoutes.some(route => pathname.startsWith(route));
+}
 
 export async function proxy(request: NextRequest) {
   const supabaseResponse = await updateSession(request);
@@ -70,15 +117,22 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('x-nonce', nonce);
 
   const token = request.cookies.get('jivara-token')?.value;
-  const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 0;
+  const refreshToken = request.cookies.get('jivara-refresh-token')?.value;
+  const roleCookie = request.cookies.get('jivara-role')?.value;
+  const accountStatusCookie = request.cookies.get('jivara-account-status')?.value;
+  const hasValidToken = isTokenUsable(token);
+  const hasRefreshToken = Boolean(refreshToken && refreshToken !== 'undefined' && refreshToken !== 'null');
+  const hasSession = hasValidToken || hasRefreshToken;
+  const tokenPayload = decodeJwtPayload(token);
   const { pathname } = request.nextUrl;
   const contentSecurityPolicy = createContentSecurityPolicy(nonce, pathname);
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
+  requestHeaders.set('x-pathname', pathname);
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
-  if (isProtectedRoute && !hasValidToken) {
+  if (isProtectedRoute && !hasSession) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
     const response = NextResponse.redirect(url);
@@ -87,8 +141,24 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (isAuthRoute && hasValidToken) {
-    const response = NextResponse.redirect(new URL('/dashboard', request.url));
+  if (isAuthRoute && hasSession) {
+    const response = NextResponse.redirect(new URL(getDefaultPathForRole(tokenPayload?.role), request.url));
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  }
+
+  const effectiveRole = roleCookie || tokenPayload?.role;
+
+  if (isProtectedRoute && hasSession && shouldRedirectAdminToAccountStatus(pathname, effectiveRole, accountStatusCookie)) {
+    const response = NextResponse.redirect(new URL('/account-status', request.url));
+    response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  }
+
+  if (isProtectedRoute && hasSession && !isRouteAllowedForRole(pathname, effectiveRole)) {
+    const response = NextResponse.redirect(new URL(getDefaultPathForRole(effectiveRole), request.url));
     response.headers.set('Content-Security-Policy', contentSecurityPolicy);
     supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
     return response;

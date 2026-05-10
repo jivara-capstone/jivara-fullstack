@@ -6,25 +6,28 @@ import { LogOut, Settings } from "lucide-react";
 
 interface DashboardAccountActionsProps {
   readonly onLogout: () => void;
+  readonly hideSettings?: boolean;
 }
 
-export default function DashboardAccountActions({ onLogout }: DashboardAccountActionsProps) {
+export default function DashboardAccountActions({ onLogout, hideSettings = false }: DashboardAccountActionsProps) {
   const pathname = usePathname();
   const isSettingsActive = pathname.startsWith("/settings");
 
   return (
     <>
-      <Link
-        href="/settings"
-        prefetch
-        aria-current={isSettingsActive ? "page" : undefined}
-        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-main transition-colors ${
-          isSettingsActive ? "text-primary" : "text-main"
-        }`}
-      >
-        <Settings size={18} />
-        Pengaturan
-      </Link>
+      {!hideSettings && (
+        <Link
+          href="/settings"
+          prefetch
+          aria-current={isSettingsActive ? "page" : undefined}
+          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-main transition-colors ${
+            isSettingsActive ? "text-primary" : "text-main"
+          }`}
+        >
+          <Settings size={18} />
+          Pengaturan
+        </Link>
+      )}
       <button
         className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-bold text-main transition-colors hover:bg-surface hover:text-danger"
         onClick={onLogout}

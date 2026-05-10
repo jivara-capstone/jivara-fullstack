@@ -66,7 +66,7 @@ export const assignPatient = async (req: AuthRequest, res: Response) => {
 
 export const deactivatePatient = async (req: AuthRequest, res: Response) => {
   try {
-    await patientService.deactivatePatient(getParam(req.params.id));
+    await patientService.deactivatePatient(getParam(req.params.id), req.user);
     res.status(200).json({ status: "berhasil", message: "Pasien berhasil dinonaktifkan" });
   } catch (error) {
     sendError(res, error);

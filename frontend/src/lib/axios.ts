@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/auth';
-import Cookies from 'js-cookie';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -63,31 +63,14 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { refreshToken, logout, updateToken } = useAuthStore.getState();
-
-      if (!refreshToken) {
-        logout();
-        Cookies.remove('jivara-token');
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem('jivara-auth-storage');
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
+      const { logout, updateToken, updateUser } = useAuthStore.getState();
 
       try {
-        const { data } = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
+        const { data } = await axios.post('/api/auth/refresh');
 
         const newToken = data.data.access_token;
         updateToken(newToken);
-
-        Cookies.set('jivara-token', newToken, {
-          expires: 7,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict'
-        });
+        if (data.data.user) updateUser(data.data.user);
 
         processQueue(null, newToken);
 
@@ -96,7 +79,6 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         logout();
-        Cookies.remove('jivara-token');
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('jivara-auth-storage');
           window.location.href = '/login';

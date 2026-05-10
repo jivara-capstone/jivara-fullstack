@@ -6,16 +6,15 @@ import {
   validateRegister,
   validateLogin,
   validateLoginIdentifier,
-  validateRefreshToken,
   validateCompletePasswordChange,
-  validateUserId,
+  validateRejectAdminApproval,
 } from "../validators/auth.validator";
 
 const router = Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === "production" ? 10 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
@@ -23,6 +22,19 @@ const loginLimiter = rateLimit({
     status: "gagal",
     message: "Terlalu banyak percobaan login, silakan coba lagi nanti.",
     error_code: "LOGIN_RATE_LIMITED",
+  },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "production" ? 10 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    status: "gagal",
+    message: "Terlalu banyak percobaan pendaftaran, silakan coba lagi nanti.",
+    error_code: "REGISTER_RATE_LIMITED",
   },
 });
 
@@ -37,7 +49,7 @@ const loginLimiter = rateLimit({
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Daftarkan pengguna baru untuk menunggu persetujuan admin
+ *     summary: Daftarkan calon admin baru
  *     tags: [Auth]
  *     security: []
  *     requestBody:
@@ -69,38 +81,57 @@ const loginLimiter = rateLimit({
  *         description: Pengguna berhasil terdaftar
  *       400:
  *         description: Permintaan tidak valid
- *       403:
- *         description: Akun belum disetujui saat login
  *       409:
  *         description: Pengguna sudah terdaftar
  */
 router.post(
   "/register",
+  registerLimiter,
   validateRegister,
   authController.register
 );
 
 router.get(
-  "/registrations/pending",
+  "/admin-approvals",
   authenticateToken,
-  authorizeRoles("admin"),
-  authController.listPendingRegistrations
+  authorizeRoles("super_admin"),
+  authController.listAdminApprovals
 );
 
-router.patch(
-  "/registrations/:id/approve",
+router.post(
+  "/admin-approvals/:id/approve",
   authenticateToken,
-  authorizeRoles("admin"),
-  validateUserId,
-  authController.approveRegistration
+  authorizeRoles("super_admin"),
+  authController.approveAdminApproval
 );
 
-router.patch(
-  "/registrations/:id/reject",
+router.post(
+  "/admin-approvals/:id/reject",
   authenticateToken,
-  authorizeRoles("admin"),
-  validateUserId,
-  authController.rejectRegistration
+  authorizeRoles("super_admin"),
+  validateRejectAdminApproval,
+  authController.rejectAdminApproval
+);
+
+router.post(
+  "/admin-approvals/:id/activate",
+  authenticateToken,
+  authorizeRoles("super_admin"),
+  authController.activateSuspendedAdmin
+);
+
+router.post(
+  "/admin-approvals/:id/restore",
+  authenticateToken,
+  authorizeRoles("super_admin"),
+  authController.restoreRejectedAdmin
+);
+
+router.post(
+  "/admin-approvals/:id/suspend",
+  authenticateToken,
+  authorizeRoles("super_admin"),
+  authController.suspendActiveAdmin
 );
 
 /**
@@ -226,7 +257,9 @@ router.put(
  *       401:
  *         description: Token refresh tidak valid atau kedaluwarsa
  */
-router.post("/refresh", validateRefreshToken, authController.refresh);
+router.post("/refresh", authController.refresh);
+
+router.post("/status", authController.getStatus);
 
 /**
  * @swagger
@@ -250,7 +283,7 @@ router.post("/refresh", validateRefreshToken, authController.refresh);
  *       200:
  *         description: Berhasil keluar
  */
-router.post("/logout", validateRefreshToken, authController.logout);
+router.post("/logout", authController.logout);
 
 /**
  * @swagger

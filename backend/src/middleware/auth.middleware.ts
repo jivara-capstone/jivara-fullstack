@@ -9,6 +9,13 @@ if (!JWT_SECRET) {
   throw new Error("FATAL ERROR: JWT_SECRET is not defined in environment variables.");
 }
 
+const getCookieValue = (cookieHeader: string | undefined, name: string) => {
+  if (!cookieHeader) return undefined;
+  const cookies = cookieHeader.split(";").map((cookie) => cookie.trim());
+  const target = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+  return target ? decodeURIComponent(target.slice(name.length + 1)) : undefined;
+};
+
 // Perluas Express Request untuk menyertakan info pengguna
 export interface AuthRequest extends Request {
   user?: {
@@ -27,10 +34,11 @@ export const authenticateToken = (
   next: NextFunction
 ) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader
+  const bearerToken = authHeader
     ?.replace(/^Bearer\s+/i, "")
     .trim()
     .replace(/^['"]|['"]$/g, "");
+  const token = bearerToken || getCookieValue(req.headers.cookie, "jivara-token");
 
   if (!token) {
     return res.status(401).json({

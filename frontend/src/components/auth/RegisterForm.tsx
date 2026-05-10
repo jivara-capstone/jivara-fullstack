@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, Phone, User, UserPlus } from "lucide-react";
+import axios from "axios";
+import { Building2, Lock, Mail, Phone, User, UserPlus } from "lucide-react";
 import api from "@/lib/axios";
 import { closeAlert, showError, showLoading, showToast, showWarning } from "@/lib/swal";
 import AuthCard from "@/components/ui/AuthCard";
@@ -14,6 +15,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterForm() {
   const [fullName, setFullName] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +31,7 @@ export default function RegisterForm() {
     event.preventDefault();
     setLoading(true);
 
-    if (!fullName || !email || !password || !phone || !confirmPassword) {
+    if (!fullName || !organizationName || !email || !password || !phone || !confirmPassword) {
       setLoading(false);
       showWarning("Harap isi semua kolom yang tersedia.");
       return;
@@ -52,17 +54,20 @@ export default function RegisterForm() {
     try {
       await api.post("/auth/register", {
         fullName,
+        organizationName,
         email,
         phone,
         password,
-        role: "nurse",
       });
 
-      showToast("Akun Anda telah terdaftar. Silakan masuk.", "success");
+      showToast("Pendaftaran berhasil!", "success");
       router.push("/login");
-    } catch {
+    } catch (error) {
       closeAlert();
-      showError("Terjadi kesalahan saat mendaftar. Silakan coba lagi.");
+      const message = axios.isAxiosError(error) && typeof error.response?.data?.message === "string"
+        ? error.response.data.message
+        : "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+      showError(message);
     } finally {
       setLoading(false);
     }
@@ -90,6 +95,17 @@ export default function RegisterForm() {
           onChange={(event) => setFullName(event.target.value)}
           autoComplete="name"
           icon={<User size={20} />}
+        />
+
+        <AuthInput
+          id="organizationName"
+          label="Nama Organisasi"
+          type="text"
+          placeholder="Masukkan Nama Organisasi"
+          value={organizationName}
+          onChange={(event) => setOrganizationName(event.target.value)}
+          autoComplete="organization"
+          icon={<Building2 size={20} />}
         />
 
         <AuthInput

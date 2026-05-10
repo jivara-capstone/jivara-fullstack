@@ -11,7 +11,7 @@ import {
   users,
 } from "../db/schema";
 import { AdherenceQuery } from "../types/adherence.types";
-import { AccessUser, assertCanAccessPatient, getNurseIdForUser, getAssignedPatientIdsForNurse } from "./access-control.service";
+import { AccessUser, assertCanAccessPatient, getNurseIdForUser, getAssignedPatientIdsForNurse, getOrganizationIdForUser, patientScopeCondition } from "./access-control.service";
 
 const getPeriodDays = (period?: string) => {
   if (period === "90d") return 90;
@@ -207,16 +207,51 @@ export const getAdherenceStats = async (query: AdherenceQuery, user?: AccessUser
   };
 };
 
-export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}) => {
+const emptyAggregateStats = (period: string) => ({
+  period,
+  totalActivePatients: 0,
+  averageAdherenceRate: 0,
+  totalScheduled: 0,
+  totalConfirmed: 0,
+  totalMissed: 0,
+  totalSnoozed: 0,
+  reminderResponseRate: 0,
+  totalFoodScans: 0,
+  totalInteractionWarnings: 0,
+  nurseMetrics: [],
+});
+
+export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}, user?: AccessUser) => {
   const period = query.period || "30d";
   const days = getPeriodDays(period);
   const startDate = getStartDate(days);
+  const scope = await patientScopeCondition(user);
+
+  if (!scope.allowed) return emptyAggregateStats(period);
+
+  const patientConditions = [eq(patients.isActive, true)];
+  const scheduleConditions = [eq(medicationSchedules.isActive, true)];
+  const logConditions = [gte(medicationLogs.scheduledTime, startDate)];
+  const foodScanConditions = [gte(foodScans.createdAt, startDate)];
+  const nurseConditions = [eq(nurses.isActive, true)];
+
+  if (scope.patientIds) {
+    if (scope.patientIds.length === 0) return emptyAggregateStats(period);
+    patientConditions.push(inArray(patients.id, scope.patientIds));
+    scheduleConditions.push(inArray(medicationSchedules.patientId, scope.patientIds));
+    logConditions.push(inArray(medicationLogs.patientId, scope.patientIds));
+    foodScanConditions.push(inArray(foodScans.patientId, scope.patientIds));
+  }
+
+  const organizationId = user?.role === "admin" ? await getOrganizationIdForUser(user.id) : null;
+  if (user?.role === "admin" && !organizationId) return emptyAggregateStats(period);
+  if (organizationId) nurseConditions.push(eq(nurses.organizationId, organizationId));
 
   const [activePatientRows, schedules, logs, foodScanRows, interactionRows, nurseRows] = await Promise.all([
     db
       .select({ total: count() })
       .from(patients)
-      .where(eq(patients.isActive, true)),
+      .where(and(...patientConditions)),
     db
       .select({
         id: medicationSchedules.id,
@@ -225,7 +260,7 @@ export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}) => 
         scheduledTimes: medicationSchedules.scheduledTimes,
       })
       .from(medicationSchedules)
-      .where(eq(medicationSchedules.isActive, true)),
+      .where(and(...scheduleConditions)),
     db
       .select({
         scheduleId: medicationLogs.scheduleId,
@@ -234,15 +269,16 @@ export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}) => 
         scheduledTime: medicationLogs.scheduledTime,
       })
       .from(medicationLogs)
-      .where(gte(medicationLogs.scheduledTime, startDate)),
+      .where(and(...logConditions)),
     db
       .select({ total: count() })
       .from(foodScans)
-      .where(gte(foodScans.createdAt, startDate)),
+      .where(and(...foodScanConditions)),
     db
       .select({ total: count() })
       .from(interactionResults)
-      .where(gte(interactionResults.createdAt, startDate)),
+      .innerJoin(foodScans, eq(interactionResults.scanId, foodScans.id))
+      .where(and(...foodScanConditions)),
     db
       .select({
         nurseId: nurses.id,
@@ -255,7 +291,7 @@ export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}) => 
         eq(patientNurseAssignments.nurseId, nurses.id),
         eq(patientNurseAssignments.isActive, true),
       ))
-      .where(eq(nurses.isActive, true))
+      .where(and(...nurseConditions))
       .orderBy(desc(nurses.createdAt)),
   ]);
 

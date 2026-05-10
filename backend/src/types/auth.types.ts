@@ -2,12 +2,17 @@
 
 export interface RegisterDTO {
   fullName: string;
+  organizationName: string;
   email: string;
   password: string;
   phone?: string;
   age?: number;
   gender?: string;
   address?: string;
+}
+
+export interface RejectAdminApprovalDTO {
+  reason?: string;
 }
 
 export interface LoginDTO {
@@ -40,13 +45,20 @@ export interface UserProfile {
   fullName: string;
   email: string;
   phone: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
   role: string;
+  accountStatus?: string;
   age: number;
   gender?: string | null;
   address?: string | null;
   isActive?: boolean;
   approvalStatus?: string;
   mustChangePassword?: boolean | null;
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
+  rejectedAt?: Date | null;
+  rejectedReason?: string | null;
   createdAt?: Date | null;
 }
 

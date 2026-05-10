@@ -52,6 +52,7 @@ const validate = (rules: ValidationRule[]) => {
 
 export const validateRegister = validate([
   { field: "fullName", label: "Nama lengkap", required: true },
+  { field: "organizationName", label: "Nama rumah sakit/organisasi", required: true, minLength: 3 },
   {
     field: "email",
     label: "Email",
@@ -100,4 +101,8 @@ export const validateRefreshToken = validate([
 
 export const validateCompletePasswordChange = validate([
   { field: "newPassword", label: "Kata sandi baru", required: true, minLength: 8 },
+]);
+
+export const validateRejectAdminApproval = validate([
+  { field: "reason", label: "Alasan penolakan", minLength: 3 },
 ]);
