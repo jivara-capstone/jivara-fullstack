@@ -400,3 +400,21 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+export const updateMe = async (req: AuthRequest, res: Response) => {
+  try {
+    const profile = await authService.updateUserProfile(req.user!.id, req.body);
+
+    res.status(200).json({ status: "berhasil", data: profile, message: "Profil berhasil diperbarui" });
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string; code?: string };
+    const status = err.status || 500;
+    const isInternalError = status === 500;
+
+    res.status(status).json({
+      status: "gagal",
+      message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
+      ...(err.code && { error_code: err.code }),
+    });
+  }
+};

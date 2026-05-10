@@ -8,6 +8,7 @@ import {
   validateLoginIdentifier,
   validateCompletePasswordChange,
   validateRejectAdminApproval,
+  validateUpdateProfile,
 } from "../validators/auth.validator";
 
 const router = Router();
@@ -301,5 +302,6 @@ router.post("/logout", authController.logout);
  *         description: Tidak terautentikasi
  */
 router.get("/me", authenticateToken, authController.getMe);
+router.patch("/me", authenticateToken, validateUpdateProfile, authController.updateMe);
 
 export default router;
