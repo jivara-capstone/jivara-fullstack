@@ -174,18 +174,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (result.isConfirmed) {
       setIsLoggingOut(true);
 
-      try {
-        await axios.post("/api/auth/logout", undefined, { timeout: 2000 });
-      } catch {
-        // Logout backend gagal, lanjutkan logout lokal.
-      }
-
       // Bersihkan state lokal
       logout();
       window.localStorage.removeItem("jivara-auth-storage");
 
+      try {
+        await axios.post("/api/auth/logout", undefined, { timeout: 2000 });
+      } catch {
+      }
+
       showToast("Berhasil keluar dari akun.", "success");
-      router.replace("/login");
+      
+      // Full reload lebih aman untuk mereset semua state aplikasi
+      setTimeout(() => {
+        window.location.replace("/login");
+      }, 500);
     }
   };
 
