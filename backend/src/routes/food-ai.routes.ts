@@ -26,6 +26,7 @@ const attachScanIdParam = (req: Request, _res: Response, next: NextFunction) => 
  */
 
 router.get("/food-scans", authorizeRoles("patient", "nurse", "admin"), foodAiController.listFoodScans);
+router.get("/food-scans/analytics/interactions", authorizeRoles("nurse", "admin"), foodAiController.getInteractionAnalytics);
 router.get("/food-scans/:scanId", authorizeRoles("patient", "nurse", "admin"), foodAiController.getFoodScan);
 
 /**

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { getFoodScanPublicPath } from "../middleware/upload.middleware";
 import * as foodAiService from "../services/food-ai.service";
+import { deleteLocalUploadIfExists, uploadFoodScanImage } from "../services/storage.service";
 
 const sendError = (res: Response, error: unknown) => {
   const err = error as { status?: number; message?: string; code?: string };
@@ -33,18 +33,30 @@ export const getFoodScan = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const uploadFoodImage = async (req: AuthRequest, res: Response) => {
+export const getInteractionAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const file = req.file;
+    const data = await foodAiService.getInteractionAnalytics(req.user);
+    res.status(200).json({ status: "berhasil", data });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+export const uploadFoodImage = async (req: AuthRequest, res: Response) => {
+  const file = req.file;
+
+  try {
+    const imageUrl = file ? await uploadFoodScanImage(file) : req.body.imageUrl;
     const data = await foodAiService.uploadFoodImage({
       ...req.body,
-      imageUrl: file ? getFoodScanPublicPath(file.filename) : req.body.imageUrl,
+      imageUrl,
       imageSizeKb: file ? Math.max(Math.ceil(file.size / 1024), 1) : req.body.imageSizeKb,
       originalFilename: file?.originalname,
       mimeType: file?.mimetype,
     }, req.user);
     res.status(200).json({ status: "berhasil", data });
   } catch (error) {
+    await deleteLocalUploadIfExists(file?.path);
     sendError(res, error);
   }
 };

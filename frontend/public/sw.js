@@ -97,9 +97,10 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const targetUrl = getSafeActionUrl(event.notification.data?.action_url);
+  const tracking = trackNotificationEvent(event.notification.data, "clicked");
 
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    Promise.allSettled([tracking, clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.startsWith(self.location.origin) && "focus" in client) {
           client.navigate(targetUrl);
@@ -108,9 +109,22 @@ self.addEventListener("notificationclick", (event) => {
       }
 
       return clients.openWindow(targetUrl);
-    }),
+    })]),
   );
 });
+
+async function trackNotificationEvent(data, eventType) {
+  const notificationId = data?.notification_id;
+  const trackingUrl = data?.tracking_url;
+
+  if (typeof notificationId !== "string" || typeof trackingUrl !== "string") return;
+
+  await fetch(trackingUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notification_id: notificationId, event_type: eventType }),
+  }).catch(() => undefined);
+}
 
 function getSafeActionUrl(actionUrl) {
   if (typeof actionUrl !== "string" || !actionUrl.startsWith("/")) {

@@ -60,6 +60,24 @@ export const listNotifications = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const trackEvent = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await notificationService.trackNotificationEvent(req.body.notificationId, req.body.eventType);
+    res.status(200).json({ status: "berhasil", data });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+export const getAnalytics = async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await notificationService.getNotificationAnalytics(req.query, req.user);
+    res.status(200).json({ status: "berhasil", data });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
 export const getPublicKey = async (_req: AuthRequest, res: Response) => {
   try {
     const data = notificationService.getVapidPublicKey();

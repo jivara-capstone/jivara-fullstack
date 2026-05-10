@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   detectedItems,
@@ -103,6 +103,52 @@ export const getFoodScanById = async (scanId: string, user?: AccessUser) => {
     ...mapScanSummary(scan),
     detectedItems: items,
     interactions,
+  };
+};
+
+const incrementSummary = <T extends string>(summary: Record<string, { label: string; total: number }>, value: T) => {
+  summary[value] ??= { label: value, total: 0 };
+  summary[value].total += 1;
+};
+
+export const getInteractionAnalytics = async (user?: AccessUser) => {
+  const scans = await db.select({ id: foodScans.id, patientId: foodScans.patientId }).from(foodScans).orderBy(desc(foodScans.createdAt)).limit(1000);
+  const accessibleScanIds = [];
+
+  for (const scan of scans) {
+    try {
+      if (user) await assertCanAccessPatient(user, scan.patientId);
+      accessibleScanIds.push(scan.id);
+    } catch {
+      // Skip scans outside the user's patient scope.
+    }
+  }
+
+  if (accessibleScanIds.length === 0) {
+    return { totalScans: 0, totalInteractions: 0, severityDistribution: [], topFoods: [], topMedications: [] };
+  }
+
+  const interactions = await db.select().from(interactionResults).where(inArray(interactionResults.scanId, accessibleScanIds));
+  const severityDistribution: Record<string, { label: string; total: number }> = {};
+  const topFoods: Record<string, { label: string; total: number }> = {};
+  const topMedications: Record<string, { label: string; total: number }> = {};
+
+  for (const interaction of interactions) {
+    incrementSummary(severityDistribution, interaction.severity);
+    incrementSummary(topFoods, interaction.foodItem);
+    incrementSummary(topMedications, interaction.medication);
+  }
+
+  const sortByTotal = (items: Record<string, { label: string; total: number }>) => Object.values(items).sort((first, second) => second.total - first.total);
+
+  return {
+    totalScans: accessibleScanIds.length,
+    totalInteractions: interactions.length,
+    scansWithInteractions: new Set(interactions.map((interaction) => interaction.scanId)).size,
+    interactionRate: accessibleScanIds.length > 0 ? Math.round((new Set(interactions.map((interaction) => interaction.scanId)).size / accessibleScanIds.length) * 10000) / 100 : 0,
+    severityDistribution: sortByTotal(severityDistribution),
+    topFoods: sortByTotal(topFoods).slice(0, 10),
+    topMedications: sortByTotal(topMedications).slice(0, 10),
   };
 };
 

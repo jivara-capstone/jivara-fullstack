@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as notificationController from "../controllers/notification.controller";
 import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
-import { validatePreference, validateSendNotification, validateSubscribe } from "../validators/notification.validator";
+import { validatePreference, validateSendNotification, validateSubscribe, validateTrackNotificationEvent } from "../validators/notification.validator";
 
 const router = Router();
 
@@ -26,6 +26,7 @@ const router = Router();
  *         description: VAPID public key belum dikonfigurasi
  */
 router.get("/public-key", notificationController.getPublicKey);
+router.post("/events", validateTrackNotificationEvent, notificationController.trackEvent);
 
 router.use(authenticateToken);
 
@@ -65,6 +66,7 @@ router.use(authenticateToken);
  *         description: Tidak terautentikasi
  */
 router.get("/", authorizeRoles("patient", "nurse", "admin"), notificationController.listNotifications);
+router.get("/analytics", authorizeRoles("patient", "nurse", "admin"), notificationController.getAnalytics);
 
 router.get("/preferences", authorizeRoles("patient"), notificationController.getPreference);
 
