@@ -8,6 +8,7 @@ import ScrollProvider from "@/providers/ScrollProvider";
 import { JSON_LD_SCRIPT, SITE_URL } from "@/config/seo";
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter } from "next/font/google";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 const archivo = Archivo({
@@ -32,6 +33,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
 };
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -132,11 +135,14 @@ interface RootLayoutProps {
   readonly children: ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="id" className={`${archivo.variable} ${inter.variable} relative`} suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
           type="application/ld+json"
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON_LD_SCRIPT }}
