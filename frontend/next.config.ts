@@ -43,6 +43,39 @@ const privateCacheHeaders = [
   },
 ];
 
+const publicAssetCacheHeaders = [
+  {
+    key: "Cache-Control",
+    value: "public, max-age=604800, stale-while-revalidate=86400",
+  },
+  {
+    key: "Expires",
+    value: "Tue, 11 May 2027 00:00:00 GMT",
+  },
+];
+
+const serviceWorkerCacheHeaders = [
+  {
+    key: "Cache-Control",
+    value: "no-cache, no-store, max-age=0, must-revalidate",
+  },
+  {
+    key: "Pragma",
+    value: "no-cache",
+  },
+  {
+    key: "Expires",
+    value: "0",
+  },
+];
+
+const manifestCacheHeaders = [
+  {
+    key: "Cache-Control",
+    value: "public, max-age=3600, must-revalidate",
+  },
+];
+
 const crossOriginIsolationHeaders = [
   {
     key: "Cross-Origin-Opener-Policy",
@@ -59,6 +92,7 @@ const crossOriginIsolationHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  compress: true,
   poweredByHeader: false,
   turbopack: {
     root: path.resolve(__dirname)
@@ -73,6 +107,34 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/images/:path*",
+        headers: publicAssetCacheHeaders,
+      },
+      {
+        source: "/icons/:path*",
+        headers: publicAssetCacheHeaders,
+      },
+      {
+        source: "/models/:path*",
+        headers: publicAssetCacheHeaders,
+      },
+      {
+        source: "/videos/:path*",
+        headers: publicAssetCacheHeaders,
+      },
+      {
+        source: "/favicon.ico",
+        headers: publicAssetCacheHeaders,
+      },
+      {
+        source: "/sw.js",
+        headers: serviceWorkerCacheHeaders,
+      },
+      {
+        source: "/manifest.json",
+        headers: manifestCacheHeaders,
+      },
       // Landing page — relaxed COEP for model-viewer 3D rendering
       {
         source: "/",
@@ -111,4 +173,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

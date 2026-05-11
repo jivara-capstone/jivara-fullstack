@@ -63,8 +63,8 @@ export async function loginAs(context: BrowserContext, page: Page, role: Role, u
 }
 
 export async function waitForHydration(page: Page) {
-  await page.waitForFunction(() => document.documentElement.dataset.nextjsRouterTree !== undefined || document.readyState === "complete");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("domcontentloaded");
+  await page.locator("body").waitFor({ state: "visible" });
 }
 
 export async function gotoApp(page: Page, path: string) {
