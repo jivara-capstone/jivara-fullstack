@@ -78,13 +78,13 @@ export default function LoginForm() {
         password,
       });
 
-      const { user, access_token } = response.data.data;
+      const { user } = response.data.data;
 
-      if (!access_token || !user) {
+      if (!user) {
         throw new Error("Data autentikasi tidak valid dari server.");
       }
 
-      setAuth(user, access_token);
+      setAuth(user);
 
       showToast("Anda berhasil masuk.", "success");
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");

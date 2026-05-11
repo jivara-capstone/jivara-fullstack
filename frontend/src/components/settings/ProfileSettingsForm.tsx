@@ -17,7 +17,7 @@ const previewUser = {
 const numericPhone = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
 
 export default function ProfileSettingsForm() {
-  const { user, token, setAuth } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? previewUser.fullName);
   const [email, setEmail] = useState(user?.email ?? previewUser.email);
   const [phone, setPhone] = useState(numericPhone(user?.phone ?? previewUser.phone));
@@ -48,7 +48,7 @@ export default function ProfileSettingsForm() {
 
     try {
       const updatedUser = await updateProfileViaApi({ fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone });
-      setAuth(updatedUser, token);
+      setAuth(updatedUser);
       showToast("Profil berhasil diperbarui.");
     } catch {
       showWarning("Profil gagal diperbarui. Periksa koneksi atau data yang digunakan.");

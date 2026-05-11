@@ -9,7 +9,7 @@ import { showToast, showWarning } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 
 export default function SecuritySettingsForm() {
-  const { user, token, setAuth } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,7 +42,7 @@ export default function SecuritySettingsForm() {
 
     try {
       const updatedUser = await changePasswordViaApi(currentPassword, newPassword);
-      setAuth(updatedUser, token);
+      setAuth(updatedUser);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

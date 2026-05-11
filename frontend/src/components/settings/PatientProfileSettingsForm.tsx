@@ -13,7 +13,7 @@ const mockPatient = patients[0];
 const numericPhone = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
 
 export default function PatientProfileSettingsForm() {
-  const { user, token, setAuth } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? mockPatient.name);
   const [phone, setPhone] = useState(numericPhone(user?.phone ?? mockPatient.phone));
   const [address, setAddress] = useState(user?.address ?? mockPatient.address ?? "");
@@ -47,7 +47,7 @@ export default function PatientProfileSettingsForm() {
 
     try {
       const updatedUser = await updateProfileViaApi({ fullName: trimmedName, phone: trimmedPhone, address: trimmedAddress });
-      setAuth(updatedUser, token);
+      setAuth(updatedUser);
       showToast("Profil pasien berhasil diperbarui.");
     } catch {
       showWarning("Profil pasien gagal diperbarui. Periksa koneksi atau data yang digunakan.");

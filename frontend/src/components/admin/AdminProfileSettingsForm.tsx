@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/auth";
 const numericPhone = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
 
 export default function AdminProfileSettingsForm() {
-  const { user, token, setAuth } = useAuthStore();
+  const { user, setAuth } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(numericPhone(user?.phone));
@@ -32,7 +32,7 @@ export default function AdminProfileSettingsForm() {
     }
 
     if (user) {
-      setAuth({ ...user, fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone }, token);
+      setAuth({ ...user, fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone });
     }
 
     showToast("Profil admin berhasil diperbarui.");

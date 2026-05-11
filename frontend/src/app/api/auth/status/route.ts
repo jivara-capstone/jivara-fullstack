@@ -7,13 +7,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "gagal", message: "Sesi tidak tersedia" }, { status: 401 });
   }
 
-  const backendResponse = await fetch(`${getBackendApiUrl()}/auth/status`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
+  let backendResponse: Response;
+
+  try {
+    backendResponse = await fetch(`${getBackendApiUrl()}/auth/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    return NextResponse.json(
+      { status: "gagal", message: "Layanan autentikasi sedang tidak merespons. Coba lagi beberapa saat." },
+      { status: 504 },
+    );
+  }
+
   const payload = await backendResponse.json();
   const response = NextResponse.json(payload, { status: backendResponse.status });
 

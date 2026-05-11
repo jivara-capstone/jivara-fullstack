@@ -8,18 +8,15 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       hasHydrated: false,
-      setAuth: (user, token) => 
-        set({ user, token, isAuthenticated: true }),
+      setAuth: (user) =>
+        set({ user, isAuthenticated: true }),
       updateUser: (user) =>
         set((state) => ({ user: state.user ? { ...state.user, ...user } : state.user })),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-      updateToken: (token) => 
-        set({ token }),
-      logout: () => 
-        set({ user: null, token: null, isAuthenticated: false }),
+      logout: () =>
+        set({ user: null, isAuthenticated: false }),
     }),
     {
       name: 'jivara-auth-storage',

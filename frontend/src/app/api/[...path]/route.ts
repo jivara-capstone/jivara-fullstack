@@ -46,12 +46,22 @@ const buildHeaders = (request: NextRequest) => {
 const proxyRequest = async (request: NextRequest, context: ProxyRouteContext) => {
   const backendUrl = await buildBackendUrl(request, context);
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
-  const response = await fetch(backendUrl, {
-    method: request.method,
-    headers: buildHeaders(request),
-    body: hasBody ? await request.arrayBuffer() : undefined,
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(backendUrl, {
+      method: request.method,
+      headers: buildHeaders(request),
+      body: hasBody ? await request.arrayBuffer() : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    return NextResponse.json(
+      { status: "gagal", message: "Layanan sedang tidak merespons. Coba lagi beberapa saat." },
+      { status: 504, headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
+  }
 
   const responseHeaders = new Headers(response.headers);
   strippedResponseHeaders.forEach((header) => responseHeaders.delete(header));
