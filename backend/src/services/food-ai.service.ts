@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import axios from "axios";
+import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   detectedItems,
@@ -170,6 +169,96 @@ const ensureScanExists = async (scanId: string, patientId?: string) => {
   }
 
   return scan[0];
+};
+
+const mapScanSummary = (scan: typeof foodScans.$inferSelect) => ({
+  id: scan.id,
+  patientId: scan.patientId,
+  imageUrl: scan.imageUrl,
+  imageSizeKb: scan.imageSizeKb,
+  inferenceTimeMs: scan.inferenceTimeMs,
+  modelVersion: scan.modelVersion,
+  overallRiskScore: scan.overallRiskScore,
+  overallRiskLevel: scan.overallRiskLevel,
+  createdAt: scan.createdAt,
+});
+
+export const listFoodScans = async (user?: AccessUser) => {
+  const rows = await db.select().from(foodScans).orderBy(desc(foodScans.createdAt)).limit(100);
+  const accessibleRows = [];
+
+  for (const scan of rows) {
+    try {
+      if (user) await assertCanAccessPatient(user, scan.patientId);
+      accessibleRows.push(mapScanSummary(scan));
+    } catch {
+      // Skip rows outside the user's patient scope.
+    }
+  }
+
+  return accessibleRows;
+};
+
+export const getFoodScanById = async (scanId: string, user?: AccessUser) => {
+  const scan = await ensureScanExists(scanId);
+  if (user) await assertCanAccessPatient(user, scan.patientId);
+
+  const [items, interactions] = await Promise.all([
+    db.select().from(detectedItems).where(eq(detectedItems.scanId, scanId)),
+    db.select().from(interactionResults).where(eq(interactionResults.scanId, scanId)),
+  ]);
+
+  return {
+    ...mapScanSummary(scan),
+    detectedItems: items,
+    interactions,
+  };
+};
+
+const incrementSummary = <T extends string>(summary: Record<string, { label: string; total: number }>, value: T) => {
+  summary[value] ??= { label: value, total: 0 };
+  summary[value].total += 1;
+};
+
+export const getInteractionAnalytics = async (user?: AccessUser) => {
+  const scans = await db.select({ id: foodScans.id, patientId: foodScans.patientId }).from(foodScans).orderBy(desc(foodScans.createdAt)).limit(1000);
+  const accessibleScanIds = [];
+
+  for (const scan of scans) {
+    try {
+      if (user) await assertCanAccessPatient(user, scan.patientId);
+      accessibleScanIds.push(scan.id);
+    } catch {
+      // Skip scans outside the user's patient scope.
+    }
+  }
+
+  if (accessibleScanIds.length === 0) {
+    return { totalScans: 0, totalInteractions: 0, severityDistribution: [], topFoods: [], topMedications: [] };
+  }
+
+  const interactions = await db.select().from(interactionResults).where(inArray(interactionResults.scanId, accessibleScanIds));
+  const severityDistribution: Record<string, { label: string; total: number }> = {};
+  const topFoods: Record<string, { label: string; total: number }> = {};
+  const topMedications: Record<string, { label: string; total: number }> = {};
+
+  for (const interaction of interactions) {
+    incrementSummary(severityDistribution, interaction.severity);
+    incrementSummary(topFoods, interaction.foodItem);
+    incrementSummary(topMedications, interaction.medication);
+  }
+
+  const sortByTotal = (items: Record<string, { label: string; total: number }>) => Object.values(items).sort((first, second) => second.total - first.total);
+
+  return {
+    totalScans: accessibleScanIds.length,
+    totalInteractions: interactions.length,
+    scansWithInteractions: new Set(interactions.map((interaction) => interaction.scanId)).size,
+    interactionRate: accessibleScanIds.length > 0 ? Math.round((new Set(interactions.map((interaction) => interaction.scanId)).size / accessibleScanIds.length) * 10000) / 100 : 0,
+    severityDistribution: sortByTotal(severityDistribution),
+    topFoods: sortByTotal(topFoods).slice(0, 10),
+    topMedications: sortByTotal(topMedications).slice(0, 10),
+  };
 };
 
 export const uploadFoodImage = async (dto: FoodUploadDTO, user?: AccessUser) => {

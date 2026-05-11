@@ -98,3 +98,20 @@ export const validateSendNotification = (req: Request, res: Response, next: Next
   req.body.type = type.trim();
   next();
 };
+
+export const validateTrackNotificationEvent = (req: Request, res: Response, next: NextFunction) => {
+  const notificationId = req.body.notificationId || req.body.notification_id;
+  const eventType = req.body.eventType || req.body.event_type;
+
+  if (typeof notificationId !== "string" || !isValidUuid(notificationId)) {
+    return res.status(400).json({ status: "gagal", message: "notificationId wajib berupa UUID valid", error_code: "VALIDATION_ERROR" });
+  }
+
+  if (typeof eventType !== "string" || !["opened", "clicked"].includes(eventType)) {
+    return res.status(400).json({ status: "gagal", message: "eventType wajib opened atau clicked", error_code: "VALIDATION_ERROR" });
+  }
+
+  req.body.notificationId = notificationId;
+  req.body.eventType = eventType;
+  next();
+};

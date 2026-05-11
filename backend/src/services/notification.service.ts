@@ -99,6 +99,27 @@ export const setNotificationPreference = async (dto: NotificationPreferenceDTO, 
   return { enabled: dto.enabled, updatedSubscriptions: rows.length };
 };
 
+export const getNotificationPreference = async (patientId: string, user: AccessUser | undefined) => {
+  await assertCanAccessPatient(user, patientId);
+
+  const subscriptions = await db
+    .select({ isEnabled: pushSubscriptions.isEnabled })
+    .from(pushSubscriptions)
+    .where(and(
+      eq(pushSubscriptions.patientId, patientId),
+      eq(pushSubscriptions.userId, user!.id),
+    ));
+
+  const activeSubscriptions = subscriptions.filter((subscription) => subscription.isEnabled).length;
+
+  return {
+    patientId,
+    enabled: activeSubscriptions > 0,
+    subscriptionCount: subscriptions.length,
+    activeSubscriptions,
+  };
+};
+
 export const listNotifications = async (query: Record<string, unknown>, user: AccessUser | undefined) => {
   const patientId = typeof query.patient_id === "string" ? query.patient_id : typeof query.patientId === "string" ? query.patientId : undefined;
   const type = typeof query.type === "string" ? query.type : undefined;
@@ -129,20 +150,72 @@ export const listNotifications = async (query: Record<string, unknown>, user: Ac
   return { data: rows, meta: { page, limit, total: totalRows[0]?.total || 0 } };
 };
 
+export const trackNotificationEvent = async (notificationId: string, eventType: "opened" | "clicked") => {
+  const notificationRows = await db.select().from(notifications).where(eq(notifications.id, notificationId)).limit(1);
+  const notification = notificationRows[0];
+
+  if (!notification) {
+    throw { status: 404, message: "Notifikasi tidak ditemukan", code: "NOTIFICATION_NOT_FOUND" };
+  }
+
+  const readAt = notification.readAt || new Date();
+  await db.update(notifications).set({ readAt }).where(eq(notifications.id, notificationId));
+
+  await writeAuditLog({
+    userId: null,
+    action: `notification.${eventType}`,
+    resourceType: "notification",
+    resourceId: notificationId,
+    changes: { patientId: notification.patientId, eventType },
+  });
+
+  return {
+    notificationId,
+    eventType,
+    readAt,
+    timeToOpenMs: notification.deliveredAt ? readAt.getTime() - notification.deliveredAt.getTime() : null,
+  };
+};
+
+export const getNotificationAnalytics = async (query: Record<string, unknown>, user: AccessUser | undefined) => {
+  const patientId = typeof query.patient_id === "string" ? query.patient_id : typeof query.patientId === "string" ? query.patientId : undefined;
+  const conditions = [];
+  const scopedFilter = await scopedPatientFilter(notifications.patientId, user, patientId);
+
+  if (!scopedFilter.scope.allowed) return { total: 0, delivered: 0, opened: 0, clicked: 0, openRate: 0, averageTimeToOpenMs: null };
+  if (scopedFilter.condition) conditions.push(scopedFilter.condition);
+
+  const rows = await db.select().from(notifications).where(conditions.length > 0 ? and(...conditions) : undefined);
+  const deliveredRows = rows.filter((notification) => notification.deliveredAt);
+  const openedRows = rows.filter((notification) => notification.readAt);
+  const timeToOpenValues = openedRows
+    .map((notification) => notification.deliveredAt && notification.readAt ? notification.readAt.getTime() - notification.deliveredAt.getTime() : null)
+    .filter((value): value is number => typeof value === "number" && value >= 0);
+  const averageTimeToOpenMs = timeToOpenValues.length > 0
+    ? Math.round(timeToOpenValues.reduce((total, value) => total + value, 0) / timeToOpenValues.length)
+    : null;
+
+  return {
+    total: rows.length,
+    delivered: deliveredRows.length,
+    opened: openedRows.length,
+    clicked: openedRows.length,
+    openRate: deliveredRows.length > 0 ? Math.round((openedRows.length / deliveredRows.length) * 10000) / 100 : 0,
+    clickThroughRate: deliveredRows.length > 0 ? Math.round((openedRows.length / deliveredRows.length) * 10000) / 100 : 0,
+    averageTimeToOpenMs,
+    byType: Object.values(rows.reduce<Record<string, { type: string; total: number; delivered: number; opened: number }>>((summary, notification) => {
+      const type = notification.type;
+      summary[type] ??= { type, total: 0, delivered: 0, opened: 0 };
+      summary[type].total += 1;
+      if (notification.deliveredAt) summary[type].delivered += 1;
+      if (notification.readAt) summary[type].opened += 1;
+      return summary;
+    }, {})),
+  };
+};
+
 export const sendPushNotification = async (dto: SendNotificationDTO, user?: AccessUser) => {
   if (user) await assertCanAccessPatient(user, dto.patientId);
-
-  const payload = {
-    title: dto.title,
-    body: dto.body,
-    type: dto.type,
-    urgency: dto.urgency || "normal",
-    data: dto.data || {},
-  };
-
-  if (getPayloadSize(payload) > 3500) {
-    throw { status: 400, message: "Payload push notification terlalu besar", code: "PAYLOAD_TOO_LARGE" };
-  }
 
   const [notification] = await db
     .insert(notifications)
@@ -156,6 +229,20 @@ export const sendPushNotification = async (dto: SendNotificationDTO, user?: Acce
       scheduledAt: new Date(),
     })
     .returning();
+
+  const apiUrl = process.env.API_URL?.replace(/\/+$/, "") || "";
+  const trackingUrl = apiUrl ? `${apiUrl}/api/notifications/events` : undefined;
+  const payload = {
+    title: dto.title,
+    body: dto.body,
+    type: dto.type,
+    urgency: dto.urgency || "normal",
+    data: { ...(dto.data || {}), notification_id: notification.id, tracking_url: trackingUrl },
+  };
+
+  if (getPayloadSize(payload) > 3500) {
+    throw { status: 400, message: "Payload push notification terlalu besar", code: "PAYLOAD_TOO_LARGE" };
+  }
 
   const subscriptions = await db
     .select()

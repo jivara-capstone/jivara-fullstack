@@ -5,9 +5,8 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { BrainCircuit, Clock, Pill, ShieldAlert } from "lucide-react";
 import DetailItem from "@/components/ui/DetailItem";
-import { getFoodScanAnalysis, type FoodScanAnalysis } from "@/helpers/foodScans";
+import type { FoodScanAnalysis } from "@/helpers/foodScans";
 import type { FoodScanRisk } from "@/lib/mocks/foodScans";
-import { patients } from "@/lib/mocks/patients";
 
 interface FoodScanAnalysisViewProps {
   readonly scanId: string;
@@ -21,8 +20,7 @@ const riskTextClass: Record<FoodScanRisk, string> = {
 };
 
 export default function FoodScanAnalysisView({ scanId, imageSizes = "(max-width: 1280px) 100vw, 620px", analysisData }: FoodScanAnalysisViewProps) {
-  const analysis = analysisData ?? getFoodScanAnalysis(scanId);
-  const patient = analysis ? patients.find((currentPatient) => currentPatient.id === analysis.scan.patientId) : null;
+  const analysis = analysisData?.scan.id === scanId ? analysisData : null;
 
   if (!analysis) return null;
 
@@ -31,7 +29,7 @@ export default function FoodScanAnalysisView({ scanId, imageSizes = "(max-width:
       <FoodScanHero scan={analysis.scan} risk={analysis.overallRisk} imageSizes={imageSizes} />
 
       <motion.div className="grid gap-3 sm:grid-cols-3" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.06 }}>
-        <DetailItem label="Pasien" value={patient?.name ?? "Tidak diketahui"} />
+        <DetailItem label="Pasien" value={analysis.patientName ?? "Tidak diketahui"} />
         <DetailItem label="Waktu Scan" value={formatScanTime(analysis.scan.scannedAt)} />
         <DetailItem label="Obat Dianalisis" value={`${analysis.interactions.length} obat`} />
       </motion.div>
@@ -45,7 +43,7 @@ export default function FoodScanAnalysisView({ scanId, imageSizes = "(max-width:
   );
 }
 
-function FoodScanHero({ scan, risk, imageSizes }: { readonly scan: NonNullable<ReturnType<typeof getFoodScanAnalysis>>["scan"]; readonly risk: FoodScanRisk; readonly imageSizes: string }) {
+function FoodScanHero({ scan, risk, imageSizes }: { readonly scan: FoodScanAnalysis["scan"]; readonly risk: FoodScanRisk; readonly imageSizes: string }) {
   return (
     <motion.section className="overflow-hidden rounded-3xl bg-surface" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
       <div className="relative aspect-video overflow-hidden rounded-3xl bg-line">
@@ -71,7 +69,7 @@ function FoodScanHero({ scan, risk, imageSizes }: { readonly scan: NonNullable<R
   );
 }
 
-function InteractionAnalysisCard({ interactions }: { readonly interactions: NonNullable<ReturnType<typeof getFoodScanAnalysis>>["interactions"] }) {
+function InteractionAnalysisCard({ interactions }: { readonly interactions: FoodScanAnalysis["interactions"] }) {
   return (
     <motion.section className="rounded-3xl bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.08)]" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}>
       <div className="mb-5 flex items-center gap-3">

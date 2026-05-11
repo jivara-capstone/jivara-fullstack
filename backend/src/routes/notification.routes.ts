@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as notificationController from "../controllers/notification.controller";
 import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
-import { validatePreference, validateSendNotification, validateSubscribe } from "../validators/notification.validator";
+import { validatePreference, validateSendNotification, validateSubscribe, validateTrackNotificationEvent } from "../validators/notification.validator";
 
 const router = Router();
 
@@ -26,6 +26,35 @@ const router = Router();
  *         description: VAPID public key belum dikonfigurasi
  */
 router.get("/public-key", notificationController.getPublicKey);
+
+/**
+ * @swagger
+ * /api/notifications/events:
+ *   post:
+ *     summary: Catat event klik/open notifikasi Web Push
+ *     tags: [Notifications]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notificationId
+ *               - eventType
+ *             properties:
+ *               notificationId:
+ *                 type: string
+ *                 format: uuid
+ *               eventType:
+ *                 type: string
+ *                 enum: [opened, clicked]
+ *     responses:
+ *       200:
+ *         description: Event notifikasi berhasil dicatat
+ */
+router.post("/events", validateTrackNotificationEvent, notificationController.trackEvent);
 
 router.use(authenticateToken);
 
@@ -65,6 +94,47 @@ router.use(authenticateToken);
  *         description: Tidak terautentikasi
  */
 router.get("/", authorizeRoles("patient", "nurse", "admin"), notificationController.listNotifications);
+
+/**
+ * @swagger
+ * /api/notifications/analytics:
+ *   get:
+ *     summary: Ambil analitik performa notifikasi
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patient_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Analitik notifikasi berhasil diambil
+ */
+router.get("/analytics", authorizeRoles("patient", "nurse", "admin"), notificationController.getAnalytics);
+
+/**
+ * @swagger
+ * /api/notifications/preferences:
+ *   get:
+ *     summary: Ambil status preferensi push notification pasien
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patient_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Preferensi notifikasi berhasil diambil
+ */
+router.get("/preferences", authorizeRoles("patient"), notificationController.getPreference);
 
 /**
  * @swagger

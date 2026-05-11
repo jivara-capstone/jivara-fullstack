@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Mail, Phone, Save, User } from "lucide-react";
 import AuthInput from "@/components/ui/AuthInput";
 import Button from "@/components/ui/Button";
+import { updateProfileViaApi } from "@/lib/profileApi";
 import { showToast, showWarning } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 
@@ -20,15 +21,14 @@ export default function ProfileSettingsForm() {
   const [fullName, setFullName] = useState(user?.fullName ?? previewUser.fullName);
   const [email, setEmail] = useState(user?.email ?? previewUser.email);
   const [phone, setPhone] = useState(numericPhone(user?.phone ?? previewUser.phone));
+  const [isSaving, setIsSaving] = useState(false);
 
   const updatePhone = (value: string) => {
     setPhone(value.replace(/\D/g, ""));
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-
-    //  if (!user) return;
 
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
@@ -39,11 +39,22 @@ export default function ProfileSettingsForm() {
       return;
     }
 
-    if (user) {
-      setAuth({ ...user, fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone }, token);
+    if (!user) {
+      showWarning("Sesi pengguna tidak ditemukan. Silakan login ulang.");
+      return;
     }
 
-    showToast("Profil berhasil diperbarui.");
+    setIsSaving(true);
+
+    try {
+      const updatedUser = await updateProfileViaApi({ fullName: trimmedName, email: trimmedEmail, phone: trimmedPhone });
+      setAuth(updatedUser, token);
+      showToast("Profil berhasil diperbarui.");
+    } catch {
+      showWarning("Profil gagal diperbarui. Periksa koneksi atau data yang digunakan.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -80,7 +91,7 @@ export default function ProfileSettingsForm() {
         />
       </div>
       <div className="flex justify-end pt-2">
-        <Button type="submit" icon={<Save size={18} />}>Simpan</Button>
+        <Button type="submit" icon={<Save size={18} />} loading={isSaving}>Simpan</Button>
       </div>
     </form>
   );

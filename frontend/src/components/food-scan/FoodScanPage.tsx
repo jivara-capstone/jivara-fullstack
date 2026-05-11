@@ -8,17 +8,13 @@ import DashboardPageShell from "@/components/dashboard/DashboardPageShell";
 import Button from "@/components/ui/Button";
 import type { FoodScanAnalysis } from "@/helpers/foodScans";
 import { scanFoodImage } from "@/lib/foodScanApi";
-import { foodScans, type FoodScanRecord } from "@/lib/mocks/foodScans";
-import { patients } from "@/lib/mocks/patients";
+import type { FoodScanRecord } from "@/lib/mocks/foodScans";
 import { showToast } from "@/lib/swal";
 import { usePatientDashboardStore } from "@/store/patientDashboard";
 import { getDashboardRole, isOperationalAdminRole } from "@/components/dashboard/navigation";
 import { useAuthStore } from "@/store/auth";
 import { useRouter } from "next/navigation";
 import FoodScanAnalysisView from "./FoodScanAnalysisView";
-
-const mockPatient = patients[0];
-const patientScanResults = foodScans.filter((scan) => scan.patientId === mockPatient.id);
 
 export default function FoodScanPage() {
   const router = useRouter();
@@ -58,11 +54,9 @@ export default function FoodScanPage() {
       setLastScan(analysis.scan);
       showToast("Scan makanan selesai.", "success");
     } catch {
-      const result = patientScanResults[0] ?? foodScans[0];
       setScanAnalysis(null);
-      setScanResult(result);
-      setLastScan(result);
-      showToast("Scan makanan gagal terhubung ke API, menampilkan data contoh.", "error");
+      setScanResult(null);
+      showToast("Scan makanan gagal terhubung ke API.", "error");
     } finally {
       setIsScanning(false);
     }

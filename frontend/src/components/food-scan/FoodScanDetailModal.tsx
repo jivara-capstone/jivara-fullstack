@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Modal from "@/components/ui/Modal";
-import { getFoodScanAnalysis } from "@/helpers/foodScans";
+import type { FoodScanAnalysis } from "@/helpers/foodScans";
+import { getFoodScanAnalysisFromApi } from "@/lib/foodScanApi";
 import FoodScanAnalysisView from "./FoodScanAnalysisView";
 
 interface FoodScanDetailModalProps {
@@ -10,11 +12,31 @@ interface FoodScanDetailModalProps {
 }
 
 export default function FoodScanDetailModal({ scanId, onClose }: FoodScanDetailModalProps) {
-  const analysis = scanId ? getFoodScanAnalysis(scanId) : null;
+  const [analysis, setAnalysis] = useState<FoodScanAnalysis | null>(null);
+
+  useEffect(() => {
+    if (!scanId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getFoodScanAnalysisFromApi(scanId)
+      .then((nextAnalysis) => {
+        if (isMounted) setAnalysis(nextAnalysis);
+      })
+      .catch(() => {
+        if (isMounted) setAnalysis(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [scanId]);
 
   return (
-    <Modal isOpen={Boolean(scanId && analysis)} title="Detail Scan Makanan" onClose={onClose}>
-      {analysis && <FoodScanAnalysisView scanId={analysis.scan.id} imageSizes="(max-width: 768px) 100vw, 672px" />}
+    <Modal isOpen={Boolean(scanId)} title="Detail Scan Makanan" onClose={onClose}>
+      {scanId && analysis?.scan.id === scanId && <FoodScanAnalysisView scanId={analysis.scan.id} imageSizes="(max-width: 768px) 100vw, 672px" analysisData={analysis} />}
     </Modal>
   );
 }

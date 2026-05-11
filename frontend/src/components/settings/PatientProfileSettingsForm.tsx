@@ -5,6 +5,7 @@ import { Home, Mail, Phone, Save, User } from "lucide-react";
 import AuthInput from "@/components/ui/AuthInput";
 import Button from "@/components/ui/Button";
 import { patients } from "@/lib/mocks/patients";
+import { updateProfileViaApi } from "@/lib/profileApi";
 import { showToast, showWarning } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 
@@ -19,12 +20,13 @@ export default function PatientProfileSettingsForm() {
   const email = user?.email ?? mockPatient.email ?? "Belum tersedia";
   const age = user?.age || mockPatient.age;
   const gender = user?.gender ?? mockPatient.gender;
+  const [isSaving, setIsSaving] = useState(false);
 
   const updatePhone = (value: string) => {
     setPhone(value.replace(/\D/g, ""));
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     const trimmedName = fullName.trim();
@@ -36,11 +38,22 @@ export default function PatientProfileSettingsForm() {
       return;
     }
 
-    if (user) {
-      setAuth({ ...user, fullName: trimmedName, phone: trimmedPhone, address: trimmedAddress }, token);
+    if (!user) {
+      showWarning("Sesi pengguna tidak ditemukan. Silakan login ulang.");
+      return;
     }
 
-    showToast("Profil pasien berhasil diperbarui.");
+    setIsSaving(true);
+
+    try {
+      const updatedUser = await updateProfileViaApi({ fullName: trimmedName, phone: trimmedPhone, address: trimmedAddress });
+      setAuth(updatedUser, token);
+      showToast("Profil pasien berhasil diperbarui.");
+    } catch {
+      showWarning("Profil pasien gagal diperbarui. Periksa koneksi atau data yang digunakan.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -60,7 +73,7 @@ export default function PatientProfileSettingsForm() {
       </div>
 
       <div className="flex justify-end pt-2">
-        <Button type="submit" icon={<Save size={18} />}>Simpan</Button>
+        <Button type="submit" icon={<Save size={18} />} loading={isSaving}>Simpan</Button>
       </div>
     </form>
   );

@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { organizations, users, refreshTokens } from "../db/schema";
+import { organizations, patients, users, refreshTokens } from "../db/schema";
 import { and, desc, eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -8,8 +8,10 @@ import { writeAuditLog } from "./audit-log.service";
 import {
   RegisterDTO,
   LoginDTO,
+  ChangePasswordDTO,
   CompletePasswordChangeDTO,
   RejectAdminApprovalDTO,
+  UpdateProfileDTO,
   TokenPayload,
   AUTH_CONSTANTS,
 } from "../types/auth.types";
@@ -466,6 +468,45 @@ export const completePasswordChange = async (userId: string, dto: CompletePasswo
   return updatedUser;
 };
 
+export const changePassword = async (userId: string, dto: ChangePasswordDTO) => {
+  const user = await db
+    .select({ id: users.id, password: users.password })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (user.length === 0) {
+    throw { status: 404, message: "Pengguna tidak ditemukan", code: "NOT_FOUND" };
+  }
+
+  const isCurrentPasswordValid = await bcrypt.compare(dto.currentPassword, user[0].password);
+  if (!isCurrentPasswordValid) {
+    throw { status: 400, message: "Kata sandi saat ini tidak sesuai", code: "INVALID_CURRENT_PASSWORD" };
+  }
+
+  const isSamePassword = await bcrypt.compare(dto.newPassword, user[0].password);
+  if (isSamePassword) {
+    throw { status: 400, message: "Kata sandi baru harus berbeda dari kata sandi saat ini", code: "PASSWORD_REUSED" };
+  }
+
+  const hashedPassword = await bcrypt.hash(dto.newPassword, AUTH_CONSTANTS.BCRYPT_SALT_ROUNDS);
+
+  await db
+    .update(users)
+    .set({ password: hashedPassword, mustChangePassword: false, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+
+  await writeAuditLog({
+    userId,
+    action: "auth.password.changed",
+    resourceType: "user",
+    resourceId: userId,
+    changes: { after: { passwordChanged: true } },
+  });
+
+  return getUserProfile(userId);
+};
+
 /**
  * Perbarui access token menggunakan string refresh token yang valid.
  */
@@ -531,6 +572,60 @@ export const getUserProfileByRefreshToken = async (token: string) => {
   }
 
   return getUserProfile(storedToken[0].userId);
+};
+
+export const updateUserProfile = async (userId: string, dto: UpdateProfileDTO) => {
+  const existing = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+  if (existing.length === 0) {
+    throw { status: 404, message: "Pengguna tidak ditemukan", code: "NOT_FOUND" };
+  }
+
+  const fullName = dto.fullName?.trim();
+  const email = dto.email?.trim().toLowerCase();
+  const phone = dto.phone === undefined ? undefined : dto.phone?.trim() || null;
+  const address = dto.address === undefined ? undefined : dto.address?.trim() || null;
+
+  if (fullName !== undefined && fullName.length < 2) {
+    throw { status: 400, message: "Nama lengkap minimal harus 2 karakter", code: "VALIDATION_ERROR" };
+  }
+
+  if (email || phone) {
+    const conditions = [];
+    if (email) conditions.push(eq(users.email, email));
+    if (phone) conditions.push(eq(users.phone, phone));
+
+    const duplicateUsers = await db.select({ id: users.id }).from(users).where(or(...conditions));
+    if (duplicateUsers.some((user) => user.id !== userId)) {
+      throw { status: 409, message: "Email atau nomor telepon sudah digunakan", code: "USER_EXISTS" };
+    }
+  }
+
+  const updates: Partial<typeof users.$inferInsert> = {};
+  if (fullName !== undefined) updates.fullName = fullName;
+  if (email !== undefined) updates.email = email;
+  if (phone !== undefined) updates.phone = phone;
+  if (address !== undefined) updates.address = address;
+
+  if (Object.keys(updates).length === 0) return getUserProfile(userId);
+
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({ ...updates, updatedAt: new Date() }).where(eq(users.id, userId));
+
+    if (existing[0].role === "patient" && address !== undefined) {
+      await tx.update(patients).set({ address }).where(eq(patients.userId, userId));
+    }
+  });
+
+  await writeAuditLog({
+    userId,
+    action: "auth.profile.updated",
+    resourceType: "user",
+    resourceId: userId,
+    changes: { before: { fullName: existing[0].fullName, email: existing[0].email, phone: existing[0].phone, address: existing[0].address }, after: updates },
+  });
+
+  return getUserProfile(userId);
 };
 
 /**

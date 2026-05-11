@@ -25,6 +25,18 @@ export interface CompletePasswordChangeDTO {
   newPassword: string;
 }
 
+export interface ChangePasswordDTO {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface UpdateProfileDTO {
+  fullName?: string;
+  email?: string;
+  phone?: string | null;
+  address?: string | null;
+}
+
 // ─── DTO Respons ───────────────────────────
 
 export interface TokenPayload {

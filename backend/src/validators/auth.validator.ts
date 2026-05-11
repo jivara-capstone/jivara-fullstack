@@ -103,6 +103,21 @@ export const validateCompletePasswordChange = validate([
   { field: "newPassword", label: "Kata sandi baru", required: true, minLength: 8 },
 ]);
 
+export const validateChangePassword = validate([
+  { field: "currentPassword", label: "Kata sandi saat ini", required: true },
+  { field: "newPassword", label: "Kata sandi baru", required: true, minLength: 8 },
+]);
+
+export const validateUpdateProfile = validate([
+  { field: "fullName", label: "Nama lengkap", minLength: 2 },
+  {
+    field: "email",
+    label: "Email",
+    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    patternMessage: "Format email tidak valid",
+  },
+]);
+
 export const validateRejectAdminApproval = validate([
   { field: "reason", label: "Alasan penolakan", minLength: 3 },
 ]);

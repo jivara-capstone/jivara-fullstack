@@ -304,6 +304,28 @@ export const completePasswordChange = async (req: AuthRequest, res: Response) =>
   }
 };
 
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await authService.changePassword(req.user!.id, req.body);
+
+    res.status(200).json({
+      status: "berhasil",
+      data: { user },
+      message: "Kata sandi berhasil diperbarui",
+    });
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string; code?: string };
+    const status = err.status || 500;
+    const isInternalError = status === 500;
+
+    res.status(status).json({
+      status: "gagal",
+      message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
+      ...(err.code && { error_code: err.code }),
+    });
+  }
+};
+
 /**
  * POST /api/auth/refresh
  * Perbarui access token menggunakan refresh token yang valid.
@@ -397,6 +419,24 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     res.status(status).json({
       status: "gagal",
       message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
+    });
+  }
+};
+
+export const updateMe = async (req: AuthRequest, res: Response) => {
+  try {
+    const profile = await authService.updateUserProfile(req.user!.id, req.body);
+
+    res.status(200).json({ status: "berhasil", data: profile, message: "Profil berhasil diperbarui" });
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string; code?: string };
+    const status = err.status || 500;
+    const isInternalError = status === 500;
+
+    res.status(status).json({
+      status: "gagal",
+      message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
+      ...(err.code && { error_code: err.code }),
     });
   }
 };
