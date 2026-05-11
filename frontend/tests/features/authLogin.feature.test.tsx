@@ -49,7 +49,7 @@ describe("auth login feature", () => {
     vi.mocked(showLoading).mockClear();
     vi.mocked(showToast).mockClear();
     vi.mocked(showWarning).mockClear();
-    useAuthStore.setState({ user: null, token: null, isAuthenticated: false, hasHydrated: true });
+    useAuthStore.setState({ user: null, isAuthenticated: false, hasHydrated: true });
   });
 
   it("validates required fields before requesting login", () => {
@@ -74,7 +74,7 @@ describe("auth login feature", () => {
     expect(axiosPost).toHaveBeenCalledWith("/api/auth/login", { identifier: "nurse@test.local", password: "secret123" });
     expect(showLoading).toHaveBeenCalledWith("Mohon Tunggu", "Sedang masuk ke akun Anda...");
     expect(showToast).toHaveBeenCalledWith("Anda berhasil masuk.", "success");
-    expect(useAuthStore.getState()).toMatchObject({ token: "access-token", isAuthenticated: true });
+    expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: true });
   });
 
   it("shows login error when authentication fails", async () => {

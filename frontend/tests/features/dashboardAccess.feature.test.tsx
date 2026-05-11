@@ -22,7 +22,7 @@ const nurseUser: User = {
 describe("dashboard access feature", () => {
   beforeEach(() => {
     replace.mockClear();
-    useAuthStore.setState({ user: null, token: null, isAuthenticated: false, hasHydrated: false });
+    useAuthStore.setState({ user: null, isAuthenticated: false, hasHydrated: false });
   });
 
   it("shows protected content for allowed hydrated role", () => {

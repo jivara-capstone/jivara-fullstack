@@ -69,7 +69,7 @@ const analysis: FoodScanAnalysis = {
 
 const seedPatientAuth = () => {
   usePatientDashboardStore.getState().resetPatientDashboardState();
-  useAuthStore.setState({ user: { id: "patient-1", fullName: "Pasien", email: "patient@test.local", role: "patient", accountStatus: "active", age: 30 }, token: "token", isAuthenticated: true, hasHydrated: true });
+  useAuthStore.setState({ user: { id: "patient-1", fullName: "Pasien", email: "patient@test.local", role: "patient", accountStatus: "active", age: 30 }, isAuthenticated: true, hasHydrated: true });
 };
 
 const setupCameraApis = () => {
@@ -125,7 +125,7 @@ describe("food scan feature", () => {
   });
 
   it("redirects operational admin roles away from food scan", async () => {
-    useAuthStore.setState({ user: { id: "admin-1", fullName: "Admin", email: "admin@test.local", role: "admin", accountStatus: "active", age: 30 }, token: "token", isAuthenticated: true, hasHydrated: true });
+    useAuthStore.setState({ user: { id: "admin-1", fullName: "Admin", email: "admin@test.local", role: "admin", accountStatus: "active", age: 30 }, isAuthenticated: true, hasHydrated: true });
 
     render(<FoodScanPage />);
 
