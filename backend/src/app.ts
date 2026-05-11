@@ -24,8 +24,9 @@ import { startMedicationReminderScheduler } from './services/medication-reminder
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const swaggerPublicDir = path.resolve(process.cwd(), path.basename(process.cwd()) === 'backend' ? '../frontend/public' : 'frontend/public');
-const swaggerLogoDir = path.resolve(process.cwd(), path.basename(process.cwd()) === 'backend' ? '../frontend/public/images/logo' : 'frontend/public/images/logo');
+const publicDir = path.resolve(process.cwd(), 'public');
+
+app.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http://127.0.0.1:3000')
   .split(',')
@@ -69,8 +70,8 @@ app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads'), {
   },
 }));
 
-app.use('/swagger-assets/logo', express.static(swaggerLogoDir));
-app.use('/swagger-assets', express.static(swaggerPublicDir));
+app.use('/swagger-assets/logo', express.static(path.join(publicDir, 'images/logo')));
+app.use('/swagger-assets', express.static(publicDir));
 
 // Routes
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

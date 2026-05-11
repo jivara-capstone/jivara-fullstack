@@ -12,6 +12,6 @@ module.exports = tseslint.config(
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', 'server.log', 'eslint.config.js'],
+    ignores: ['dist/**', 'node_modules/**', 'server.log', 'eslint.config.js', 'public/**'],
   }
 );
