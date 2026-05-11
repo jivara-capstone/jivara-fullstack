@@ -1,4 +1,5 @@
 import { desc, eq, inArray } from "drizzle-orm";
+import axios from "axios";
 import { db } from "../db";
 import {
   detectedItems,
