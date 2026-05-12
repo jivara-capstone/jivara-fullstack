@@ -49,7 +49,7 @@ describe("nurse management feature", () => {
     vi.mocked(showConfirm).mockReset();
     vi.mocked(showToast).mockClear();
     vi.mocked(showWarning).mockClear();
-    useAuthStore.setState({ user: { id: "admin-1", fullName: "Admin", email: "admin@test.local", role: "admin", accountStatus: "active", age: 30 }, token: "token", isAuthenticated: true, hasHydrated: true });
+    useAuthStore.setState({ user: { id: "admin-1", fullName: "Admin", email: "admin@test.local", role: "admin", accountStatus: "active", age: 30 }, isAuthenticated: true, hasHydrated: true });
     useNurseStore.setState({ nurses: [], assignments: {} });
   });
 
@@ -81,7 +81,7 @@ describe("nurse management feature", () => {
   });
 
   it("redirects patient role away from nurse management", async () => {
-    useAuthStore.setState({ user: { id: "patient-1", fullName: "Pasien", email: "patient@test.local", role: "patient", accountStatus: "active", age: 30 }, token: "token", isAuthenticated: true, hasHydrated: true });
+    useAuthStore.setState({ user: { id: "patient-1", fullName: "Pasien", email: "patient@test.local", role: "patient", accountStatus: "active", age: 30 }, isAuthenticated: true, hasHydrated: true });
 
     render(<NurseListPage />);
 

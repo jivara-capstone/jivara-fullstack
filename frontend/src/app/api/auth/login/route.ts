@@ -3,12 +3,23 @@ import { getBackendApiUrl, setAuthCookies } from "../cookies";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const backendResponse = await fetch(`${getBackendApiUrl()}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  let backendResponse: Response;
+
+  try {
+    backendResponse = await fetch(`${getBackendApiUrl()}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    return NextResponse.json(
+      { status: "gagal", message: "Layanan autentikasi sedang tidak merespons. Coba lagi beberapa saat." },
+      { status: 504 },
+    );
+  }
+
   const payload = await backendResponse.json();
 
   if (!backendResponse.ok) {
@@ -20,6 +31,7 @@ export async function POST(request: NextRequest) {
     ...payload,
     data: {
       ...data,
+      access_token: undefined,
       refresh_token: undefined,
     },
   };

@@ -10,33 +10,20 @@ const api = axios.create({
   },
 });
 
-// Interceptor permintaan: tambahkan token autentikasi
-api.interceptors.request.use(
-  (config) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Interceptor respons: tangani 401 & refresh token
 interface FailedRequest {
-  resolve: (token: string | null) => void;
+  resolve: () => void;
   reject: (error: unknown) => void;
 }
 
 let isRefreshing = false;
 let failedQueue: FailedRequest[] = [];
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -49,13 +36,10 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
+        return new Promise<void>(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
+          .then(() => api(originalRequest))
           .catch((err) => {
             return Promise.reject(err);
           });
@@ -64,21 +48,18 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { logout, updateToken, updateUser } = useAuthStore.getState();
+      const { logout, updateUser } = useAuthStore.getState();
 
       try {
         const { data } = await axios.post('/api/auth/refresh');
 
-        const newToken = data.data.access_token;
-        updateToken(newToken);
         if (data.data.user) updateUser(data.data.user);
 
-        processQueue(null, newToken);
+        processQueue(null);
 
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(refreshError);
         logout();
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem('jivara-auth-storage');

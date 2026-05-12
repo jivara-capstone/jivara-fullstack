@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
       cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
     }).catch(() => {});
   }
 

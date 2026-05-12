@@ -20,7 +20,7 @@ async function createContentSecurityPolicy(nonce: string, pathname: string) {
   const isDev = process.env.NODE_ENV === 'development';
   const isLandingPage = pathname === '/';
   const allowInlineStyles = isDev || isLandingPage;
-  const allowEval = isDev || isLandingPage;
+  const allowEval = isDev;
   const apiOrigin = getConfiguredApiOrigin();
   const shouldUpgradeInsecureRequests = !apiOrigin?.startsWith('http://');
   const connectSources = [

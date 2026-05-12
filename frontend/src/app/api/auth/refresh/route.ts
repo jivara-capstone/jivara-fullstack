@@ -7,13 +7,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "gagal", message: "Sesi tidak tersedia" }, { status: 401 });
   }
 
-  const backendResponse = await fetch(`${getBackendApiUrl()}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(8000),
-  });
+  let backendResponse: Response;
+
+  try {
+    backendResponse = await fetch(`${getBackendApiUrl()}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    return NextResponse.json(
+      { status: "gagal", message: "Layanan autentikasi sedang tidak merespons. Coba lagi beberapa saat." },
+      { status: 504 },
+    );
+  }
+
   const payload = await backendResponse.json();
 
   if (!backendResponse.ok) {
@@ -26,11 +36,11 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({ refresh_token: refreshToken }),
     cache: "no-store",
     signal: AbortSignal.timeout(8000),
-  });
-  const statusPayload = statusResponse.ok ? await statusResponse.json() : null;
+  }).catch(() => null);
+  const statusPayload = statusResponse?.ok ? await statusResponse.json() : null;
   const user = statusPayload?.data?.user ?? null;
   const data = payload.data;
-  const response = NextResponse.json({ ...payload, data: { ...data, user } }, { status: backendResponse.status });
+  const response = NextResponse.json({ ...payload, data: { ...data, access_token: undefined, user } }, { status: backendResponse.status });
 
   setAuthCookies(response, {
     accessToken: data.access_token,

@@ -49,7 +49,6 @@ describe("admin approvals feature", () => {
     vi.mocked(showToast).mockClear();
     useAuthStore.setState({
       user: { id: "super-1", fullName: "Super Admin", email: "super@test.local", role: "super_admin", accountStatus: "active", age: 35 },
-      token: "token",
       isAuthenticated: true,
       hasHydrated: true,
     });
@@ -73,7 +72,6 @@ describe("admin approvals feature", () => {
   it("redirects non-super-admin users away", async () => {
     useAuthStore.setState({
       user: { id: "admin-2", fullName: "Admin", email: "admin@test.local", role: "admin", accountStatus: "active", age: 30 },
-      token: "token",
       isAuthenticated: true,
       hasHydrated: true,
     });

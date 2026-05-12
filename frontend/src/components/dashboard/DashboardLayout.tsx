@@ -100,7 +100,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       const restoredUser: User | undefined = response.data.data.user;
       if (restoredUser) {
-        setAuth(restoredUser, response.data.data.access_token ?? null);
+        setAuth(restoredUser);
         return;
       }
 
