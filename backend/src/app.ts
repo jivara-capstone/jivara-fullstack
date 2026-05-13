@@ -84,17 +84,22 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customfavIcon: '/swagger-assets/favicon.ico'
 }));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/patients', patientRoutes);
-app.use('/api/nurses', nurseRoutes);
-app.use('/api/prescriptions', prescriptionRoutes);
-app.use('/api/medication-schedules', medicationScheduleRoutes);
-app.use('/api/medication-logs', medicationLogRoutes);
-app.use('/api/adherence', adherenceRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/audit-logs', auditLogRoutes);
-app.use('/api/alerts', alertRoutes);
-app.use('/api', foodAiRoutes);
+const mountApiRoutes = (basePath: string) => {
+  app.use(`${basePath}/auth`, authRoutes);
+  app.use(`${basePath}/patients`, patientRoutes);
+  app.use(`${basePath}/nurses`, nurseRoutes);
+  app.use(`${basePath}/prescriptions`, prescriptionRoutes);
+  app.use(`${basePath}/medication-schedules`, medicationScheduleRoutes);
+  app.use(`${basePath}/medication-logs`, medicationLogRoutes);
+  app.use(`${basePath}/adherence`, adherenceRoutes);
+  app.use(`${basePath}/notifications`, notificationRoutes);
+  app.use(`${basePath}/audit-logs`, auditLogRoutes);
+  app.use(`${basePath}/alerts`, alertRoutes);
+  app.use(basePath, foodAiRoutes);
+};
+
+mountApiRoutes('/api/v1');
+mountApiRoutes('/api');
 
 // Pengecekan API
 app.get('/health', (req: Request, res: Response) => {

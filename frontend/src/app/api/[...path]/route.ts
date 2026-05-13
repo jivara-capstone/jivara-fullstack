@@ -24,7 +24,8 @@ const strippedResponseHeaders = [
 const buildBackendUrl = async (request: NextRequest, context: ProxyRouteContext) => {
   const { path } = await context.params;
   const url = new URL(request.url);
-  const backendUrl = new URL(`${getBackendApiUrl().replace(/\/$/, "")}/${path.map(encodeURIComponent).join("/")}`);
+  const proxiedPath = path[0] === "v1" ? path.slice(1) : path;
+  const backendUrl = new URL(`${getBackendApiUrl().replace(/\/$/, "")}/${proxiedPath.map(encodeURIComponent).join("/")}`);
   backendUrl.search = url.search;
   return backendUrl;
 };

@@ -90,6 +90,8 @@ Server secara default akan berjalan di `http://localhost:3001`.
 
 Dokumentasi interaktif tersedia melalui Swagger UI saat server berjalan. Endpoint yang perlu diperhatikan untuk integrasi terbaru:
 
+API utama tersedia dengan prefix versioning `/api/v1`. Prefix lama `/api` masih tersedia sebagai alias kompatibilitas.
+
 | Endpoint | Fungsi |
 | --- | --- |
 | `PATCH /api/auth/me` | Menyimpan perubahan profil user saat ini |

@@ -3,7 +3,7 @@ import { notifyAuthExpired } from '@/lib/authNavigation';
 import { useAuthStore } from '@/store/auth';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
