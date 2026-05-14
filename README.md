@@ -1,4 +1,4 @@
-# Project Capstone : Jivara
+#Jivara
 
 ### Stay on Track, Stay Healthy
 
