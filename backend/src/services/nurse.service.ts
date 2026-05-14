@@ -5,7 +5,7 @@ import { nurses, patientNurseAssignments, users } from "../db/schema";
 import { AUTH_CONSTANTS } from "../types/auth.types";
 import { NurseCreateDTO, NurseListQuery, NurseUpdateDTO } from "../types/nurse.types";
 import { AccessUser, ensureOrganizationIdForUser, getOrganizationIdForUser } from "./access-control.service";
-import { writeAuditLog } from "./audit-log.service";
+import { writeAuditLogAsync } from "./audit-log.service";
 
 const parsePagination = (query: NurseListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
@@ -192,7 +192,7 @@ export const createNurse = async (dto: NurseCreateDTO, createdBy?: string) => {
     return { ...newNurse, user: newUser };
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: createdBy || null,
     action: "nurse.created",
     resourceType: "nurse",
@@ -230,7 +230,7 @@ export const updateNurse = async (nurseId: string, dto: NurseUpdateDTO, user?: A
     }
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "nurse.updated",
     resourceType: "nurse",
@@ -256,7 +256,7 @@ export const deactivateNurse = async (nurseId: string, user?: AccessUser) => {
       ));
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "nurse.deactivated",
     resourceType: "nurse",

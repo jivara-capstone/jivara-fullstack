@@ -86,6 +86,7 @@ export const patients = pgTable("patients", {
 }, (table) => ({
   organizationIdx: index("idx_patients_organization").on(table.organizationId),
   userIdx: index("idx_patients_user").on(table.userId),
+  organizationActiveCreatedIdx: index("idx_patients_org_active_created").on(table.organizationId, table.isActive, table.createdAt),
 }));
 
 // ─────────────────────────────────────────────
@@ -104,6 +105,7 @@ export const nurses = pgTable("nurses", {
 }, (table) => ({
   organizationIdx: index("idx_nurses_organization").on(table.organizationId),
   userIdx: index("idx_nurses_user").on(table.userId),
+  organizationActiveCreatedIdx: index("idx_nurses_org_active_created").on(table.organizationId, table.isActive, table.createdAt),
 }));
 
 // ─────────────────────────────────────────────
@@ -123,6 +125,8 @@ export const patientNurseAssignments = pgTable("patient_nurse_assignments", {
 }, (table) => ({
   patientIdx: index("idx_assignments_patient").on(table.patientId),
   nurseIdx: index("idx_assignments_nurse").on(table.nurseId),
+  activePatientIdx: index("idx_assignments_active_patient").on(table.patientId, table.isActive),
+  activeNurseIdx: index("idx_assignments_active_nurse").on(table.nurseId, table.isActive),
 }));
 
 // ─────────────────────────────────────────────
@@ -164,6 +168,8 @@ export const medicationSchedules = pgTable("medication_schedules", {
 }, (table) => ({
   patientIdx: index("idx_med_sched_patient").on(table.patientId),
   activeIdx: index("idx_med_sched_active").on(table.isActive),
+  patientActiveCreatedIdx: index("idx_med_sched_patient_active_created").on(table.patientId, table.isActive, table.createdAt),
+  prescriptionActiveIdx: index("idx_med_sched_prescription_active").on(table.prescriptionId, table.isActive),
 }));
 
 // ─────────────────────────────────────────────
@@ -188,6 +194,8 @@ export const medicationLogs = pgTable("medication_logs", {
   statusIdx: index("idx_med_logs_status").on(table.status),
   dateIdx: index("idx_med_logs_date").on(table.scheduledTime),
   reminderJobIdx: index("idx_med_logs_reminder_job").on(table.reminderJobId),
+  patientTimeIdx: index("idx_med_logs_patient_time").on(table.patientId, table.scheduledTime),
+  scheduleTimeStatusIdx: index("idx_med_logs_schedule_time_status").on(table.scheduleId, table.scheduledTime, table.status),
 }));
 
 // ─────────────────────────────────────────────
@@ -267,6 +275,7 @@ export const notifications = pgTable("notifications", {
 }, (table) => ({
   patientIdx: index("idx_notifications_patient").on(table.patientId),
   statusIdx: index("idx_notifications_status").on(table.status),
+  patientStatusCreatedIdx: index("idx_notifications_patient_status_created").on(table.patientId, table.status, table.createdAt),
 }));
 
 // ─────────────────────────────────────────────
@@ -292,6 +301,7 @@ export const medicationReminderJobs = pgTable("medication_reminder_jobs", {
   uniqueScheduleTime: uniqueIndex("uq_med_reminder_schedule_time").on(table.scheduleId, table.scheduledTime),
   patientIdx: index("idx_med_reminder_jobs_patient").on(table.patientId),
   dueIdx: index("idx_med_reminder_jobs_due").on(table.status, table.scheduledTime),
+  patientStatusUpdatedIdx: index("idx_med_reminder_jobs_patient_status_updated").on(table.patientId, table.status, table.updatedAt),
 }));
 
 // ─────────────────────────────────────────────
@@ -347,6 +357,7 @@ export const auditLogs = pgTable("audit_logs", {
   userIdx: index("idx_audit_user").on(table.userId),
   resourceIdx: index("idx_audit_resource").on(table.resourceType, table.resourceId),
   dateIdx: index("idx_audit_date").on(table.createdAt),
+  actionDateIdx: index("idx_audit_action_date").on(table.action, table.createdAt),
 }));
 
 // ─────────────────────────────────────────────

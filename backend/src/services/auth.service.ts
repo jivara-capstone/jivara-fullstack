@@ -4,7 +4,7 @@ import { and, desc, eq, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { writeAuditLog } from "./audit-log.service";
+import { writeAuditLogAsync } from "./audit-log.service";
 import {
   RegisterDTO,
   LoginDTO,
@@ -110,7 +110,7 @@ export const registerUser = async (dto: RegisterDTO) => {
     return { ...user, organizationName: organization.name };
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: newUser.id,
     action: "auth.register.pending",
     resourceType: "user",
@@ -164,7 +164,7 @@ export const approveRegistration = async (userId: string, approvedBy?: string) =
       isActive: users.isActive,
     });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: approvedBy || null,
     action: "auth.register.approved",
     resourceType: "user",
@@ -199,7 +199,7 @@ export const rejectRegistration = async (userId: string, rejectedBy?: string) =>
       isActive: users.isActive,
     });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: rejectedBy || null,
     action: "auth.register.rejected",
     resourceType: "user",
@@ -313,7 +313,7 @@ export const approveAdminApproval = async (adminId: string, approverId: string |
     throw { status: 404, message: "Pengajuan admin tidak ditemukan atau sudah diproses", code: "APPROVAL_NOT_FOUND" };
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: approverId,
     action: "admin.approved",
     resourceType: "admin_approval",
@@ -340,7 +340,7 @@ export const rejectAdminApproval = async (adminId: string, dto: RejectAdminAppro
     throw { status: 404, message: "Pengajuan admin tidak ditemukan atau sudah diproses", code: "APPROVAL_NOT_FOUND" };
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: rejectedBy,
     action: "admin.rejected",
     resourceType: "admin_approval",
@@ -367,7 +367,7 @@ export const activateSuspendedAdmin = async (adminId: string, approverId: string
     throw { status: 404, message: "Admin suspend tidak ditemukan", code: "SUSPENDED_ADMIN_NOT_FOUND" };
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: approverId,
     action: "admin.activated",
     resourceType: "admin_approval",
@@ -394,7 +394,7 @@ export const restoreRejectedAdmin = async (adminId: string, restoredBy: string |
     throw { status: 404, message: "Admin ditolak tidak ditemukan", code: "REJECTED_ADMIN_NOT_FOUND" };
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: restoredBy,
     action: "admin.restored",
     resourceType: "admin_approval",
@@ -419,7 +419,7 @@ export const suspendActiveAdmin = async (adminId: string, suspendedBy: string | 
     throw { status: 404, message: "Admin aktif tidak ditemukan", code: "ACTIVE_ADMIN_NOT_FOUND" };
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: suspendedBy,
     action: "admin.suspended",
     resourceType: "admin_approval",
@@ -496,7 +496,7 @@ export const changePassword = async (userId: string, dto: ChangePasswordDTO) => 
     .set({ password: hashedPassword, mustChangePassword: false, updatedAt: new Date() })
     .where(eq(users.id, userId));
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId,
     action: "auth.password.changed",
     resourceType: "user",
@@ -617,7 +617,7 @@ export const updateUserProfile = async (userId: string, dto: UpdateProfileDTO) =
     }
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId,
     action: "auth.profile.updated",
     resourceType: "user",

@@ -20,6 +20,15 @@ interface SingleScheduleResponse {
   data: ScheduleResponse;
 }
 
+const schedulesCacheTtl = 15_000;
+let schedulesCache: { data: MedicationScheduleRecord[]; expiresAt: number } | null = null;
+let schedulesRequest: Promise<MedicationScheduleRecord[]> | null = null;
+
+export const clearSchedulesCache = () => {
+  schedulesCache = null;
+  schedulesRequest = null;
+};
+
 const getScheduledTimes = (value: unknown) => Array.isArray(value)
   ? value.filter((time): time is string => typeof time === "string")
   : [];
@@ -58,35 +67,54 @@ const mapMedicinePayload = (patientId: string, medicine: ScheduleMedicineFormVal
   isActive,
 });
 
-export const getSchedulesFromApi = async (): Promise<MedicationScheduleRecord[]> => {
-  const [scheduleResponse, patients] = await Promise.all([
-    api.get<{ data: ScheduleResponse[] }>("/medication-schedules"),
-    getPatientsFromApi(),
-  ]);
-  const patientById = new Map(patients.map((patient) => [patient.id, patient]));
-  const schedules = scheduleResponse.data.data.map((schedule) => mapSchedule(schedule, patientById.get(schedule.patientId)));
+export const getSchedulesFromApi = async (providedPatients?: readonly PatientRecord[]): Promise<MedicationScheduleRecord[]> => {
+  if (!providedPatients) {
+    const now = Date.now();
+    if (schedulesCache && schedulesCache.expiresAt > now) return schedulesCache.data;
+    if (schedulesRequest) return schedulesRequest;
+  }
 
-  return schedules;
+  const request = Promise.all([
+    api.get<{ data: ScheduleResponse[] }>("/medication-schedules"),
+    providedPatients ? Promise.resolve(providedPatients) : getPatientsFromApi(),
+  ]).then(([scheduleResponse, patients]) => {
+    const patientById = new Map(patients.map((patient) => [patient.id, patient]));
+    const schedules = scheduleResponse.data.data.map((schedule) => mapSchedule(schedule, patientById.get(schedule.patientId)));
+    if (!providedPatients) schedulesCache = { data: schedules, expiresAt: Date.now() + schedulesCacheTtl };
+    return schedules;
+  });
+
+  if (providedPatients) return request;
+
+  schedulesRequest = request.finally(() => {
+    schedulesRequest = null;
+  });
+
+  return schedulesRequest;
 };
 
 export const createSchedulesViaApi = async (patientId: string, medicines: readonly ScheduleMedicineFormValues[], patients: readonly PatientRecord[]) => {
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
   const responses = await Promise.all(medicines.map((medicine) => api.post<SingleScheduleResponse>("/medication-schedules", mapMedicinePayload(patientId, medicine, medicine.status !== "Nonaktif"))));
+  clearSchedulesCache();
   return responses.map((response) => mapSchedule(response.data.data, patientById.get(response.data.data.patientId)));
 };
 
 export const updateScheduleViaApi = async (scheduleId: string, patientId: string, medicine: ScheduleMedicineFormValues, patients: readonly PatientRecord[]) => {
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
   const response = await api.put<SingleScheduleResponse>(`/medication-schedules/${encodeURIComponent(scheduleId)}`, mapMedicinePayload(patientId, medicine, medicine.status !== "Nonaktif"));
+  clearSchedulesCache();
   return mapSchedule(response.data.data, patientById.get(response.data.data.patientId));
 };
 
 export const setScheduleActiveViaApi = async (schedule: MedicationScheduleRecord, isActive: boolean, patients: readonly PatientRecord[]) => {
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
   const response = await api.put<SingleScheduleResponse>(`/medication-schedules/${encodeURIComponent(schedule.id)}`, { isActive });
+  clearSchedulesCache();
   return mapSchedule(response.data.data, patientById.get(response.data.data.patientId));
 };
 
 export const deactivateScheduleViaApi = async (scheduleId: string) => {
   await api.delete(`/medication-schedules/${encodeURIComponent(scheduleId)}`);
+  clearSchedulesCache();
 };

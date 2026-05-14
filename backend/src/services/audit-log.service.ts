@@ -36,6 +36,12 @@ export const writeAuditLog = async ({ userId, action, resourceType, resourceId, 
   });
 };
 
+export const writeAuditLogAsync = (input: AuditLogInput) => {
+  void writeAuditLog(input).catch((error) => {
+    console.error("Failed to write audit log", error);
+  });
+};
+
 const parsePagination = (query: AuditLogListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
   const limit = Math.min(Math.max(Number(query.limit || 20), 1), 100);

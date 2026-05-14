@@ -40,8 +40,9 @@ export const getCurrentPatientFromApi = async () => {
 
 export const getPatientDashboardData = async (): Promise<PatientDashboardData> => {
   const patient = await getCurrentPatientFromApi();
+  const patients = await getPatientsFromApi();
   const [schedules, logResponse] = await Promise.all([
-    getSchedulesFromApi(),
+    getSchedulesFromApi(patients),
     api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { patient_id: patient.id, limit: 100 } }),
   ]);
 

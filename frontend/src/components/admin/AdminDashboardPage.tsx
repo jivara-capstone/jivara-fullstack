@@ -54,8 +54,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([getAdminDashboardStats(), getSchedulesFromApi(), getNursesFromApi(), getPatientsFromApi(), getAlertActivitiesFromApi(), getAuditActivitiesFromApi()])
-      .then(([data, schedules, apiNurses, apiPatients, alertActivities, auditActivities]) => {
+    Promise.all([getAdminDashboardStats(), getPatientsFromApi(), getAlertActivitiesFromApi(), getAuditActivitiesFromApi()])
+      .then(async ([data, apiPatients, alertActivities, auditActivities]) => {
+        if (!isMounted) return;
+        const [apiNurses, schedules] = await Promise.all([getNursesFromApi(), getSchedulesFromApi(apiPatients)]);
         if (!isMounted) return;
         setNurses(apiNurses);
         setPatients(apiPatients);

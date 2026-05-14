@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { medicationSchedules, patients, prescriptions } from "../db/schema";
 import {
@@ -7,7 +7,7 @@ import {
   PrescriptionUpdateDTO,
 } from "../types/prescription.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
-import { diffChanges, writeAuditLog } from "./audit-log.service";
+import { diffChanges, writeAuditLogAsync } from "./audit-log.service";
 
 const ensurePatientExists = async (patientId: string) => {
   const patient = await db.select({ id: patients.id }).from(patients).where(eq(patients.id, patientId)).limit(1);
@@ -30,10 +30,12 @@ export const listPrescriptions = async (query: PrescriptionListQuery, user?: Acc
     .where(where)
     .orderBy(desc(prescriptions.createdAt));
 
-  return Promise.all(rows.map(async (prescription) => {
-    const medications = await db
+  if (rows.length === 0) return [];
+
+  const medications = await db
       .select({
         id: medicationSchedules.id,
+        prescriptionId: medicationSchedules.prescriptionId,
         drugName: medicationSchedules.drugName,
         dosage: medicationSchedules.dosage,
         frequency: medicationSchedules.frequency,
@@ -42,12 +44,18 @@ export const listPrescriptions = async (query: PrescriptionListQuery, user?: Acc
       })
       .from(medicationSchedules)
       .where(and(
-        eq(medicationSchedules.prescriptionId, prescription.id),
+        inArray(medicationSchedules.prescriptionId, rows.map((prescription) => prescription.id)),
         eq(medicationSchedules.isActive, true),
       ));
 
-    return { ...prescription, medications };
-  }));
+  const medicationByPrescriptionId = new Map<string, typeof medications>();
+  for (const medication of medications) {
+    const current = medicationByPrescriptionId.get(medication.prescriptionId ?? "") ?? [];
+    current.push(medication);
+    medicationByPrescriptionId.set(medication.prescriptionId ?? "", current);
+  }
+
+  return rows.map((prescription) => ({ ...prescription, medications: medicationByPrescriptionId.get(prescription.id) ?? [] }));
 };
 
 export const getPrescriptionById = async (id: string, user?: AccessUser) => {
@@ -90,7 +98,7 @@ export const createPrescription = async (dto: PrescriptionCreateDTO, createdBy?:
     })
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: createdBy || user?.id || null,
     action: "prescription.created",
     resourceType: "prescription",
@@ -118,7 +126,7 @@ export const updatePrescription = async (id: string, dto: PrescriptionUpdateDTO,
 
   const changes = diffChanges(existing, prescription, ["diagnosis", "prescribingDoctor", "startDate", "endDate"]);
   if (Object.keys(changes).length > 0) {
-    await writeAuditLog({
+    writeAuditLogAsync({
       userId: user?.id || null,
       action: "prescription.updated",
       resourceType: "prescription",
@@ -142,7 +150,7 @@ export const deletePrescription = async (id: string, user?: AccessUser) => {
     await tx.delete(prescriptions).where(eq(prescriptions.id, id));
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "prescription.deleted",
     resourceType: "prescription",

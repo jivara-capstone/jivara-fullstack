@@ -4,7 +4,7 @@ import { db } from "../db";
 import { notifications, pushSubscriptions, userNotificationPreferences } from "../db/schema";
 import { NotificationPreferenceDTO, PushSubscriptionDTO, SendNotificationDTO, UserNotificationPreferenceDTO } from "../types/notification.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
-import { writeAuditLog } from "./audit-log.service";
+import { writeAuditLogAsync } from "./audit-log.service";
 
 const configureWebPush = () => {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -65,7 +65,7 @@ export const subscribeDevice = async (dto: PushSubscriptionDTO, user: AccessUser
       .where(eq(pushSubscriptions.id, existing[0].id))
       .returning();
 
-    await writeAuditLog({
+    writeAuditLogAsync({
       userId: user?.id || null,
       action: "push_subscription.updated",
       resourceType: "push_subscription",
@@ -89,7 +89,7 @@ export const subscribeDevice = async (dto: PushSubscriptionDTO, user: AccessUser
     })
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "push_subscription.created",
     resourceType: "push_subscription",
@@ -112,7 +112,7 @@ export const setNotificationPreference = async (dto: NotificationPreferenceDTO, 
     ))
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "notification.preference.updated",
     resourceType: "patient",
@@ -182,7 +182,7 @@ export const setUserNotificationPreference = async (dto: UserNotificationPrefere
     })
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user.id,
     action: "user_notification_preference.updated",
     resourceType: "user",
@@ -237,7 +237,7 @@ export const trackNotificationEvent = async (notificationId: string, eventType: 
   const readAt = notification.readAt || new Date();
   await db.update(notifications).set({ readAt }).where(eq(notifications.id, notificationId));
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: null,
     action: `notification.${eventType}`,
     resourceType: "notification",
@@ -329,7 +329,7 @@ export const sendPushNotification = async (dto: SendNotificationDTO, user?: Acce
 
   if (subscriptions.length === 0) {
     await db.update(notifications).set({ status: "skipped" }).where(eq(notifications.id, notification.id));
-    await writeAuditLog({
+    writeAuditLogAsync({
       userId: user?.id || null,
       action: "notification.skipped",
       resourceType: "notification",
@@ -362,7 +362,7 @@ export const sendPushNotification = async (dto: SendNotificationDTO, user?: Acce
     .set({ status: sent > 0 ? "delivered" : "failed", deliveredAt: sent > 0 ? new Date() : null })
     .where(eq(notifications.id, notification.id));
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: sent > 0 ? "notification.delivered" : "notification.failed",
     resourceType: "notification",

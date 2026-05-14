@@ -7,7 +7,7 @@ import {
   MedicationScheduleUpdateDTO,
 } from "../types/medication-schedule.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
-import { diffChanges, writeAuditLog } from "./audit-log.service";
+import { diffChanges, writeAuditLogAsync } from "./audit-log.service";
 
 const getBooleanFilter = (value?: string) => {
   if (value === undefined || value === "all") return undefined;
@@ -79,7 +79,7 @@ export const createMedicationSchedule = async (dto: MedicationScheduleCreateDTO,
     })
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: createdBy || user?.id || null,
     action: "medication_schedule.created",
     resourceType: "medication_schedule",
@@ -115,7 +115,7 @@ export const updateMedicationSchedule = async (id: string, dto: MedicationSchedu
 
   const changes = diffChanges(existing, schedule, ["prescriptionId", "drugName", "dosage", "frequency", "scheduledTimes", "instructions", "isActive"]);
   if (Object.keys(changes).length > 0) {
-    await writeAuditLog({
+    writeAuditLogAsync({
       userId: user?.id || null,
       action: "medication_schedule.updated",
       resourceType: "medication_schedule",
@@ -135,7 +135,7 @@ export const deactivateMedicationSchedule = async (id: string, user?: AccessUser
     .set({ isActive: false, updatedAt: new Date() })
     .where(eq(medicationSchedules.id, id));
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "medication_schedule.deactivated",
     resourceType: "medication_schedule",

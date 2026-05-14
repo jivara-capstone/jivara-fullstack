@@ -3,7 +3,7 @@ import { db } from "../db";
 import { medicationReminderJobs, medicationSchedules, patients, users } from "../db/schema";
 import { AlertListQuery } from "../types/alert.types";
 import { AccessUser, scopedPatientFilter } from "./access-control.service";
-import { writeAuditLog } from "./audit-log.service";
+import { writeAuditLogAsync } from "./audit-log.service";
 
 const ALERT_STATUSES = ["urgent", "urgent_failed", "missed"];
 
@@ -110,7 +110,7 @@ export const resolveAlert = async (alertId: string, user?: AccessUser) => {
     .where(eq(medicationReminderJobs.id, alertId))
     .returning();
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "alert.resolved",
     resourceType: "medication_reminder_job",

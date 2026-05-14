@@ -33,8 +33,10 @@ export function useScheduleManager(initialPatientName: string) {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([getSchedulesFromApi(), getPatientsFromApi()])
-      .then(([apiSchedules, apiPatients]) => {
+    getPatientsFromApi()
+      .then(async (apiPatients) => {
+        if (!isMounted) return;
+        const apiSchedules = await getSchedulesFromApi(apiPatients);
         if (!isMounted) return;
         setSchedules(apiSchedules);
         setPatients(apiPatients);

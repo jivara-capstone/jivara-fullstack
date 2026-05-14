@@ -9,12 +9,20 @@ interface UserNotificationPreferenceResponse {
   };
 }
 
+const preferenceCache = new Map<UserNotificationPreferenceKey, { data: UserNotificationPreferenceResponse["data"]; expiresAt: number }>();
+const preferenceCacheTtl = 30_000;
+
 export const getUserNotificationPreferenceFromApi = async (key: UserNotificationPreferenceKey) => {
+  const cached = preferenceCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
   const response = await api.get<UserNotificationPreferenceResponse>("/notifications/user-preferences", { params: { key } });
+  preferenceCache.set(key, { data: response.data.data, expiresAt: Date.now() + preferenceCacheTtl });
   return response.data.data;
 };
 
 export const updateUserNotificationPreferenceViaApi = async (key: UserNotificationPreferenceKey, enabled: boolean) => {
   const response = await api.patch<UserNotificationPreferenceResponse>("/notifications/user-preferences", { key, enabled });
+  preferenceCache.set(key, { data: response.data.data, expiresAt: Date.now() + preferenceCacheTtl });
   return response.data.data;
 };

@@ -30,6 +30,32 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
+const auditCacheTtl = 10_000;
+let auditCache: { data: AuditLogResponse[]; expiresAt: number } | null = null;
+let auditRequest: Promise<AuditLogResponse[]> | null = null;
+
+export const clearAuditLogCache = () => {
+  auditCache = null;
+  auditRequest = null;
+};
+
+const getAuditLogs = async () => {
+  const now = Date.now();
+  if (auditCache && auditCache.expiresAt > now) return auditCache.data;
+  if (auditRequest) return auditRequest;
+
+  auditRequest = api.get<PaginatedResponse<AuditLogResponse>>("/audit-logs", { params: { limit: 100 } })
+    .then((response) => {
+      auditCache = { data: response.data.data, expiresAt: Date.now() + auditCacheTtl };
+      return response.data.data;
+    })
+    .finally(() => {
+      auditRequest = null;
+    });
+
+  return auditRequest;
+};
+
 const categoryByResource = (resourceType: string): ActivityCategory => {
   if (resourceType.includes("notification") || resourceType.includes("reminder")) return "Reminder";
   if (resourceType.includes("food") || resourceType.includes("scan") || resourceType.includes("interaction")) return "Scan Makanan";
@@ -64,8 +90,8 @@ const getDescription = (log: AuditLogResponse) => {
 };
 
 export const getAuditActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
-  const response = await api.get<PaginatedResponse<AuditLogResponse>>("/audit-logs", { params: { limit: 100 } });
-  const activities = response.data.data.map((log) => ({
+  const logs = await getAuditLogs();
+  const activities = logs.map((log) => ({
     id: log.id,
     title: formatAction(log.action),
     description: getDescription(log),
@@ -109,9 +135,9 @@ const getApprovalDescription = (log: AuditLogResponse) => {
 };
 
 export const getSuperAdminApprovalActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
-  const response = await api.get<PaginatedResponse<AuditLogResponse>>("/audit-logs", { params: { limit: 100 } });
+  const logs = await getAuditLogs();
 
-  return response.data.data
+  return logs
     .filter((log) => approvalActions.has(log.action as ApprovalAction))
     .map((log) => {
       const config = approvalActionLabels[log.action as ApprovalAction];

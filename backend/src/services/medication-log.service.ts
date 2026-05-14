@@ -7,7 +7,7 @@ import {
   MedicationSnoozeDTO,
 } from "../types/medication-log.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
-import { writeAuditLog } from "./audit-log.service";
+import { writeAuditLogAsync } from "./audit-log.service";
 
 const parsePagination = (query: MedicationLogListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
@@ -107,7 +107,7 @@ export const createMedicationLog = async (dto: MedicationLogCreateDTO, user?: Ac
       .where(eq(medicationReminderJobs.id, dto.reminderJobId));
   }
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: `medication_log.${dto.status}`,
     resourceType: "medication_log",
@@ -229,7 +229,7 @@ export const snoozeMedicationReminder = async (dto: MedicationSnoozeDTO, user?: 
     return [createdLog, createdJob];
   });
 
-  await writeAuditLog({
+  writeAuditLogAsync({
     userId: user?.id || null,
     action: "medication_reminder.snoozed",
     resourceType: "medication_reminder_job",

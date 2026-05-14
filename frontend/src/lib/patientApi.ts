@@ -85,6 +85,15 @@ interface AlertResponse {
   createdAt?: string | null;
 }
 
+const patientsCacheTtl = 30_000;
+let patientsCache: { data: PatientRecord[]; expiresAt: number } | null = null;
+let patientsRequest: Promise<PatientRecord[]> | null = null;
+
+export const clearPatientsCache = () => {
+  patientsCache = null;
+  patientsRequest = null;
+};
+
 const getAge = (dateOfBirth?: string | null) => {
   if (!dateOfBirth) return 0;
   const birthDate = new Date(dateOfBirth);
@@ -224,13 +233,26 @@ const getPatientActivitiesFromApi = async (patient: PatientRecord, scans: Patien
 };
 
 export const getPatientsFromApi = async () => {
-  const response = await api.get<PaginatedResponse<PatientListResponse>>("/patients", { params: { limit: 100, status: "active" } });
-  const patients = response.data.data.map((patient) => mapPatient(patient, 100));
-  return patients;
+  const now = Date.now();
+  if (patientsCache && patientsCache.expiresAt > now) return patientsCache.data;
+  if (patientsRequest) return patientsRequest;
+
+  patientsRequest = api.get<PaginatedResponse<PatientListResponse>>("/patients", { params: { limit: 100, status: "active" } })
+    .then((response) => {
+      const patients = response.data.data.map((patient) => mapPatient(patient, 100));
+      patientsCache = { data: patients, expiresAt: Date.now() + patientsCacheTtl };
+      return patients;
+    })
+    .finally(() => {
+      patientsRequest = null;
+    });
+
+  return patientsRequest;
 };
 
 export const createPatientViaApi = async (values: AddPatientValues) => {
   const response = await api.post<SinglePatientResponse>("/patients", mapPatientPayload(values, true));
+  clearPatientsCache();
   const created = response.data.data;
 
   return mapPatient({
@@ -247,12 +269,14 @@ export const createPatientViaApi = async (values: AddPatientValues) => {
 
 export const updatePatientViaApi = async (patientId: string, values: AddPatientValues) => {
   const response = await api.put<SinglePatientResponse>(`/patients/${encodeURIComponent(patientId)}`, mapPatientPayload(values, false));
+  clearPatientsCache();
   const detail = response.data.data;
   return mapPatient({ ...detail, createdAt: detail.createdAt ?? undefined });
 };
 
 export const deactivatePatientViaApi = async (patientId: string) => {
   await api.delete(`/patients/${encodeURIComponent(patientId)}`);
+  clearPatientsCache();
 };
 
 export const getPatientDetailFromApi = async (patientId: string): Promise<PatientDetailData> => {
@@ -279,6 +303,7 @@ export const getPatientsAssignedToNurseFromApi = async (nurseId: string) => {
 
 export const assignPatientToNurseViaApi = async (patientId: string, nurseId: string) => {
   await api.put(`/patients/${encodeURIComponent(patientId)}/assign`, { nurseId });
+  clearPatientsCache();
 };
 
 export const getInitialPatientDetail = (patientId: string): PatientDetailData => {

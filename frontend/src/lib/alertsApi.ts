@@ -20,24 +20,46 @@ interface PaginatedResponse<T> {
   data: T[];
 }
 
-export const getAlertActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
-  const response = await api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { limit: 100 } });
+const alertsCacheTtl = 10_000;
+let alertsCache: { data: ActivityLogRecord[]; expiresAt: number } | null = null;
+let alertsRequest: Promise<ActivityLogRecord[]> | null = null;
 
-  return response.data.data.map((alert) => ({
-    id: alert.id,
-    title: alert.severity === "critical" ? "Kepatuhan kritis" : "Peringatan kepatuhan",
-    description: alert.message,
-    category: "Kepatuhan",
-    severity: alert.severity === "critical" ? "Kritis" : "Peringatan",
-    timestamp: alert.updatedAt || alert.createdAt || alert.scheduledTime,
-    patientId: alert.patientId,
-    patientName: alert.patientName,
-    scheduleId: alert.scheduleId,
-    medicineName: `${alert.drugName} ${alert.dosage}`,
-    read: false,
-  }));
+export const clearAlertsCache = () => {
+  alertsCache = null;
+  alertsRequest = null;
+};
+
+export const getAlertActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
+  const now = Date.now();
+  if (alertsCache && alertsCache.expiresAt > now) return alertsCache.data;
+  if (alertsRequest) return alertsRequest;
+
+  alertsRequest = api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { limit: 100 } })
+    .then((response) => {
+      const activities = response.data.data.map((alert) => ({
+        id: alert.id,
+        title: alert.severity === "critical" ? "Kepatuhan kritis" : "Peringatan kepatuhan",
+        description: alert.message,
+        category: "Kepatuhan" as const,
+        severity: alert.severity === "critical" ? "Kritis" as const : "Peringatan" as const,
+        timestamp: alert.updatedAt || alert.createdAt || alert.scheduledTime,
+        patientId: alert.patientId,
+        patientName: alert.patientName,
+        scheduleId: alert.scheduleId,
+        medicineName: `${alert.drugName} ${alert.dosage}`,
+        read: false,
+      }));
+      alertsCache = { data: activities, expiresAt: Date.now() + alertsCacheTtl };
+      return activities;
+    })
+    .finally(() => {
+      alertsRequest = null;
+    });
+
+  return alertsRequest;
 };
 
 export const resolveAlertViaApi = async (alertId: string) => {
   await api.patch(`/alerts/${encodeURIComponent(alertId)}/resolve`);
+  clearAlertsCache();
 };
