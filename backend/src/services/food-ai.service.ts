@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import axios from "axios";
 import { db } from "../db";
 import {
@@ -14,7 +14,7 @@ import {
   InteractionCheckDTO,
   NutritionDTO,
 } from "../types/food-ai.types";
-import { AccessUser, assertCanAccessPatient } from "./access-control.service";
+import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
 import { writeAuditLog } from "./audit-log.service";
 import { sendCareTeamCriticalPushNotification } from "./notification.service";
 
@@ -186,20 +186,27 @@ const mapScanSummary = (scan: typeof foodScans.$inferSelect) => ({
   createdAt: scan.createdAt,
 });
 
-export const listFoodScans = async (user?: AccessUser) => {
-  const rows = await db.select().from(foodScans).orderBy(desc(foodScans.createdAt)).limit(100);
-  const accessibleRows = [];
+export const listFoodScans = async (query: { page?: string; limit?: string; patient_id?: string; patientId?: string } = {}, user?: AccessUser) => {
+  const page = Math.max(Number(query.page || 1), 1);
+  const limit = Math.min(Math.max(Number(query.limit || 20), 1), 100);
+  const offset = (page - 1) * limit;
+  const patientId = query.patientId || query.patient_id;
+  const scopedFilter = await scopedPatientFilter(foodScans.patientId, user, patientId);
 
-  for (const scan of rows) {
-    try {
-      if (user) await assertCanAccessPatient(user, scan.patientId);
-      accessibleRows.push(mapScanSummary(scan));
-    } catch {
-      // Skip rows outside the user's patient scope.
-    }
+  if (!scopedFilter.scope.allowed) {
+    return { data: [], meta: { page, limit, total: 0 } };
   }
 
-  return accessibleRows;
+  const where = scopedFilter.condition ? and(scopedFilter.condition) : undefined;
+  const [rows, totalRows] = await Promise.all([
+    db.select().from(foodScans).where(where).orderBy(desc(foodScans.createdAt)).limit(limit).offset(offset),
+    db.select({ total: count() }).from(foodScans).where(where),
+  ]);
+
+  return {
+    data: rows.map(mapScanSummary),
+    meta: { page, limit, total: totalRows[0]?.total || 0 },
+  };
 };
 
 export const getFoodScanById = async (scanId: string, user?: AccessUser) => {

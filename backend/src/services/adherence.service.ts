@@ -91,7 +91,7 @@ const buildScheduledOccurrences = (
         const scheduledTime = new Date(day);
         scheduledTime.setUTCHours(hour, minute, 0, 0);
 
-        if (schedule.createdAt && scheduledTime < schedule.createdAt) continue;
+        if (schedule.createdAt && getDateKey(scheduledTime) < getDateKey(schedule.createdAt)) continue;
         if (scheduledTime > now) continue;
 
         const status = logsByOccurrence.get(getOccurrenceKey(schedule.id, scheduledTime)) || "missed";

@@ -15,7 +15,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/alerts:
+ * /api/v1/alerts:
  *   get:
  *     summary: Ambil daftar alert non-adherence
  *     tags: [Alerts]
@@ -58,7 +58,7 @@ router.get("/", authorizeRoles("nurse", "admin"), alertController.listAlerts);
 
 /**
  * @swagger
- * /api/alerts/{id}/resolve:
+ * /api/v1/alerts/{id}/resolve:
  *   patch:
  *     summary: Tandai alert sebagai selesai
  *     tags: [Alerts]

@@ -36,6 +36,7 @@ export default function PatientReminderSettingsForm() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isStandalonePwa) return;
     setIsSaving(true);
 
     try {
@@ -68,13 +69,13 @@ export default function PatientReminderSettingsForm() {
         checked={medicineReminder}
         onChange={setMedicineReminder}
       />
-      {!isStandalonePwa && medicineReminder && (
+      {!isStandalonePwa && (
         <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">
-          Buka Jivara sebagai PWA untuk mengaktifkan reminder obat.
+          Buka Jivara sebagai PWA untuk menyimpan pengaturan notifikasi.
         </p>
       )}
       <div className="flex justify-end pt-2">
-        <Button type="submit" icon={<Save size={18} />} loading={isSaving}>Simpan</Button>
+        <Button type="submit" icon={<Save size={18} />} loading={isSaving} disabled={!isStandalonePwa}>Simpan</Button>
       </div>
     </form>
   );

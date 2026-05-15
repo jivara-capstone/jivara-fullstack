@@ -18,11 +18,16 @@ import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
 import { getActivityDateKey } from "@/helpers/activityLogs";
 import { getAverageAdherence, getNurseInitials } from "@/helpers/nurses";
 import { getDashboardRole, isOperationalAdminRole } from "@/components/dashboard/navigation";
+import { getActivityReadIdsFromApi, markActivitiesReadViaApi } from "@/lib/activityReadApi";
 import { getApiErrorMessage } from "@/lib/apiErrors";
+import { getAlertActivitiesFromApi } from "@/lib/alertsApi";
+import { getAuditActivitiesFromApi } from "@/lib/auditLogApi";
 import type { ActivityCategory, ActivityLogRecord } from "@/lib/mocks/activityLogs";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import { deactivateNurseViaApi } from "@/lib/nurseApi";
 import { assignPatientToNurseViaApi, getPatientsAssignedToNurseFromApi } from "@/lib/patientApi";
+import { getFoodScansFromApi } from "@/lib/foodScanApi";
+import api from "@/lib/axios";
 import { showConfirm, showError, showToast, showWarning } from "@/lib/swal";
 import { useActivityLogStore } from "@/store/activityLog";
 import { useNurseStore } from "@/store/nurses";
@@ -36,6 +41,21 @@ interface NurseDetailPageProps {
 
 const loadBatchSize = 6;
 
+interface MedicationLogResponse {
+  readonly id: string;
+  readonly scheduleId: string;
+  readonly patientId: string;
+  readonly drugName: string;
+  readonly status: string;
+  readonly scheduledTime: string;
+  readonly confirmedAt?: string | null;
+  readonly createdAt?: string | null;
+}
+
+interface PaginatedResponse<T> {
+  readonly data: T[];
+}
+
 export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
   const router = useRouter();
   const userRole = useAuthStore((state) => state.user?.role);
@@ -43,7 +63,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
   const dashboardRole = getDashboardRole(userRole);
   const nurses = useNurseStore((state) => state.nurses);
   const activities = useActivityLogStore((state) => state.activities);
-  const addActivity = useActivityLogStore((state) => state.addActivity);
+  const setActivities = useActivityLogStore((state) => state.setActivities);
   const markActivityAsRead = useActivityLogStore((state) => state.markAsRead);
   const nurse = nurses.find((item) => item.id === nurseId);
   const [assignedPatients, setAssignedPatients] = useState<PatientRecord[]>([]);
@@ -105,6 +125,74 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
     };
   }, [dashboardRole, hasAuthHydrated, nurseId]);
 
+  useEffect(() => {
+    if (!hasAuthHydrated || (dashboardRole !== "admin" && dashboardRole !== "nurse")) return;
+    if (isLoadingPatients) return;
+
+    let isMounted = true;
+    const readIdsRequest = getActivityReadIdsFromApi().catch(() => new Set<string>());
+    const patientById = new Map(assignedPatients.map((patient) => [patient.id, patient]));
+    const patientActivityRequest = Promise.all([
+      api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { limit: 100 } }).catch(() => ({ data: { data: [] } })),
+      getFoodScansFromApi().catch(() => []),
+    ]).then(([logResponse, foodScans]) => {
+      const medicationActivities = logResponse.data.data
+        .filter((log) => assignedPatientIds.has(log.patientId))
+        .map((log): ActivityLogRecord => {
+          const patient = patientById.get(log.patientId);
+          return {
+            id: `medication-log-${log.id}`,
+            title: log.status === "confirmed" ? "Obat dikonfirmasi" : log.status === "missed" ? "Obat terlewat" : log.status === "snoozed" ? "Reminder ditunda" : "Aktivitas obat",
+            description: `${log.drugName} berstatus ${log.status}.`,
+            category: "Reminder",
+            severity: log.status === "missed" ? "Kritis" : log.status === "snoozed" ? "Peringatan" : log.status === "confirmed" ? "Sukses" : "Info",
+            timestamp: log.confirmedAt || log.createdAt || log.scheduledTime,
+            patientId: log.patientId,
+            patientName: patient?.name,
+            patientAvatar: patient?.avatar,
+            scheduleId: log.scheduleId,
+            medicineName: log.drugName,
+            read: false,
+          };
+        });
+      const foodScanActivities = foodScans
+        .filter((scan) => assignedPatientIds.has(scan.patientId))
+        .map((scan): ActivityLogRecord => {
+          const patient = patientById.get(scan.patientId);
+          return {
+            id: `food-scan-${scan.id}`,
+            title: scan.risk === "High Risk" ? "Scan makanan berisiko" : "Scan makanan selesai",
+            description: scan.result,
+            category: "Scan Makanan",
+            severity: scan.risk === "High Risk" ? "Peringatan" : "Sukses",
+            timestamp: scan.scannedAt,
+            patientId: scan.patientId,
+            patientName: patient?.name,
+            patientAvatar: patient?.avatar,
+            scanId: scan.id,
+            read: false,
+          };
+        });
+
+      return [...medicationActivities, ...foodScanActivities];
+    });
+    const activityRequest = isOperationalAdminRole(dashboardRole)
+      ? Promise.all([getAuditActivitiesFromApi(), getAlertActivitiesFromApi(), patientActivityRequest]).then(([auditActivities, alertActivities, patientActivities]) => [...alertActivities, ...patientActivities, ...auditActivities])
+      : Promise.all([getAlertActivitiesFromApi(), getAuditActivitiesFromApi(), patientActivityRequest]).then(([alertActivities, auditActivities, patientActivities]) => [...alertActivities, ...patientActivities, ...auditActivities]);
+
+    Promise.all([activityRequest, readIdsRequest])
+      .then(([nextActivities, readIds]) => {
+        if (isMounted) setActivities(nextActivities.map((activity) => ({ ...activity, read: readIds.has(activity.id) || activity.read })));
+      })
+      .catch(() => {
+        if (isMounted) setActivities([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [assignedPatientIds, assignedPatients, dashboardRole, hasAuthHydrated, isLoadingPatients, setActivities]);
+
   if (!hasAuthHydrated || (dashboardRole !== "nurse" && !isOperationalAdminRole(dashboardRole))) return null;
 
   if (!nurse) {
@@ -122,8 +210,8 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
   const hasActiveActivityFilters = Boolean(activitySearch || activityQuickFilter !== "all" || activityCategory !== "all" || activityDate);
   const stats = [
     { label: "Pasien Ditangani", value: String(assignedPatients.length), tone: "neutral" as const, color: "pine" as const, icon: UserRound },
-    { label: "Avg Kepatuhan", value: `${averageAdherence}%`, tone: averageAdherence >= 75 ? "safe" as const : "critical" as const, color: "leaf" as const, icon: CheckCheck },
-    { label: "Perlu Perhatian", value: String(riskyPatients), tone: riskyPatients ? "critical" as const : "safe" as const, color: "lime" as const, icon: AlertTriangle },
+    { label: "Rata-rata Kepatuhan Pasien", value: `${averageAdherence}%`, tone: averageAdherence >= 75 ? "safe" as const : "critical" as const, color: "leaf" as const, icon: CheckCheck },
+    { label: "Pasien Perlu Perhatian", value: String(riskyPatients), tone: riskyPatients ? "critical" as const : "safe" as const, color: "lime" as const, icon: AlertTriangle },
     ...(!isAdminView ? [{ label: "Log Belum Dibaca", value: String(unreadLogs), tone: unreadLogs ? "critical" as const : "safe" as const, color: unreadLogs ? "danger" as const : "safe" as const, icon: AlertTriangle }] : []),
   ];
 
@@ -147,17 +235,6 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
     }
 
     setAssignedPatients((currentPatients) => currentPatients.filter((patient) => !selectedPatientIds.includes(patient.id)));
-    addActivity({
-      id: `ACT-ADM-${Date.now()}`,
-      title: "Bulk reassign pasien",
-      description: `${selectedPatientIds.length} pasien dipindahkan dari ${nurse.fullName} ke ${targetNurse.fullName}.`,
-      category: "Administrasi",
-      severity: "Info",
-      timestamp: new Date().toISOString(),
-      sourceNurseId: nurse.id,
-      targetNurseId,
-      read: false,
-    });
     setSelectedPatientIds([]);
     setIsReassignOpen(false);
     showToast("Pasien berhasil dipindahkan.");
@@ -215,7 +292,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
             <div className="min-w-0">
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <NurseStatusBadge status={nurse.status} />
-                {nurse.temporaryPassword && <span className="rounded-full bg-warning/10 px-3 py-1 text-xs font-extrabold text-warning">Password Sementara</span>}
+                {nurse.temporaryPassword && <span className="rounded-full bg-warning/10 px-3 py-1 text-xs font-extrabold text-warning-dark">Password Sementara</span>}
               </div>
               <h2 className="font-display text-3xl font-extrabold tracking-[-0.05em] text-text-main sm:text-4xl">{nurse.fullName}</h2>
             </div>
@@ -232,7 +309,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
         </div>
 
         {nurse.status === "Nonaktif" && assignedPatients.length > 0 && (
-          <div className="mt-5 rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning">
+          <div className="mt-5 rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">
             Perawat nonaktif ini masih memiliki {assignedPatients.length} pasien aktif.
           </div>
         )}
@@ -301,7 +378,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
           />}
         </div>
         <div className="mt-6">
-          {isLoadingPatients ? <ActivityDataSkeleton /> : <ActivityFeed activities={filteredNurseActivities} visibleCount={visibleActivityCount} readOnly={isAdminView} onLoadMore={() => setVisibleActivityCount((currentCount) => currentCount + loadBatchSize)} onMarkRead={markActivityAsRead} onViewDetail={setSelectedActivity} />}
+            {isLoadingPatients ? <ActivityDataSkeleton /> : <ActivityFeed activities={filteredNurseActivities} visibleCount={visibleActivityCount} readOnly={isAdminView} onLoadMore={() => setVisibleActivityCount((currentCount) => currentCount + loadBatchSize)} onMarkRead={async (activityId) => { await markActivitiesReadViaApi([activityId]); markActivityAsRead(activityId); }} onViewDetail={setSelectedActivity} />}
         </div>
       </motion.section>
 

@@ -18,6 +18,7 @@ interface AlertResponse {
 
 interface PaginatedResponse<T> {
   data: T[];
+  meta?: { page: number; limit: number; total: number };
 }
 
 const alertsCacheTtl = 10_000;
@@ -29,12 +30,15 @@ export const clearAlertsCache = () => {
   alertsRequest = null;
 };
 
-export const getAlertActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
+export const getAlertActivitiesFromApi = async (params: { page?: number; limit?: number } = {}): Promise<ActivityLogRecord[]> => {
+  const page = params.page || 1;
+  const limit = params.limit || 100;
+  const useCache = page === 1 && limit === 100;
   const now = Date.now();
-  if (alertsCache && alertsCache.expiresAt > now) return alertsCache.data;
-  if (alertsRequest) return alertsRequest;
+  if (useCache && alertsCache && alertsCache.expiresAt > now) return alertsCache.data;
+  if (useCache && alertsRequest) return alertsRequest;
 
-  alertsRequest = api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { limit: 100 } })
+  const request = api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { page, limit } })
     .then((response) => {
       const activities = response.data.data.map((alert) => ({
         id: alert.id,
@@ -49,14 +53,15 @@ export const getAlertActivitiesFromApi = async (): Promise<ActivityLogRecord[]> 
         medicineName: `${alert.drugName} ${alert.dosage}`,
         read: false,
       }));
-      alertsCache = { data: activities, expiresAt: Date.now() + alertsCacheTtl };
+      if (useCache) alertsCache = { data: activities, expiresAt: Date.now() + alertsCacheTtl };
       return activities;
     })
     .finally(() => {
-      alertsRequest = null;
+      if (useCache) alertsRequest = null;
     });
 
-  return alertsRequest;
+  if (useCache) alertsRequest = request;
+  return request;
 };
 
 export const resolveAlertViaApi = async (alertId: string) => {

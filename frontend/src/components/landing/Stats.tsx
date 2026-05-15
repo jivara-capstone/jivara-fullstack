@@ -16,11 +16,30 @@ interface PublicStatsResponse {
 }
 
 const getPublicStatsUrls = () => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (apiUrl) return [`${apiUrl.replace(/\/$/, "")}/public/stats`];
-  return process.env.NODE_ENV === "development"
-    ? ["http://localhost:3001/api/v1/public/stats", "/api/v1/public/stats"]
-    : ["/api/v1/public/stats"];
+  const apiUrl = process.env.NODE_ENV === "development"
+    ? "http://localhost:3001/api/v1"
+    : "https://api.jivara.web.id/api/v1";
+  const urls = [`${apiUrl}/public/stats`];
+
+  urls.push("/api/v1/public/stats");
+
+  return [...new Set(urls)];
+};
+
+const fetchPublicStats = async () => {
+  let lastError: unknown;
+
+  for (const url of getPublicStatsUrls()) {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error("PUBLIC_STATS_FAILED");
+      return response.json() as Promise<PublicStatsResponse>;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
 };
 
 export default function Stats() {
@@ -31,10 +50,7 @@ export default function Stats() {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.any(getPublicStatsUrls().map((url) => fetch(url, { cache: "no-store" }).then(async (response) => {
-      if (!response.ok) throw new Error("PUBLIC_STATS_FAILED");
-      return response.json() as Promise<PublicStatsResponse>;
-    })))
+    fetchPublicStats()
       .then((response) => {
         if (!isMounted) return;
         const { totalNurses, totalPatients } = response.data;
@@ -96,12 +112,12 @@ export default function Stats() {
 
 function LandingStatsSkeleton() {
   return (
-    <div className="mx-auto mt-8 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
+    <section className="mx-auto mt-10 grid w-full max-w-[680px] grid-cols-2 items-stretch justify-items-center gap-4 lg:mt-12">
       {["nurses", "patients"].map((item) => (
-        <div key={item} className="h-36 animate-pulse rounded-[28px] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+        <div key={item} className="h-36 w-full max-w-[320px] animate-pulse rounded-[28px] bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
           <div className="h-full rounded-[28px] bg-surface/70" />
         </div>
       ))}
-    </div>
+    </section>
   );
 }

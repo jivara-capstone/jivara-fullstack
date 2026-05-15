@@ -74,7 +74,7 @@ export default function PatientDetailPage({ data, patientId }: PatientDetailPage
       icon: Bell,
     },
     {
-      label: "Notifikasi Peringatan",
+      label: "Notifikasi Peringatan/Kritis",
       value: String(summary.criticalActivityCount),
       tone: summary.criticalActivityCount > 0 ? "critical" : "safe",
       color: summary.criticalActivityCount > 0 ? "danger" : "primary",

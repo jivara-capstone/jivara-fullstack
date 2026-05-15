@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ActivityLogPage from "@/components/activity-log/ActivityLogPage";
 import { getAlertActivitiesFromApi, resolveAlertViaApi } from "@/lib/alertsApi";
+import { getActivityReadIdsFromApi, markActivitiesReadViaApi } from "@/lib/activityReadApi";
 import { getAuditActivitiesFromApi } from "@/lib/auditLogApi";
 import { getPatientsFromApi } from "@/lib/patientApi";
 import { showToast } from "@/lib/swal";
@@ -23,6 +24,11 @@ vi.mock("@/lib/alertsApi", () => ({
 
 vi.mock("@/lib/auditLogApi", () => ({
   getAuditActivitiesFromApi: vi.fn(),
+}));
+
+vi.mock("@/lib/activityReadApi", () => ({
+  getActivityReadIdsFromApi: vi.fn(),
+  markActivitiesReadViaApi: vi.fn(),
 }));
 
 vi.mock("@/lib/patientApi", () => ({
@@ -55,6 +61,8 @@ describe("activity log feature", () => {
     push.mockClear();
     vi.mocked(getAlertActivitiesFromApi).mockReset();
     vi.mocked(getAuditActivitiesFromApi).mockReset();
+    vi.mocked(getActivityReadIdsFromApi).mockReset();
+    vi.mocked(markActivitiesReadViaApi).mockReset();
     vi.mocked(getPatientsFromApi).mockReset();
     vi.mocked(resolveAlertViaApi).mockReset();
     vi.mocked(showToast).mockClear();
@@ -64,6 +72,9 @@ describe("activity log feature", () => {
 
   it("loads alert activities, filters critical items, and marks all as read", async () => {
     vi.mocked(getAlertActivitiesFromApi).mockResolvedValueOnce([activity]);
+    vi.mocked(getAuditActivitiesFromApi).mockResolvedValueOnce([]);
+    vi.mocked(getActivityReadIdsFromApi).mockResolvedValueOnce(new Set());
+    vi.mocked(markActivitiesReadViaApi).mockResolvedValue(undefined);
     vi.mocked(getPatientsFromApi).mockResolvedValueOnce([]);
     vi.mocked(resolveAlertViaApi).mockResolvedValue(undefined);
 
@@ -76,6 +87,7 @@ describe("activity log feature", () => {
     fireEvent.click(screen.getByRole("button", { name: /tandai semua dibaca/i }));
 
     await waitFor(() => expect(resolveAlertViaApi).toHaveBeenCalledWith("alert-1"));
+    expect(markActivitiesReadViaApi).toHaveBeenCalledWith(["alert-1"]);
     expect(showToast).toHaveBeenCalledWith("Semua aktivitas ditandai sudah dibaca.");
     expect(useActivityLogStore.getState().activities.every((item) => item.read)).toBe(true);
   });
@@ -83,6 +95,7 @@ describe("activity log feature", () => {
   it("read-only mode combines audit and alert activities", async () => {
     vi.mocked(getAlertActivitiesFromApi).mockResolvedValueOnce([activity]);
     vi.mocked(getAuditActivitiesFromApi).mockResolvedValueOnce([{ ...activity, id: "audit-1", title: "Patient Updated", category: "Administrasi", severity: "Sukses", read: true }]);
+    vi.mocked(getActivityReadIdsFromApi).mockResolvedValueOnce(new Set());
     vi.mocked(getPatientsFromApi).mockResolvedValueOnce([]);
 
     render(<ActivityLogPage readOnly />);

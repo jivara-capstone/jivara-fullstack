@@ -36,24 +36,35 @@ export function isSameDate(a: Date, b: Date) {
 }
 
 export function getSchedulesForDate(schedules: readonly MedicationScheduleRecord[], date: Date) {
-  return getSchedulesForDateWithLimit(schedules, date, new Date());
+  return getSchedulesForDateWithLimit(schedules, date);
 }
 
-function getSchedulesForDateWithLimit(schedules: readonly MedicationScheduleRecord[], date: Date, today: Date) {
+function addDays(dateKey: string, amount: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + amount);
+  return getDateKey(date);
+}
+
+function getScheduleDisplayEndDate(schedule: MedicationScheduleRecord) {
+  const maxOngoingEndDate = addDays(schedule.startDate, 30);
+  if (!schedule.endDate) return maxOngoingEndDate;
+  return schedule.endDate < maxOngoingEndDate ? schedule.endDate : maxOngoingEndDate;
+}
+
+function getSchedulesForDateWithLimit(schedules: readonly MedicationScheduleRecord[], date: Date) {
   const dateKey = getDateKey(date);
-  const ongoingDisplayLimit = getDateKey(new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()));
 
   return schedules.filter((schedule) => {
     if (schedule.status !== "Aktif") return false;
     if (schedule.startDate > dateKey) return false;
-    if (schedule.endDate && schedule.endDate < dateKey) return false;
-    if (!schedule.endDate && dateKey > ongoingDisplayLimit) return false;
+    if (getScheduleDisplayEndDate(schedule) < dateKey) return false;
     return true;
   });
 }
 
 export function getDayStatus(schedules: readonly MedicationScheduleRecord[], date: Date, confirmedScheduleDates: Readonly<Record<string, readonly string[]>>, today: Date): PatientScheduleDayStatus {
-  const schedulesForDate = getSchedulesForDateWithLimit(schedules, date, today);
+  const schedulesForDate = getSchedulesForDateWithLimit(schedules, date);
   if (schedulesForDate.length === 0) return "empty";
 
   const dateKey = getDateKey(date);

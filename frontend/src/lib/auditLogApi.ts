@@ -28,6 +28,7 @@ const approvalActions = new Set<ApprovalAction>(Object.keys(approvalActionLabels
 
 interface PaginatedResponse<T> {
   data: T[];
+  meta?: { page: number; limit: number; total: number };
 }
 
 const auditCacheTtl = 10_000;
@@ -39,21 +40,25 @@ export const clearAuditLogCache = () => {
   auditRequest = null;
 };
 
-const getAuditLogs = async () => {
+const getAuditLogs = async (params: { page?: number; limit?: number } = {}) => {
+  const page = params.page || 1;
+  const limit = params.limit || 100;
+  const useCache = page === 1 && limit === 100;
   const now = Date.now();
-  if (auditCache && auditCache.expiresAt > now) return auditCache.data;
-  if (auditRequest) return auditRequest;
+  if (useCache && auditCache && auditCache.expiresAt > now) return auditCache.data;
+  if (useCache && auditRequest) return auditRequest;
 
-  auditRequest = api.get<PaginatedResponse<AuditLogResponse>>("/audit-logs", { params: { limit: 100 } })
+  const request = api.get<PaginatedResponse<AuditLogResponse>>("/audit-logs", { params: { page, limit } })
     .then((response) => {
-      auditCache = { data: response.data.data, expiresAt: Date.now() + auditCacheTtl };
+      if (useCache) auditCache = { data: response.data.data, expiresAt: Date.now() + auditCacheTtl };
       return response.data.data;
     })
     .finally(() => {
-      auditRequest = null;
+      if (useCache) auditRequest = null;
     });
 
-  return auditRequest;
+  if (useCache) auditRequest = request;
+  return request;
 };
 
 const categoryByResource = (resourceType: string): ActivityCategory => {
@@ -89,8 +94,44 @@ const getDescription = (log: AuditLogResponse) => {
   return `${actor} menjalankan ${formatAction(log.action)} pada ${resource}${resourceId}.`;
 };
 
-export const getAuditActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
-  const logs = await getAuditLogs();
+const getChangeRecord = (changes: unknown) => {
+  if (!changes) return {};
+  if (typeof changes === "string") {
+    try {
+      const parsed = JSON.parse(changes);
+      return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof changes === "object" ? changes as Record<string, unknown> : {};
+};
+
+const getDiffString = (value: unknown) => {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  return typeof record.to === "string" ? record.to : undefined;
+};
+
+const getNestedString = (record: Record<string, unknown>, key: string) => {
+  const after = record.after && typeof record.after === "object" ? record.after as Record<string, unknown> : record;
+  const requested = record.requested && typeof record.requested === "object" ? record.requested as Record<string, unknown> : record;
+  const value = after[key] ?? requested[key] ?? record[key];
+  return typeof value === "string" ? value : getDiffString(value);
+};
+
+const getRelatedNurseId = (log: AuditLogResponse) => {
+  if (log.resourceType === "nurse") return log.resourceId ?? undefined;
+
+  const changes = getChangeRecord(log.changes);
+  return getNestedString(changes, "nurseId")
+    || getNestedString(changes, "assignedNurseId")
+    || getNestedString(changes, "targetNurseId")
+    || getNestedString(changes, "sourceNurseId");
+};
+
+export const getAuditActivitiesFromApi = async (params: { page?: number; limit?: number } = {}): Promise<ActivityLogRecord[]> => {
+  const logs = await getAuditLogs(params);
   const activities = logs.map((log) => ({
     id: log.id,
     title: formatAction(log.action),
@@ -104,18 +145,11 @@ export const getAuditActivitiesFromApi = async (): Promise<ActivityLogRecord[]> 
     scheduleId: log.resourceType === "medication_schedule" ? log.resourceId ?? undefined : undefined,
     medicineName: undefined,
     scanId: log.resourceType === "food_scan" ? log.resourceId ?? undefined : undefined,
-    read: true,
+    targetNurseId: getRelatedNurseId(log),
+    read: false,
   }));
 
   return activities;
-};
-
-const getChangeRecord = (changes: unknown) => changes && typeof changes === "object" ? changes as Record<string, unknown> : {};
-
-const getNestedString = (record: Record<string, unknown>, key: string) => {
-  const after = record.after && typeof record.after === "object" ? record.after as Record<string, unknown> : record;
-  const value = after[key];
-  return typeof value === "string" ? value : undefined;
 };
 
 const getApprovalDescription = (log: AuditLogResponse) => {
@@ -148,7 +182,7 @@ export const getSuperAdminApprovalActivitiesFromApi = async (): Promise<Activity
         category: "Administrasi" as const,
         severity: config.severity,
         timestamp: log.createdAt || new Date().toISOString(),
-        read: true,
+        read: false,
       };
     });
 };

@@ -23,6 +23,8 @@ interface DashboardLayoutProps {
 }
 
 const MAX_LOADING_SECONDS = 8;
+const USER_STATUS_SYNC_INTERVAL_MS = 60_000;
+const USER_STATUS_RATE_LIMIT_BACKOFF_MS = 5 * 60_000;
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { logout, user, hasHydrated, setAuth, setHasHydrated, updateUser } = useAuthStore();
@@ -30,6 +32,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isRedirectingToLogin, setIsRedirectingToLogin] = useState(false);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
   const isSyncingRef = useRef(false);
+  const lastUserStatusSyncAtRef = useRef(0);
+  const userStatusSyncBlockedUntilRef = useRef(0);
   const isNavigatingAwayRef = useRef(false);
   const isRestoringSessionRef = useRef(false);
   const isStandalonePwa = useIsStandalonePwa();
@@ -120,8 +124,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     if (userRole !== "admin") return;
 
+    const now = Date.now();
+    if (now < userStatusSyncBlockedUntilRef.current) return;
+    if (now - lastUserStatusSyncAtRef.current < USER_STATUS_SYNC_INTERVAL_MS) return;
+
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
+    lastUserStatusSyncAtRef.current = now;
 
     try {
       const response = await axios.post("/api/auth/status", undefined, { timeout: 8000 });
@@ -137,6 +146,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       }
     } catch (error: unknown) {
       if (isNavigatingAwayRef.current) return;
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        userStatusSyncBlockedUntilRef.current = Date.now() + USER_STATUS_RATE_LIMIT_BACKOFF_MS;
+        return;
+      }
       if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
         navigateToLogin();
         return;
@@ -182,7 +195,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const intervalId = window.setInterval(() => {
       void syncCurrentUser();
-    }, 15000);
+    }, USER_STATUS_SYNC_INTERVAL_MS);
 
     const handleFocus = () => {
       void syncCurrentUser();

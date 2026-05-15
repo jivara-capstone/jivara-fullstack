@@ -15,7 +15,7 @@ const sendError = (res: Response, error: unknown) => {
 
 export const listAuditLogs = async (req: AuthRequest, res: Response) => {
   try {
-    const result = await auditLogService.listAuditLogs(req.query);
+    const result = await auditLogService.listAuditLogs(req.query, req.user);
     res.status(200).json({ status: "berhasil", data: result.data, meta: result.meta });
   } catch (error) {
     sendError(res, error);

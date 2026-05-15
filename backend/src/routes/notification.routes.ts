@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/notifications/public-key:
+ * /api/v1/notifications/public-key:
  *   get:
  *     summary: Ambil VAPID public key untuk Push API browser
  *     tags: [Notifications]
@@ -29,7 +29,7 @@ router.get("/public-key", notificationController.getPublicKey);
 
 /**
  * @swagger
- * /api/notifications/events:
+ * /api/v1/notifications/events:
  *   post:
  *     summary: Catat event klik/open notifikasi Web Push
  *     tags: [Notifications]
@@ -60,7 +60,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/notifications:
+ * /api/v1/notifications:
  *   get:
  *     summary: Ambil riwayat notifikasi
  *     tags: [Notifications]
@@ -97,7 +97,7 @@ router.get("/", authorizeRoles("patient", "nurse", "admin"), notificationControl
 
 /**
  * @swagger
- * /api/notifications/analytics:
+ * /api/v1/notifications/analytics:
  *   get:
  *     summary: Ambil analitik performa notifikasi
  *     tags: [Notifications]
@@ -117,7 +117,7 @@ router.get("/analytics", authorizeRoles("patient", "nurse", "admin"), notificati
 
 /**
  * @swagger
- * /api/notifications/preferences:
+ * /api/v1/notifications/preferences:
  *   get:
  *     summary: Ambil status preferensi push notification pasien
  *     tags: [Notifications]
@@ -141,7 +141,7 @@ router.patch("/user-preferences", authorizeRoles("admin", "super_admin", "nurse"
 
 /**
  * @swagger
- * /api/notifications/subscribe:
+ * /api/v1/notifications/subscribe:
  *   post:
  *     summary: Daftarkan device pasien untuk Web Push
  *     tags: [Notifications]
@@ -193,7 +193,7 @@ router.post("/user-subscribe", authorizeRoles("admin", "super_admin", "nurse"), 
 
 /**
  * @swagger
- * /api/notifications/preferences:
+ * /api/v1/notifications/preferences:
  *   patch:
  *     summary: Aktifkan atau nonaktifkan push notification pasien
  *     tags: [Notifications]
@@ -224,7 +224,7 @@ router.patch("/preferences", authorizeRoles("patient"), validatePreference, noti
 
 /**
  * @swagger
- * /api/notifications/send:
+ * /api/v1/notifications/send:
  *   post:
  *     summary: Kirim Web Push notification ke pasien
  *     tags: [Notifications]

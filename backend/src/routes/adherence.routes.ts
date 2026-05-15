@@ -15,7 +15,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/adherence/aggregate:
+ * /api/v1/adherence/aggregate:
  *   get:
  *     summary: Ambil statistik aggregate adherence untuk admin
  *     tags: [Adherence]
@@ -38,7 +38,7 @@ router.get("/aggregate", authorizeRoles("admin", "super_admin"), adherenceContro
 
 /**
  * @swagger
- * /api/adherence:
+ * /api/v1/adherence:
  *   get:
  *     summary: Ambil statistik adherence pasien
  *     tags: [Adherence]
@@ -62,6 +62,6 @@ router.get("/aggregate", authorizeRoles("admin", "super_admin"), adherenceContro
  *       200:
  *         description: Statistik adherence berhasil diambil
  */
-router.get("/", authorizeRoles("nurse", "admin"), adherenceController.getAdherence);
+router.get("/", authorizeRoles("patient", "nurse", "admin"), adherenceController.getAdherence);
 
 export default router;

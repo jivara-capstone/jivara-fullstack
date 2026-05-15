@@ -20,7 +20,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/patients:
+ * /api/v1/patients:
  *   get:
  *     summary: Ambil daftar pasien
  *     tags: [Patients]
@@ -52,7 +52,7 @@ router.get("/", authorizeRoles("patient", "nurse", "admin"), patientController.l
 
 /**
  * @swagger
- * /api/patients/{id}:
+ * /api/v1/patients/{id}:
  *   get:
  *     summary: Ambil detail pasien
  *     tags: [Patients]
@@ -74,7 +74,7 @@ router.get("/:id", authorizeRoles("patient", "nurse", "admin"), patientControlle
 
 /**
  * @swagger
- * /api/patients:
+ * /api/v1/patients:
  *   post:
  *     summary: Daftarkan pasien baru
  *     tags: [Patients]
@@ -90,7 +90,7 @@ router.post("/", authorizeRoles("nurse", "admin"), validatePatientCreate, patien
 
 /**
  * @swagger
- * /api/patients/{id}:
+ * /api/v1/patients/{id}:
  *   put:
  *     summary: Perbarui data pasien
  *     tags: [Patients]
@@ -110,7 +110,7 @@ router.put("/:id", authorizeRoles("nurse", "admin"), validatePatientUpdate, pati
 
 /**
  * @swagger
- * /api/patients/{id}/assign:
+ * /api/v1/patients/{id}/assign:
  *   put:
  *     summary: Assign pasien ke perawat
  *     tags: [Patients]
@@ -124,7 +124,7 @@ router.put("/:id/assign", authorizeRoles("admin", "super_admin"), validateAssign
 
 /**
  * @swagger
- * /api/patients/{id}:
+ * /api/v1/patients/{id}:
  *   delete:
  *     summary: Deaktivasi pasien
  *     tags: [Patients]

@@ -1,11 +1,11 @@
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { db } from "../db";
 import { nurses, patients } from "../db/schema";
 
 export const getPublicStats = async () => {
   const [nurseRows, patientRows] = await Promise.all([
-    db.select({ total: count() }).from(nurses).where(eq(nurses.isActive, true)),
-    db.select({ total: count() }).from(patients).where(eq(patients.isActive, true)),
+    db.select({ total: count() }).from(nurses),
+    db.select({ total: count() }).from(patients),
   ]);
 
   return {

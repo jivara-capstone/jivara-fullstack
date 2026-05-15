@@ -20,6 +20,10 @@ interface SingleScheduleResponse {
   data: ScheduleResponse;
 }
 
+interface ScheduleListResponse {
+  data: ScheduleResponse[];
+}
+
 const schedulesCacheTtl = 15_000;
 let schedulesCache: { data: MedicationScheduleRecord[]; expiresAt: number } | null = null;
 let schedulesRequest: Promise<MedicationScheduleRecord[]> | null = null;
@@ -96,9 +100,13 @@ export const getSchedulesFromApi = async (providedPatients?: readonly PatientRec
 
 export const createSchedulesViaApi = async (patientId: string, medicines: readonly ScheduleMedicineFormValues[], patients: readonly PatientRecord[]) => {
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
-  const responses = await Promise.all(medicines.map((medicine) => api.post<SingleScheduleResponse>("/medication-schedules", mapMedicinePayload(patientId, medicine, medicine.status !== "Nonaktif"))));
+  const payloads = medicines.map((medicine) => mapMedicinePayload(patientId, medicine, medicine.status !== "Nonaktif"));
+  const response = payloads.length === 1
+    ? await api.post<SingleScheduleResponse>("/medication-schedules", payloads[0])
+    : await api.post<ScheduleListResponse>("/medication-schedules/bulk", { schedules: payloads });
   clearSchedulesCache();
-  return responses.map((response) => mapSchedule(response.data.data, patientById.get(response.data.data.patientId)));
+  const schedules = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+  return schedules.map((schedule) => mapSchedule(schedule, patientById.get(schedule.patientId)));
 };
 
 export const updateScheduleViaApi = async (scheduleId: string, patientId: string, medicine: ScheduleMedicineFormValues, patients: readonly PatientRecord[]) => {

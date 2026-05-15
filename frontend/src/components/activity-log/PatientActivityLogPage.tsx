@@ -11,6 +11,7 @@ import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
 import { FoodScanDetailModal } from "@/components/food-scan";
 import PatientMedicineDetailModal from "@/components/schedule/PatientMedicineDetailModal";
 import { getDateKey } from "@/helpers/patientSchedule";
+import { getActivityReadIdsFromApi, markActivitiesReadViaApi } from "@/lib/activityReadApi";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import type { ActivityCategory, ActivityLogRecord } from "@/lib/mocks/activityLogs";
 import { getPatientActivitiesFromApi, getPatientDashboardData } from "@/lib/patientDashboardApi";
@@ -42,16 +43,17 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
   const [schedules, setSchedules] = useState<MedicationScheduleRecord[]>([]);
   const [selectedFoodScanId, setSelectedFoodScanId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const todayKey = getDateKey(new Date());
 
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([getPatientActivitiesFromApi(), getPatientDashboardData()])
-      .then(([nextActivities, dashboardData]) => {
+    Promise.all([getPatientActivitiesFromApi(), getPatientDashboardData(), getActivityReadIdsFromApi().catch(() => new Set<string>())])
+      .then(([nextActivities, dashboardData, readIds]) => {
         if (!isMounted) return;
-        setActivities(nextActivities);
+        setActivities(nextActivities.map((activity) => ({ ...activity, read: readIds.has(activity.id) || activity.read })));
         setSchedules(dashboardData.schedules);
       })
       .catch(() => {
@@ -77,7 +79,7 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
 
     return [
       { label: "Notifikasi Belum Dibaca", value: String(unread), tone: "neutral" as const, color: "pine" as const, icon: Bell },
-      { label: "Notifikasi Peringatan", value: String(warningCritical), tone: "critical" as const, color: "lime" as const, icon: AlertTriangle },
+      { label: "Notifikasi Peringatan/Kritis", value: String(warningCritical), tone: "critical" as const, color: "lime" as const, icon: AlertTriangle },
       { label: "Total Aktivitas Hari Ini", value: String(todayTotal), tone: "safe" as const, color: "leaf" as const, icon: ClipboardList },
     ];
   }, [patientActivities, todayKey]);
@@ -107,13 +109,28 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
     setCategory("all");
   };
 
-  const markAllAsRead = () => {
-    markAllActivitiesAsRead();
-    showToast("Semua aktivitas ditandai sudah dibaca.");
+  const markAllAsRead = async () => {
+    setIsMarkingAllRead(true);
+    try {
+      await markActivitiesReadViaApi(patientActivities.filter((activity) => !activity.read).map((activity) => activity.id));
+      markAllActivitiesAsRead();
+      showToast("Semua aktivitas ditandai sudah dibaca.");
+    } catch {
+      showToast("Gagal menandai semua aktivitas sebagai dibaca.", "error");
+    } finally {
+      setIsMarkingAllRead(false);
+    }
   };
 
-  const viewActivityDetail = (activity: ActivityLogRecord) => {
-    if (!activity.read) markActivityAsRead(activity.id);
+  const viewActivityDetail = async (activity: ActivityLogRecord) => {
+    if (!activity.read) {
+      try {
+        await markActivitiesReadViaApi([activity.id]);
+        markActivityAsRead(activity.id);
+      } catch {
+        showToast("Gagal menandai aktivitas sebagai dibaca.", "error");
+      }
+    }
     setSelectedActivity(activity.read ? activity : { ...activity, read: true });
   };
 
@@ -137,7 +154,7 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
       <DashboardPageHeader
         title="Log Aktivitas"
         action={hasUnread && (
-          <Button size="sm" icon={<CheckCheck size={16} />} onClick={markAllAsRead}>
+          <Button size="sm" icon={<CheckCheck size={16} />} onClick={markAllAsRead} loading={isMarkingAllRead}>
             Tandai Semua Dibaca
           </Button>
         )}

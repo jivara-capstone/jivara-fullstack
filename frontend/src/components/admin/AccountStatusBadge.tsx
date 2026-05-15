@@ -8,7 +8,7 @@ const statusLabels: Record<AccountStatus, string> = {
 };
 
 const statusClasses: Record<AccountStatus, string> = {
-  pending: "bg-warning/10 text-warning",
+  pending: "bg-warning/10 text-warning-dark",
   active: "bg-primary/10 text-primary",
   rejected: "bg-danger/10 text-danger",
   suspended: "bg-muted/10 text-muted",

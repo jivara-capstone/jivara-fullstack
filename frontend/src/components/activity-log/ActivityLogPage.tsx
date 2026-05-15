@@ -12,9 +12,12 @@ import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
 import { FoodScanDetailModal } from "@/components/food-scan";
 import { getActivityDateKey } from "@/helpers/activityLogs";
 import { activityMatchesNurse } from "@/helpers/nurses";
+import { getActivityReadIdsFromApi, markActivitiesReadViaApi } from "@/lib/activityReadApi";
 import { getAlertActivitiesFromApi, resolveAlertViaApi } from "@/lib/alertsApi";
 import { getAuditActivitiesFromApi } from "@/lib/auditLogApi";
 import { getPatientsFromApi } from "@/lib/patientApi";
+import { getFoodScansFromApi } from "@/lib/foodScanApi";
+import api from "@/lib/axios";
 import type { ActivityCategory, ActivityLogRecord } from "@/lib/mocks/activityLogs";
 import { showToast } from "@/lib/swal";
 import { useActivityLogStore } from "@/store/activityLog";
@@ -24,6 +27,22 @@ import ActivityFeed from "./ActivityFeed";
 import ActivityToolbar, { type ActivityQuickFilter } from "./ActivityToolbar";
 
 const loadBatchSize = 8;
+const serverPageSize = 24;
+
+interface MedicationLogResponse {
+  readonly id: string;
+  readonly scheduleId: string;
+  readonly patientId: string;
+  readonly drugName: string;
+  readonly status: string;
+  readonly scheduledTime: string;
+  readonly confirmedAt?: string | null;
+  readonly createdAt?: string | null;
+}
+
+interface PaginatedResponse<T> {
+  readonly data: T[];
+}
 
 interface ActivityLogPageProps {
   readonly initialPatientName?: string;
@@ -48,6 +67,8 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
   const [selectedFoodScanId, setSelectedFoodScanId] = useState<string | null>(null);
   const [patientAssignments, setPatientAssignments] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [activityPage, setActivityPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [processingActivityId, setProcessingActivityId] = useState<string | null>(null);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const deferredSearch = useDeferredValue(search);
@@ -55,15 +76,69 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
   useEffect(() => {
     let isMounted = true;
 
-    const activityRequest = readOnly
-      ? Promise.all([getAuditActivitiesFromApi(), getAlertActivitiesFromApi()]).then(([auditActivities, alertActivities]) => [...alertActivities, ...auditActivities])
-      : getAlertActivitiesFromApi();
+    const loadActivities = async () => {
+      const patients = await getPatientsFromApi();
+      const readIds = await getActivityReadIdsFromApi().catch(() => new Set<string>());
+      const assignments = Object.fromEntries(patients.flatMap((patient) => patient.assignedNurseId ? [[patient.id, patient.assignedNurseId]] : []));
 
-    Promise.all([activityRequest, getPatientsFromApi()])
-      .then(([nextActivities, patients]) => {
+      if (readOnly) {
+        const [auditActivities, alertActivities] = await Promise.all([
+          getAuditActivitiesFromApi({ page: 1, limit: serverPageSize }),
+          getAlertActivitiesFromApi({ page: 1, limit: serverPageSize }),
+        ]);
+        return { activities: [...alertActivities, ...auditActivities].map((activity) => ({ ...activity, read: readIds.has(activity.id) || activity.read })), assignments };
+      }
+
+      const patientById = new Map(patients.map((patient) => [patient.id, patient]));
+      const [alertActivities, auditActivities, logResponse, foodScans] = await Promise.all([
+        getAlertActivitiesFromApi({ page: 1, limit: serverPageSize }).catch(() => []),
+        getAuditActivitiesFromApi({ page: 1, limit: serverPageSize }).catch(() => []),
+        api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { page: 1, limit: serverPageSize } }).catch(() => ({ data: { data: [] } })),
+        getFoodScansFromApi({ page: 1, limit: serverPageSize }).catch(() => []),
+      ]);
+      const medicationActivities = logResponse.data.data.map((log): ActivityLogRecord => {
+        const patient = patientById.get(log.patientId);
+        return {
+          id: `medication-log-${log.id}`,
+          title: log.status === "confirmed" ? "Obat dikonfirmasi" : log.status === "missed" ? "Obat terlewat" : log.status === "snoozed" ? "Reminder ditunda" : "Aktivitas obat",
+          description: `${log.drugName} berstatus ${log.status}.`,
+          category: "Reminder",
+          severity: log.status === "missed" ? "Kritis" : log.status === "snoozed" ? "Peringatan" : log.status === "confirmed" ? "Sukses" : "Info",
+          timestamp: log.confirmedAt || log.createdAt || log.scheduledTime,
+          patientId: log.patientId,
+          patientName: patient?.name,
+          patientAvatar: patient?.avatar,
+          scheduleId: log.scheduleId,
+          medicineName: log.drugName,
+          read: false,
+        };
+      });
+      const foodScanActivities = foodScans.map((scan): ActivityLogRecord => {
+        const patient = patientById.get(scan.patientId);
+        return {
+          id: `food-scan-${scan.id}`,
+          title: scan.risk === "High Risk" ? "Scan makanan berisiko" : "Scan makanan selesai",
+          description: scan.result,
+          category: "Scan Makanan",
+          severity: scan.risk === "High Risk" ? "Peringatan" : "Sukses",
+          timestamp: scan.scannedAt,
+          patientId: scan.patientId,
+          patientName: patient?.name,
+          patientAvatar: patient?.avatar,
+          scanId: scan.id,
+          read: false,
+        };
+      });
+
+      return { activities: [...alertActivities, ...medicationActivities, ...foodScanActivities, ...auditActivities].map((activity) => ({ ...activity, read: readIds.has(activity.id) || activity.read })), assignments };
+    };
+
+    loadActivities()
+      .then(({ activities: nextActivities, assignments }) => {
         if (!isMounted) return;
         setActivities(nextActivities);
-        setPatientAssignments(Object.fromEntries(patients.flatMap((patient) => patient.assignedNurseId ? [[patient.id, patient.assignedNurseId]] : [])));
+        setPatientAssignments(assignments);
+        setActivityPage(1);
       })
       .catch(() => {
         if (isMounted) setActivities([]);
@@ -77,6 +152,64 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
     };
   }, [readOnly, setActivities]);
 
+  const loadMoreFromServer = async () => {
+    if (isLoadingMore) return;
+    const nextPage = activityPage + 1;
+    setIsLoadingMore(true);
+    try {
+      const patients = await getPatientsFromApi();
+      const readIds = await getActivityReadIdsFromApi().catch(() => new Set<string>());
+      const patientById = new Map(patients.map((patient) => [patient.id, patient]));
+      const [alertActivities, auditActivities, logResponse, foodScans] = await Promise.all([
+        getAlertActivitiesFromApi({ page: nextPage, limit: serverPageSize }).catch(() => []),
+        getAuditActivitiesFromApi({ page: nextPage, limit: serverPageSize }).catch(() => []),
+        readOnly ? Promise.resolve({ data: { data: [] } }) : api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { page: nextPage, limit: serverPageSize } }).catch(() => ({ data: { data: [] } })),
+        readOnly ? Promise.resolve([]) : getFoodScansFromApi({ page: nextPage, limit: serverPageSize }).catch(() => []),
+      ]);
+      const medicationActivities = logResponse.data.data.map((log): ActivityLogRecord => {
+        const patient = patientById.get(log.patientId);
+        return {
+          id: `medication-log-${log.id}`,
+          title: log.status === "confirmed" ? "Obat dikonfirmasi" : log.status === "missed" ? "Obat terlewat" : log.status === "snoozed" ? "Reminder ditunda" : "Aktivitas obat",
+          description: `${log.drugName} berstatus ${log.status}.`,
+          category: "Reminder",
+          severity: log.status === "missed" ? "Kritis" : log.status === "snoozed" ? "Peringatan" : log.status === "confirmed" ? "Sukses" : "Info",
+          timestamp: log.confirmedAt || log.createdAt || log.scheduledTime,
+          patientId: log.patientId,
+          patientName: patient?.name,
+          patientAvatar: patient?.avatar,
+          scheduleId: log.scheduleId,
+          medicineName: log.drugName,
+          read: false,
+        };
+      });
+      const foodScanActivities = foodScans.map((scan): ActivityLogRecord => {
+        const patient = patientById.get(scan.patientId);
+        return {
+          id: `food-scan-${scan.id}`,
+          title: scan.risk === "High Risk" ? "Scan makanan berisiko" : "Scan makanan selesai",
+          description: scan.result,
+          category: "Scan Makanan",
+          severity: scan.risk === "High Risk" ? "Peringatan" : "Sukses",
+          timestamp: scan.scannedAt,
+          patientId: scan.patientId,
+          patientName: patient?.name,
+          patientAvatar: patient?.avatar,
+          scanId: scan.id,
+          read: false,
+        };
+      });
+      const nextActivities = [...alertActivities, ...medicationActivities, ...foodScanActivities, ...auditActivities].map((activity) => ({ ...activity, read: readIds.has(activity.id) || activity.read }));
+      const byId = new Map([...activities, ...nextActivities].map((activity) => [activity.id, activity]));
+      setActivities(Array.from(byId.values()));
+      setActivityPage(nextPage);
+    } catch {
+      showToast("Gagal memuat aktivitas tambahan.", "error");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const todayKey = new Date().toISOString().slice(0, 10);
 
   const summaryStats = useMemo(() => {
@@ -88,7 +221,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
       readOnly
         ? { label: "Total Aktivitas", value: String(activities.length), tone: "neutral" as const, color: "pine" as const, icon: ClipboardList }
         : { label: "Notifikasi Belum Dibaca", value: String(unread), tone: "neutral" as const, color: "pine" as const, icon: Bell },
-      { label: "Notifikasi Peringatan", value: String(warningCritical), tone: "critical" as const, color: "lime" as const, icon: AlertTriangle },
+      { label: "Notifikasi Peringatan/Kritis", value: String(warningCritical), tone: "critical" as const, color: "lime" as const, icon: AlertTriangle },
       { label: "Total Aktivitas Hari Ini", value: String(todayTotal), tone: "safe" as const, color: "leaf" as const, icon: ClipboardList },
     ];
   }, [activities, readOnly, todayKey]);
@@ -153,6 +286,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
     setProcessingActivityId(activityId);
     try {
       if (activity.category === "Kepatuhan") await resolveAlertViaApi(activityId);
+      await markActivitiesReadViaApi([activityId]);
       markActivityAsRead(activityId);
     } catch {
       showToast("Gagal menandai aktivitas sebagai dibaca.", "error");
@@ -168,6 +302,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
       await Promise.all(filteredActivities
         .filter((activity) => activity.category === "Kepatuhan" && !activity.read)
         .map((activity) => resolveAlertViaApi(activity.id)));
+      await markActivitiesReadViaApi(filteredActivities.filter((activity) => !activity.read).map((activity) => activity.id));
       markAllActivitiesAsRead();
       showToast("Semua aktivitas ditandai sudah dibaca.");
     } catch {
@@ -237,7 +372,10 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
           activities={filteredActivities}
           visibleCount={visibleCount}
           readOnly={readOnly}
-          onLoadMore={() => setVisibleCount((currentCount) => currentCount + loadBatchSize)}
+          onLoadMore={() => {
+            setVisibleCount((currentCount) => currentCount + loadBatchSize);
+            if (visibleCount + loadBatchSize >= filteredActivities.length) void loadMoreFromServer();
+          }}
           onMarkRead={markAsRead}
           processingActivityId={processingActivityId}
           onViewDetail={setSelectedActivity}

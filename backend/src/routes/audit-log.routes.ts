@@ -15,7 +15,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/audit-logs:
+ * /api/v1/audit-logs:
  *   get:
  *     summary: Ambil riwayat audit log
  *     tags: [Audit Logs]
@@ -64,6 +64,6 @@ router.use(authenticateToken);
  *       403:
  *         description: Hanya admin yang dapat melihat audit log
  */
-router.get("/", authorizeRoles("admin", "super_admin"), auditLogController.listAuditLogs);
+router.get("/", authorizeRoles("nurse", "admin", "super_admin"), auditLogController.listAuditLogs);
 
 export default router;

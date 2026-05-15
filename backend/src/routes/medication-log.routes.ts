@@ -16,7 +16,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/medication-logs:
+ * /api/v1/medication-logs:
  *   get:
  *     summary: Ambil riwayat intake obat
  *     tags: [Medication Logs]
@@ -46,7 +46,7 @@ router.post("/snooze", authorizeRoles("patient"), validateMedicationSnooze, medi
 
 /**
  * @swagger
- * /api/medication-logs:
+ * /api/v1/medication-logs:
  *   post:
  *     summary: Catat konfirmasi intake obat pasien
  *     tags: [Medication Logs]

@@ -16,7 +16,7 @@ interface IconActionButtonProps {
 const toneClasses: Record<IconActionTone, string> = {
   primary: "text-muted hover:bg-primary/10 hover:text-primary",
   danger: "text-muted hover:bg-danger/10 hover:text-danger",
-  warning: "text-muted hover:bg-warning/10 hover:text-warning",
+  warning: "text-muted hover:bg-warning/10 hover:text-warning-dark",
   blue: "text-muted hover:bg-[color:var(--blue)]/10 hover:text-[var(--blue)]",
   delete: "text-danger hover:bg-danger/10 hover:text-danger",
 };

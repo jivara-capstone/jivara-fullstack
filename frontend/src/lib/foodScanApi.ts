@@ -73,6 +73,7 @@ interface FoodScanDetailApiResponse {
 
 interface FoodScanListApiResponse {
   data: FoodScanDetailResponse[];
+  meta?: { page: number; limit: number; total: number };
 }
 
 const getInitials = (name?: string | null) => name?.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "PX";
@@ -226,8 +227,8 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
   };
 };
 
-export const getFoodScansFromApi = async (): Promise<FoodScanRecord[]> => {
-  const response = await api.get<FoodScanListApiResponse>("/food-scans");
+export const getFoodScansFromApi = async (params: { page?: number; limit?: number; patientId?: string } = {}): Promise<FoodScanRecord[]> => {
+  const response = await api.get<FoodScanListApiResponse>("/food-scans", { params: { page: params.page, limit: params.limit, patient_id: params.patientId } });
   return response.data.data.map((detail) => mapScanDetail(detail).scan);
 };
 

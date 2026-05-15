@@ -377,6 +377,16 @@ export const auditLogs = pgTable("audit_logs", {
   actionDateIdx: index("idx_audit_action_date").on(table.action, table.createdAt),
 }));
 
+export const activityReads = pgTable("activity_reads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  activityId: varchar("activity_id", { length: 128 }).notNull(),
+  readAt: timestamp("read_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_activity_reads_user").on(table.userId),
+  uniqueUserActivity: uniqueIndex("uq_activity_reads_user_activity").on(table.userId, table.activityId),
+}));
+
 // ─────────────────────────────────────────────
 // RELATIONS
 // ─────────────────────────────────────────────

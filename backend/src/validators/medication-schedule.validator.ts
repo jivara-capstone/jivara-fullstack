@@ -44,6 +44,27 @@ export const validateMedicationScheduleCreate = (req: Request, res: Response, ne
   next();
 };
 
+export const validateMedicationScheduleBulkCreate = (req: Request, res: Response, next: NextFunction) => {
+  const { schedules } = req.body;
+
+  if (!Array.isArray(schedules) || schedules.length === 0) {
+    return res.status(400).json({ status: "gagal", message: "schedules wajib berupa array", error_code: "VALIDATION_ERROR" });
+  }
+
+  if (schedules.length > 20) {
+    return res.status(400).json({ status: "gagal", message: "Maksimal 20 jadwal obat per request", error_code: "VALIDATION_ERROR" });
+  }
+
+  for (const schedule of schedules) {
+    const reqLike = { body: schedule } as Request;
+    let rejected = false;
+    validateMedicationScheduleCreate(reqLike, res, (() => { rejected = false; }) as NextFunction);
+    if ((res.headersSent || rejected)) return;
+  }
+
+  next();
+};
+
 export const validateMedicationScheduleId = (req: Request, res: Response, next: NextFunction) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 

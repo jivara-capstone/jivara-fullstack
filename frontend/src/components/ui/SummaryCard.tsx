@@ -39,7 +39,7 @@ const iconColorStyles: Record<SummaryCardColor, string> = {
   leaf: "text-leaf",
   lime: "text-lime",
   safe: "text-safe",
-  warning: "text-warning",
+  warning: "text-warning-dark",
   danger: "text-danger",
   surface: "text-muted",
 };

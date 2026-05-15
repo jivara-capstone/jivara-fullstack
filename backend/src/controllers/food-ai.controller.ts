@@ -16,8 +16,8 @@ const sendError = (res: Response, error: unknown) => {
 
 export const listFoodScans = async (req: AuthRequest, res: Response) => {
   try {
-    const data = await foodAiService.listFoodScans(req.user);
-    res.status(200).json({ status: "berhasil", data });
+    const result = await foodAiService.listFoodScans(req.query, req.user);
+    res.status(200).json({ status: "berhasil", ...result });
   } catch (error) {
     sendError(res, error);
   }

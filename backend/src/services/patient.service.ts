@@ -99,8 +99,20 @@ export const listPatients = async (query: PatientListQuery, user?: AccessUser) =
       .where(where),
   ]);
 
+  const rowsWithAdherence = await Promise.all(rows.map(async (row) => {
+    const adherence30d = await getAdherenceStats({ patientId: row.id, period: "30d" }, user).catch(() => null);
+    const adherence7d = await getAdherenceStats({ patientId: row.id, period: "7d" }, user).catch(() => null);
+
+    return {
+      ...row,
+      adherenceRate7d: adherence7d?.adherenceRate ?? null,
+      adherenceRate30d: adherence30d?.adherenceRate ?? null,
+      totalScheduled30d: adherence30d?.totalScheduled ?? 0,
+    };
+  }));
+
   return {
-    data: rows,
+    data: rowsWithAdherence,
     meta: {
       page,
       limit,

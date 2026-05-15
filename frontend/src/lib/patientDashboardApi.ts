@@ -80,6 +80,18 @@ export const getConfirmedScheduleDates = (logs: readonly MedicationLogResponse[]
   };
 }, {});
 
+export const getCompletedScheduleDates = (logs: readonly MedicationLogResponse[]) => logs.reduce<Record<string, string[]>>((completedDates, log) => {
+  if (log.status !== "confirmed" && log.status !== "missed") return completedDates;
+
+  const dateKey = (log.confirmedAt || log.scheduledTime || log.createdAt || "").slice(0, 10);
+  if (!dateKey) return completedDates;
+
+  return {
+    ...completedDates,
+    [dateKey]: [...(completedDates[dateKey] ?? []), log.scheduleId],
+  };
+}, {});
+
 export const getPatientActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
   const data = await getPatientDashboardData();
 
@@ -95,7 +107,7 @@ export const getPatientActivitiesFromApi = async (): Promise<ActivityLogRecord[]
     patientAvatar: data.patient.avatar,
     scheduleId: log.scheduleId,
     medicineName: log.drugName,
-    read: true,
+    read: false,
   }));
 };
 

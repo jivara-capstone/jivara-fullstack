@@ -7,7 +7,7 @@
 
 /**
  * @swagger
- * /api/public/stats:
+ * /api/v1/public/stats:
  *   get:
  *     summary: Ambil statistik publik landing page
  *     tags: [Public]
@@ -19,7 +19,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals:
+ * /api/v1/auth/admin-approvals:
  *   get:
  *     summary: Ambil daftar pengajuan admin
  *     tags: [Auth]
@@ -34,7 +34,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals/{id}/approve:
+ * /api/v1/auth/admin-approvals/{id}/approve:
  *   post:
  *     summary: Setujui pengajuan admin
  *     tags: [Auth]
@@ -54,7 +54,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals/{id}/reject:
+ * /api/v1/auth/admin-approvals/{id}/reject:
  *   post:
  *     summary: Tolak pengajuan admin
  *     tags: [Auth]
@@ -83,7 +83,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals/{id}/activate:
+ * /api/v1/auth/admin-approvals/{id}/activate:
  *   post:
  *     summary: Aktifkan kembali admin yang disuspend
  *     tags: [Auth]
@@ -103,7 +103,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals/{id}/restore:
+ * /api/v1/auth/admin-approvals/{id}/restore:
  *   post:
  *     summary: Pulihkan pengajuan admin yang ditolak
  *     tags: [Auth]
@@ -123,7 +123,7 @@
 
 /**
  * @swagger
- * /api/auth/admin-approvals/{id}/suspend:
+ * /api/v1/auth/admin-approvals/{id}/suspend:
  *   post:
  *     summary: Suspend admin aktif
  *     tags: [Auth]
@@ -143,7 +143,7 @@
 
 /**
  * @swagger
- * /api/auth/status:
+ * /api/v1/auth/status:
  *   post:
  *     summary: Cek status akun dari refresh token
  *     tags: [Auth]
@@ -165,7 +165,7 @@
 
 /**
  * @swagger
- * /api/food-scans:
+ * /api/v1/food-scans:
  *   get:
  *     summary: Ambil daftar riwayat scan makanan
  *     tags: [Food AI]
@@ -188,7 +188,7 @@
 
 /**
  * @swagger
- * /api/food-scans/{scanId}:
+ * /api/v1/food-scans/{scanId}:
  *   get:
  *     summary: Ambil detail scan makanan
  *     tags: [Food AI]
@@ -210,7 +210,7 @@
 
 /**
  * @swagger
- * /api/notifications/user-preferences:
+ * /api/v1/notifications/user-preferences:
  *   get:
  *     summary: Ambil preferensi notifikasi pengguna saat ini
  *     tags: [Notifications]
@@ -230,7 +230,7 @@
 
 /**
  * @swagger
- * /api/notifications/user-preferences:
+ * /api/v1/notifications/user-preferences:
  *   patch:
  *     summary: Perbarui preferensi notifikasi pengguna saat ini
  *     tags: [Notifications]
@@ -259,7 +259,7 @@
 
 /**
  * @swagger
- * /api/medication-logs/snooze:
+ * /api/v1/medication-logs/snooze:
  *   post:
  *     summary: Tunda reminder obat pasien
  *     tags: [Medication Logs]

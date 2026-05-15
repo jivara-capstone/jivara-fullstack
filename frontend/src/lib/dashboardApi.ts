@@ -14,6 +14,9 @@ interface PatientListResponse {
   address?: string | null;
   isActive?: boolean | null;
   createdAt?: string | null;
+  adherenceRate7d?: number | null;
+  adherenceRate30d?: number | null;
+  totalScheduled30d?: number | null;
 }
 
 interface PaginatedResponse<T> {
@@ -85,6 +88,11 @@ const mapPatient = (patient: PatientListResponse, adherence: number, status: Pat
   avatar: getInitials(patient.fullName),
 });
 
+const getPatientListAdherence = (patient: PatientListResponse) => {
+  if (!patient.totalScheduled30d) return 100;
+  return Math.round(patient.adherenceRate30d ?? patient.adherenceRate7d ?? 0);
+};
+
 const normalizeAdherence = (adherence: number | null | undefined, totalScheduled?: number | null) => {
   if (!totalScheduled) return 100;
   return Math.round(adherence ?? 0);
@@ -101,11 +109,10 @@ export const getNurseDashboardData = async (): Promise<NurseDashboardData> => {
   const criticalAlerts = alerts.filter((alert) => alert.severity === "critical" || alert.status === "missed").length;
   const warningAlerts = Math.max(alerts.length - criticalAlerts, 0);
   const totalPatients = patientsResponse.data.meta?.total ?? patientsResponse.data.data.length;
-  const averageAdherenceRate = normalizeAdherence(adherenceResponse.data.data.adherenceRate, adherenceResponse.data.data.totalScheduled);
-  const patientAdherence = await Promise.all(patientsResponse.data.data.map((patient) => api
-    .get<{ data: AdherenceStatsResponse }>("/adherence", { params: { patient_id: patient.id, period: "30d" } })
-    .then((response) => normalizeAdherence(response.data.data.adherenceRate, response.data.data.totalScheduled))
-  ));
+  const patientAdherence = patientsResponse.data.data.map(getPatientListAdherence);
+  const averageAdherenceRate = patientAdherence.length > 0
+    ? Math.round(patientAdherence.reduce((total, adherence) => total + adherence, 0) / patientAdherence.length)
+    : normalizeAdherence(adherenceResponse.data.data.adherenceRate, adherenceResponse.data.data.totalScheduled);
   const patients = patientsResponse.data.data.map((patient, index) => {
     const adherence = patientAdherence[index] ?? 0;
     return mapPatient(patient, adherence, getStatusFromAdherence(adherence));

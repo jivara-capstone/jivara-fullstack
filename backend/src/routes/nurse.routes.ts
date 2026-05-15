@@ -16,7 +16,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/nurses:
+ * /api/v1/nurses:
  *   get:
  *     summary: Ambil daftar perawat
  *     tags: [Nurses]
@@ -57,7 +57,7 @@ router.get("/", authorizeRoles("admin", "super_admin"), nurseController.listNurs
 
 /**
  * @swagger
- * /api/nurses/{id}:
+ * /api/v1/nurses/{id}:
  *   get:
  *     summary: Ambil detail perawat
  *     tags: [Nurses]
@@ -80,7 +80,7 @@ router.get("/:id", authorizeRoles("admin", "super_admin"), validateNurseId, nurs
 
 /**
  * @swagger
- * /api/nurses:
+ * /api/v1/nurses:
  *   post:
  *     summary: Buat akun perawat
  *     tags: [Nurses]
@@ -130,7 +130,7 @@ router.post("/", authorizeRoles("admin", "super_admin"), validateNurseCreate, nu
 
 /**
  * @swagger
- * /api/nurses/{id}:
+ * /api/v1/nurses/{id}:
  *   put:
  *     summary: Perbarui data perawat
  *     tags: [Nurses]
@@ -182,7 +182,7 @@ router.put("/:id", authorizeRoles("admin", "super_admin"), validateNurseId, vali
 
 /**
  * @swagger
- * /api/nurses/{id}:
+ * /api/v1/nurses/{id}:
  *   delete:
  *     summary: Nonaktifkan perawat
  *     tags: [Nurses]

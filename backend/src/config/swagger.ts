@@ -49,7 +49,7 @@ const spec = swaggerJsdoc(options) as { paths?: Record<string, unknown> };
 if (spec.paths) {
   spec.paths = Object.fromEntries(
     Object.entries(spec.paths).map(([path, value]) => [
-      path.startsWith('/api/') ? path.replace('/api/', '/api/v1/') : path,
+      path.startsWith('/api/v1/') ? path : path.startsWith('/api/') ? path.replace('/api/', '/api/v1/') : path,
       value,
     ]),
   );

@@ -20,7 +20,7 @@ export const activityCategoryTextStyles: Record<ActivityCategory, string> = {
   Reminder: "text-primary",
   Kepatuhan: "text-leaf",
   "Scan Makanan": "text-leaf",
-  Administrasi: "text-warning",
+  Administrasi: "text-warning-dark",
 };
 
 export const activityCategoryIcons: Record<ActivityCategory, LucideIcon> = {

@@ -17,7 +17,7 @@ interface PatientScheduleDaySummaryProps {
 const statusContent = {
   empty: { title: "Tidak ada jadwal", description: "Tidak ada obat aktif untuk tanggal ini.", icon: CalendarClock, className: "text-muted" },
   done: { title: "Selesai", description: "Semua obat pada tanggal ini sudah dikonfirmasi.", icon: CheckCircle2, className: "text-primary" },
-  active: { title: "Belum selesai", description: "Konfirmasi obat setelah scan makanan hari ini.", icon: CalendarCheck2, className: "text-warning" },
+  active: { title: "Belum selesai", description: "Konfirmasi obat setelah scan makanan hari ini.", icon: CalendarCheck2, className: "text-warning-dark" },
   missed: { title: "Terlewat", description: "Ada jadwal obat lampau yang belum dikonfirmasi.", icon: AlertTriangle, className: "text-danger" },
   upcoming: { title: "Akan datang", description: "Jadwal ini belum bisa dikonfirmasi.", icon: CalendarClock, className: "text-[var(--blue)]" },
 } as const;

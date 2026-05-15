@@ -20,7 +20,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/prescriptions:
+ * /api/v1/prescriptions:
  *   get:
  *     summary: Ambil daftar resep pasien
  *     tags: [Prescriptions]
@@ -39,7 +39,7 @@ router.get("/", authorizeRoles("nurse", "admin"), prescriptionController.listPre
 
 /**
  * @swagger
- * /api/prescriptions/{id}:
+ * /api/v1/prescriptions/{id}:
  *   get:
  *     summary: Ambil detail resep
  *     tags: [Prescriptions]
@@ -59,7 +59,7 @@ router.get("/:id", authorizeRoles("nurse", "admin"), validatePrescriptionId, pre
 
 /**
  * @swagger
- * /api/prescriptions:
+ * /api/v1/prescriptions:
  *   post:
  *     summary: Buat resep baru
  *     tags: [Prescriptions]
@@ -73,7 +73,7 @@ router.post("/", authorizeRoles("nurse", "admin"), validatePrescriptionCreate, p
 
 /**
  * @swagger
- * /api/prescriptions/{id}:
+ * /api/v1/prescriptions/{id}:
  *   put:
  *     summary: Perbarui resep
  *     tags: [Prescriptions]
@@ -93,7 +93,7 @@ router.put("/:id", authorizeRoles("nurse", "admin"), validatePrescriptionId, val
 
 /**
  * @swagger
- * /api/prescriptions/{id}:
+ * /api/v1/prescriptions/{id}:
  *   delete:
  *     summary: Hapus resep
  *     tags: [Prescriptions]

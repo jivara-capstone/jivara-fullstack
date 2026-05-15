@@ -21,10 +21,9 @@ import auditLogRoutes from './routes/audit-log.routes';
 import nurseRoutes from './routes/nurse.routes';
 import alertRoutes from './routes/alert.routes';
 import publicStatsRoutes from './routes/public-stats.routes';
-import { startMedicationReminderScheduler } from './services/medication-reminder-scheduler.service';
+import activityReadRoutes from './routes/activity-read.routes';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 const publicDir = path.resolve(process.cwd(), 'public');
 
 app.set('trust proxy', 1);
@@ -97,6 +96,7 @@ const mountApiRoutes = (basePath: string) => {
   app.use(`${basePath}/notifications`, notificationRoutes);
   app.use(`${basePath}/audit-logs`, auditLogRoutes);
   app.use(`${basePath}/alerts`, alertRoutes);
+  app.use(`${basePath}/activity-reads`, activityReadRoutes);
   app.use(basePath, foodAiRoutes);
 };
 
@@ -139,7 +139,4 @@ app.use((err: { status?: number; message?: string }, req: Request, res: Response
   });
 });
 
-app.listen(PORT, () => {
-  startMedicationReminderScheduler();
-  // console.log(`[server]: Server berjalan di http://localhost:${PORT}`);
-});
+export default app;

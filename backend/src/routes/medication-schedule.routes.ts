@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as medicationScheduleController from "../controllers/medication-schedule.controller";
 import { authenticateToken, authorizeRoles } from "../middleware/auth.middleware";
 import {
+  validateMedicationScheduleBulkCreate,
   validateMedicationScheduleCreate,
   validateMedicationScheduleId,
   validateMedicationScheduleUpdate,
@@ -20,7 +21,7 @@ router.use(authenticateToken);
 
 /**
  * @swagger
- * /api/medication-schedules:
+ * /api/v1/medication-schedules:
  *   get:
  *     summary: Ambil daftar jadwal obat
  *     tags: [Medication Schedules]
@@ -43,7 +44,7 @@ router.get("/", authorizeRoles("patient", "nurse", "admin"), medicationScheduleC
 
 /**
  * @swagger
- * /api/medication-schedules/{id}:
+ * /api/v1/medication-schedules/{id}:
  *   get:
  *     summary: Ambil detail jadwal obat
  *     tags: [Medication Schedules]
@@ -63,7 +64,7 @@ router.get("/:id", authorizeRoles("patient", "nurse", "admin"), validateMedicati
 
 /**
  * @swagger
- * /api/medication-schedules:
+ * /api/v1/medication-schedules:
  *   post:
  *     summary: Buat jadwal obat baru
  *     tags: [Medication Schedules]
@@ -77,7 +78,63 @@ router.post("/", authorizeRoles("nurse", "admin"), validateMedicationScheduleCre
 
 /**
  * @swagger
- * /api/medication-schedules/{id}:
+ * /api/v1/medication-schedules/bulk:
+ *   post:
+ *     summary: Buat beberapa jadwal obat sekaligus
+ *     tags: [Medication Schedules]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - schedules
+ *             properties:
+ *               schedules:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 20
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - patientId
+ *                     - drugName
+ *                     - dosage
+ *                     - frequency
+ *                     - scheduledTimes
+ *                   properties:
+ *                     patientId:
+ *                       type: string
+ *                       format: uuid
+ *                     prescriptionId:
+ *                       type: string
+ *                       format: uuid
+ *                     drugName:
+ *                       type: string
+ *                     dosage:
+ *                       type: string
+ *                     frequency:
+ *                       type: integer
+ *                     scheduledTimes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     instructions:
+ *                       type: string
+ *     responses:
+ *       201:
+ *         description: Jadwal obat berhasil dibuat
+ *       400:
+ *         description: Payload tidak valid
+ */
+router.post("/bulk", authorizeRoles("nurse", "admin"), validateMedicationScheduleBulkCreate, medicationScheduleController.createMedicationSchedules);
+
+/**
+ * @swagger
+ * /api/v1/medication-schedules/{id}:
  *   put:
  *     summary: Perbarui jadwal obat
  *     tags: [Medication Schedules]
@@ -97,7 +154,7 @@ router.put("/:id", authorizeRoles("nurse", "admin"), validateMedicationScheduleI
 
 /**
  * @swagger
- * /api/medication-schedules/{id}:
+ * /api/v1/medication-schedules/{id}:
  *   delete:
  *     summary: Deaktivasi jadwal obat
  *     tags: [Medication Schedules]

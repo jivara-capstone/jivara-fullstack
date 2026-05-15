@@ -2,6 +2,7 @@ import { db } from "../db";
 import { auditLogs, users } from "../db/schema";
 import { and, count, desc, eq, gte, lt } from "drizzle-orm";
 import { AuditLogListQuery } from "../types/audit-log.types";
+import { AccessUser } from "./access-control.service";
 
 type AuditChange = Record<string, unknown>;
 
@@ -59,7 +60,7 @@ const getDateRange = (date?: string) => {
   return { start, end };
 };
 
-export const listAuditLogs = async (query: AuditLogListQuery) => {
+export const listAuditLogs = async (query: AuditLogListQuery, user?: AccessUser) => {
   const { page, limit, offset } = parsePagination(query);
   const userId = query.userId || query.user_id;
   const resourceType = query.resourceType || query.resource_type;
@@ -67,7 +68,11 @@ export const listAuditLogs = async (query: AuditLogListQuery) => {
   const dateRange = getDateRange(query.date);
   const conditions = [];
 
-  if (userId) conditions.push(eq(auditLogs.userId, userId));
+  if (user?.role === "nurse") {
+    conditions.push(eq(auditLogs.userId, user.id));
+  } else if (userId) {
+    conditions.push(eq(auditLogs.userId, userId));
+  }
   if (query.action) conditions.push(eq(auditLogs.action, query.action));
   if (resourceType) conditions.push(eq(auditLogs.resourceType, resourceType));
   if (resourceId) conditions.push(eq(auditLogs.resourceId, resourceId));

@@ -25,11 +25,40 @@ const attachScanIdParam = (req: Request, _res: Response, next: NextFunction) => 
  *   description: AI food detection, interaction check, dan nutrition insight
  */
 
+/**
+ * @swagger
+ * /api/v1/food-scans:
+ *   get:
+ *     summary: Ambil daftar scan makanan
+ *     tags: [Food AI]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *       - in: query
+ *         name: patient_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Daftar scan makanan berhasil diambil
+ */
 router.get("/food-scans", authorizeRoles("patient", "nurse", "admin"), foodAiController.listFoodScans);
 
 /**
  * @swagger
- * /api/food-scans/analytics/interactions:
+ * /api/v1/food-scans/analytics/interactions:
  *   get:
  *     summary: Ambil analitik agregat interaksi makanan-obat
  *     tags: [Food AI]
@@ -46,7 +75,7 @@ router.get("/food-scans/:scanId", authorizeRoles("patient", "nurse", "admin"), f
 
 /**
  * @swagger
- * /api/food-scans:
+ * /api/v1/food-scans:
  *   post:
  *     summary: Buat data scan makanan dari foto
  *     tags: [Food AI]
@@ -92,7 +121,7 @@ router.post("/food-scans", authorizeRoles("patient", "nurse", "admin"), uploadSi
 
 /**
  * @swagger
- * /api/food-scans/{scanId}/detections:
+ * /api/v1/food-scans/{scanId}/detections:
  *   post:
  *     summary: Buat hasil deteksi makanan untuk scan
  *     tags: [Food AI]
@@ -113,7 +142,7 @@ router.post("/food-scans/:scanId/detections", authorizeRoles("patient", "nurse",
 
 /**
  * @swagger
- * /api/food-scans/{scanId}/interactions:
+ * /api/v1/food-scans/{scanId}/interactions:
  *   post:
  *     summary: Buat hasil analisis interaksi obat-makanan untuk scan
  *     tags: [Food AI]
@@ -134,7 +163,7 @@ router.post("/food-scans/:scanId/interactions", authorizeRoles("patient", "nurse
 
 /**
  * @swagger
- * /api/nutrition-estimates:
+ * /api/v1/nutrition-estimates:
  *   post:
  *     summary: Buat estimasi nutrisi dari makanan terdeteksi
  *     tags: [Food AI]

@@ -46,6 +46,19 @@ export const createMedicationSchedule = async (req: AuthRequest, res: Response) 
   }
 };
 
+export const createMedicationSchedules = async (req: AuthRequest, res: Response) => {
+  try {
+    const schedules = await medicationScheduleService.createMedicationSchedules(req.body.schedules, req.user?.id, req.user);
+    res.status(201).json({
+      status: "berhasil",
+      data: schedules,
+      message: "Jadwal obat berhasil dibuat",
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
 export const updateMedicationSchedule = async (req: AuthRequest, res: Response) => {
   try {
     const schedule = await medicationScheduleService.updateMedicationSchedule(getParam(req.params.id), req.body, req.user);

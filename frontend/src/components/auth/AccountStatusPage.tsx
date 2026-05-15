@@ -21,7 +21,7 @@ const statusContent = {
     icon: Clock3,
     title: "Menunggu Persetujuan",
     description: "Akun Anda sudah terdaftar dan sedang menunggu persetujuan.",
-    tone: "text-warning",
+    tone: "text-warning-dark",
   },
   rejected: {
     icon: AlertTriangle,

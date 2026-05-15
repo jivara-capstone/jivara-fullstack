@@ -90,6 +90,10 @@ export const createMedicationSchedule = async (dto: MedicationScheduleCreateDTO,
   return schedule;
 };
 
+export const createMedicationSchedules = async (dtos: MedicationScheduleCreateDTO[], createdBy?: string, user?: AccessUser) => {
+  return Promise.all(dtos.map((dto) => createMedicationSchedule(dto, createdBy, user)));
+};
+
 export const updateMedicationSchedule = async (id: string, dto: MedicationScheduleUpdateDTO, user?: AccessUser) => {
   const existing = await getMedicationScheduleById(id, user);
 

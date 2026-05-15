@@ -49,7 +49,7 @@ const registerLimiter = rateLimit({
 
 /**
  * @swagger
- * /api/auth/register:
+ * /api/v1/auth/register:
  *   post:
  *     summary: Daftarkan calon admin baru
  *     tags: [Auth]
@@ -138,7 +138,7 @@ router.post(
 
 /**
  * @swagger
- * /api/auth/login:
+ * /api/v1/auth/login:
  *   post:
  *     summary: Masuk ke akun pengguna
  *     description: Gunakan access_token dari response endpoint ini untuk tombol Authorize di Swagger UI.
@@ -166,7 +166,7 @@ router.post("/login", loginLimiter, validateLoginIdentifier, validateLogin, auth
 
 /**
  * @swagger
- * /api/auth/complete-password-change:
+ * /api/v1/auth/complete-password-change:
  *   post:
  *     summary: Selesaikan penggantian kata sandi wajib
  *     tags: [Auth]
@@ -201,7 +201,7 @@ router.post(
 
 /**
  * @swagger
- * /api/auth/change-password:
+ * /api/v1/auth/change-password:
  *   put:
  *     summary: Ganti kata sandi akun saat ini
  *     description: Verifikasi kata sandi lama sebelum menyimpan kata sandi baru.
@@ -240,7 +240,7 @@ router.put(
 
 /**
  * @swagger
- * /api/auth/refresh:
+ * /api/v1/auth/refresh:
  *   post:
  *     summary: Perbarui token akses
  *     tags: [Auth]
@@ -268,7 +268,7 @@ router.post("/status", authController.getStatus);
 
 /**
  * @swagger
- * /api/auth/logout:
+ * /api/v1/auth/logout:
  *   post:
  *     summary: Keluar dari akun
  *     tags: [Auth]
@@ -292,7 +292,7 @@ router.post("/logout", authController.logout);
 
 /**
  * @swagger
- * /api/auth/me:
+ * /api/v1/auth/me:
  *   get:
  *     summary: Ambil profil pengguna saat ini
  *     description: Klik tombol Authorize di bagian atas Swagger UI, lalu masukkan access_token dari /api/auth/login tanpa awalan Bearer.
@@ -309,7 +309,7 @@ router.get("/me", authenticateToken, authController.getMe);
 
 /**
  * @swagger
- * /api/auth/me:
+ * /api/v1/auth/me:
  *   patch:
  *     summary: Perbarui profil pengguna saat ini
  *     tags: [Auth]

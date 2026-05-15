@@ -8,9 +8,11 @@ import { getUserNotificationPreferenceFromApi, updateUserNotificationPreferenceV
 import { enableUserPushNotifications } from "@/lib/pushNotifications";
 import { showToast } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
+import { useIsStandalonePwa } from "@/hooks";
 import ToggleRow from "@/components/settings/ToggleRow";
 
 export default function AdminNotificationSettingsForm() {
+  const isStandalonePwa = useIsStandalonePwa();
   const role = useAuthStore((state) => state.user?.role);
   const isSuperAdmin = role === "super_admin";
   const preferenceKey: UserNotificationPreferenceKey = isSuperAdmin ? "super_admin_approval" : "admin_critical_activity";
@@ -39,6 +41,7 @@ export default function AdminNotificationSettingsForm() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!isStandalonePwa) return;
     setIsSaving(true);
 
     try {
@@ -61,8 +64,13 @@ export default function AdminNotificationSettingsForm() {
         checked={notificationEnabled}
         onChange={setNotificationEnabled}
       />
+      {!isStandalonePwa && (
+        <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">
+          Buka Jivara sebagai PWA untuk menyimpan pengaturan notifikasi.
+        </p>
+      )}
       <div className="flex justify-end pt-2">
-        <Button type="submit" icon={<Save size={18} />} loading={isSaving}>Simpan</Button>
+        <Button type="submit" icon={<Save size={18} />} loading={isSaving} disabled={!isStandalonePwa}>Simpan</Button>
       </div>
     </form>
   );
