@@ -124,7 +124,7 @@ export const registerUser = async (dto: RegisterDTO) => {
     preferenceKey: "super_admin_approval",
     type: "admin_registration_pending",
     title: "Pendaftaran admin baru",
-    body: `${newUser.fullName} menunggu persetujuan untuk ${newUser.organizationName}.`,
+    body: `Admin ${newUser.fullName} menunggu persetujuan untuk ${newUser.organizationName}.`,
     urgency: "urgent",
     data: {
       user_id: newUser.id,

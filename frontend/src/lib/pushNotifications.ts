@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import type { User } from "@/types/auth";
 
 interface PatientResponse {
   id: string;
@@ -131,6 +132,27 @@ export const enableUserPushNotifications = async () => {
   await api.post("/notifications/user-subscribe", {
     subscription: subscription.toJSON(),
   });
+};
+
+export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">) => {
+  if (typeof window === "undefined") return;
+  const isIosStandalone = Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  if (!window.matchMedia("(display-mode: standalone)").matches && !isIosStandalone) return;
+  if (!("Notification" in window) || !("PushManager" in window)) return;
+  if (Notification.permission === "denied") return;
+
+  try {
+    if (user.role === "patient") {
+      await enableMedicationPushNotifications();
+      return;
+    }
+
+    if (["nurse", "admin", "super_admin"].includes(String(user.role))) {
+      await enableUserPushNotifications();
+    }
+  } catch (error) {
+    console.warn("[Jivara Push] Default subscription skipped", error);
+  }
 };
 
 export const setMedicationPushPreference = async (enabled: boolean) => {

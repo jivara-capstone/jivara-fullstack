@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Lock, LogIn, Mail } from "lucide-react";
 import axios from "axios";
 import { getApiErrorMessage, isRateLimitError } from "@/lib/apiErrors";
+import { tryEnableDefaultPushNotifications } from "@/lib/pushNotifications";
 import { closeAlert, showError, showLoading, showToast, showWarning } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 import AuthCard from "@/components/ui/AuthCard";
@@ -86,6 +87,7 @@ export default function LoginForm() {
       }
 
       setAuth(user);
+      void tryEnableDefaultPushNotifications(user);
 
       showToast("Anda berhasil masuk.", "success");
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");

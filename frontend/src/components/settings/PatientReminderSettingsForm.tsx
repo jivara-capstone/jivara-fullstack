@@ -11,7 +11,7 @@ import ToggleRow from "./ToggleRow";
 
 export default function PatientReminderSettingsForm() {
   const isStandalonePwa = useIsStandalonePwa();
-  const [medicineReminder, setMedicineReminder] = useState(false);
+  const [medicineReminder, setMedicineReminder] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -23,7 +23,7 @@ export default function PatientReminderSettingsForm() {
         if (isMounted) setMedicineReminder(preference.enabled);
       })
       .catch(() => {
-        if (isMounted) setMedicineReminder(false);
+        if (isMounted) setMedicineReminder(true);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);

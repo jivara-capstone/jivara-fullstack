@@ -67,13 +67,14 @@ const resolveRoleUserIds = async (dto: Pick<UserPushNotificationDTO, "roles" | "
 
 const resolveCareTeamTargets = async (patientId: string) => {
   const patientRows = await db
-    .select({ organizationId: patients.organizationId })
+    .select({ organizationId: patients.organizationId, patientName: users.fullName })
     .from(patients)
+    .innerJoin(users, eq(users.id, patients.userId))
     .where(eq(patients.id, patientId))
     .limit(1);
 
   const patient = patientRows[0];
-  if (!patient) return { adminUserIds: [], nurseUserIds: [] };
+  if (!patient) return { adminUserIds: [], nurseUserIds: [], patientName: "Pasien" };
 
   const adminRows = patient.organizationId
     ? await db
@@ -109,6 +110,7 @@ const resolveCareTeamTargets = async (patientId: string) => {
   return {
     adminUserIds: unique(adminRows.map((row) => row.id)),
     nurseUserIds: unique(nurseRows.map((row) => row.userId)),
+    patientName: patient.patientName,
   };
 };
 
@@ -541,9 +543,10 @@ export const sendCareTeamPushNotification = async (patientId: string, dto: Omit<
 
 export const sendCareTeamCriticalPushNotification = async (patientId: string, dto: Omit<UserPushNotificationDTO, "userIds" | "roles" | "organizationId" | "preferenceKey">) => {
   const targets = await resolveCareTeamTargets(patientId);
+  const body = `Pasien ${targets.patientName}: ${dto.body}`;
   const [adminResult, nurseResult] = await Promise.all([
-    sendUserPushNotification({ ...dto, userIds: targets.adminUserIds, preferenceKey: "admin_critical_activity" }),
-    sendUserPushNotification({ ...dto, userIds: targets.nurseUserIds, preferenceKey: "nurse_critical_alert" }),
+    sendUserPushNotification({ ...dto, body, userIds: targets.adminUserIds, preferenceKey: "admin_critical_activity" }),
+    sendUserPushNotification({ ...dto, body, userIds: targets.nurseUserIds, preferenceKey: "nurse_critical_alert" }),
   ]);
 
   return {
