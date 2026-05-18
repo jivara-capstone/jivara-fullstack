@@ -60,6 +60,29 @@ export default function PatientReminderSettingsForm() {
     }
   };
 
+  const handleToggle = async (enabled: boolean) => {
+    setMedicineReminder(enabled);
+    if (!isStandalonePwa) return;
+
+    setIsSaving(true);
+    try {
+      if (enabled) {
+        await enableMedicationPushNotifications();
+        await setMedicationPushPreference(true);
+      } else {
+        await setMedicationPushPreference(false);
+      }
+      showToast(enabled ? "Reminder obat berhasil diaktifkan." : "Reminder obat berhasil dinonaktifkan.");
+    } catch (error) {
+      setMedicineReminder(false);
+      await setMedicationPushPreference(false).catch(() => undefined);
+      const message = error instanceof Error ? error.message : "Preferensi reminder gagal disimpan.";
+      showToast(message, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return isLoading ? <FormDataSkeleton /> : (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <ToggleRow
@@ -67,7 +90,7 @@ export default function PatientReminderSettingsForm() {
         title="Reminder minum obat"
         description="Aktifkan notifikasi sesuai jadwal obat dan aturan sebelum/sesudah makan."
         checked={medicineReminder}
-        onChange={setMedicineReminder}
+        onChange={(enabled) => { void handleToggle(enabled); }}
       />
       {!isStandalonePwa && (
         <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">

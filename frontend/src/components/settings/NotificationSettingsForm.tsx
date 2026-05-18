@@ -51,9 +51,27 @@ export default function NotificationSettingsForm() {
     }
   };
 
+  const handleToggle = async (enabled: boolean) => {
+    setCriticalAlert(enabled);
+    if (!isStandalonePwa) return;
+
+    setIsSaving(true);
+    try {
+      if (enabled) await enableUserPushNotifications();
+      await updateUserNotificationPreferenceViaApi("nurse_critical_alert", enabled);
+      showToast(enabled ? "Notifikasi berhasil diaktifkan." : "Notifikasi berhasil dinonaktifkan.");
+    } catch {
+      setCriticalAlert(false);
+      await updateUserNotificationPreferenceViaApi("nurse_critical_alert", false).catch(() => undefined);
+      showToast("Preferensi notifikasi gagal disimpan.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return isLoading ? <FormDataSkeleton /> : (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <ToggleRow id="criticalAlert" title="Peringatan Obat" description="Notifikasi saat pasien memiliki risiko interaksi makanan dan obat tinggi." checked={criticalAlert} onChange={setCriticalAlert} />
+      <ToggleRow id="criticalAlert" title="Peringatan Obat" description="Notifikasi saat pasien memiliki risiko interaksi makanan dan obat tinggi." checked={criticalAlert} onChange={(enabled) => { void handleToggle(enabled); }} />
       {!isStandalonePwa && (
         <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">
           Buka Jivara sebagai PWA untuk menyimpan pengaturan notifikasi.

@@ -55,6 +55,24 @@ export default function AdminNotificationSettingsForm() {
     }
   };
 
+  const handleToggle = async (enabled: boolean) => {
+    setNotificationEnabled(enabled);
+    if (!isStandalonePwa) return;
+
+    setIsSaving(true);
+    try {
+      if (enabled) await enableUserPushNotifications();
+      await updateUserNotificationPreferenceViaApi(preferenceKey, enabled);
+      showToast(`Notifikasi ${isSuperAdmin ? "Super Admin" : "admin"} berhasil ${enabled ? "diaktifkan" : "dinonaktifkan"}.`);
+    } catch {
+      setNotificationEnabled(false);
+      await updateUserNotificationPreferenceViaApi(preferenceKey, false).catch(() => undefined);
+      showToast(`Preferensi notifikasi ${isSuperAdmin ? "Super Admin" : "admin"} gagal disimpan.`, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return isLoading ? <FormDataSkeleton /> : (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <ToggleRow
@@ -62,7 +80,7 @@ export default function AdminNotificationSettingsForm() {
         title={isSuperAdmin ? "Approval Admin Baru" : "Aktivitas Kritis"}
         description={isSuperAdmin ? "Notifikasi saat ada pendaftaran admin baru yang perlu disetujui." : "Notifikasi saat ada aktivitas penting yang membutuhkan perhatian admin."}
         checked={notificationEnabled}
-        onChange={setNotificationEnabled}
+        onChange={(enabled) => { void handleToggle(enabled); }}
       />
       {!isStandalonePwa && (
         <p className="rounded-2xl bg-warning/10 px-4 py-3 text-sm font-bold leading-6 text-warning-dark">

@@ -8,7 +8,7 @@ import axios from "axios";
 import { LogOut } from "lucide-react";
 import { SimpleFooter } from "@/components/landing/Footer";
 import ForcePasswordChangeModal from "@/components/auth/ForcePasswordChangeModal";
-import { tryEnableDefaultPushNotifications } from "@/lib/pushNotifications";
+import { disableDefaultPushPreference, tryEnableDefaultPushNotifications } from "@/lib/pushNotifications";
 import { showConfirm } from "@/lib/swal";
 import { useAuthStore } from "@/store/auth";
 import type { User } from "@/types/auth";
@@ -247,7 +247,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       "Aktifkan notifikasi Jivara agar reminder obat dan peringatan penting bisa muncul otomatis di perangkat ini.",
       "Izinkan",
     ).then((result) => {
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed) {
+        void disableDefaultPushPreference(user);
+        return;
+      }
       void tryEnableDefaultPushNotifications(user, { requestPermission: true });
     });
   }, [hasHydrated, isLoggingOut, isStandalonePwa, user]);

@@ -142,6 +142,20 @@ const getDefaultUserPreferenceKey = (role: string): UserNotificationPreferenceKe
   return null;
 };
 
+export const disableDefaultPushPreference = async (user: Pick<User, "role">) => {
+  try {
+    if (user.role === "patient") {
+      await setMedicationPushPreference(false);
+      return;
+    }
+
+    const preferenceKey = getDefaultUserPreferenceKey(String(user.role));
+    if (preferenceKey) await updateUserNotificationPreferenceViaApi(preferenceKey, false);
+  } catch (error) {
+    console.warn("[Jivara Push] Failed to disable default preference", error);
+  }
+};
+
 export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">, options: { requestPermission?: boolean } = {}) => {
   if (typeof window === "undefined") return;
   const isIosStandalone = Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
@@ -163,6 +177,7 @@ export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">
       await updateUserNotificationPreferenceViaApi(preferenceKey, true);
     }
   } catch (error) {
+    await disableDefaultPushPreference(user);
     console.warn("[Jivara Push] Default subscription skipped", error);
   }
 };
