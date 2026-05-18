@@ -34,6 +34,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isRestoringSession, setIsRestoringSession] = useState(false);
   const isSyncingRef = useRef(false);
   const autoPushUserIdRef = useRef<string | null>(null);
+  const notificationPromptUserIdRef = useRef<string | null>(null);
   const lastUserStatusSyncAtRef = useRef(0);
   const userStatusSyncBlockedUntilRef = useRef(0);
   const isNavigatingAwayRef = useRef(false);
@@ -232,8 +233,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (autoPushUserIdRef.current === user.id) return;
 
     autoPushUserIdRef.current = user.id;
-    void tryEnableDefaultPushNotifications(user);
+    void tryEnableDefaultPushNotifications(user, { requestPermission: false });
   }, [hasHydrated, isLoggingOut, user]);
+
+  useEffect(() => {
+    if (!hasHydrated || !user || isLoggingOut || isNavigatingAwayRef.current || !isStandalonePwa) return;
+    if (notificationPromptUserIdRef.current === user.id) return;
+    if (!("Notification" in window) || Notification.permission !== "default") return;
+
+    notificationPromptUserIdRef.current = user.id;
+    void showConfirm(
+      "Izinkan Notifikasi?",
+      "Aktifkan notifikasi Jivara agar reminder obat dan peringatan penting bisa muncul otomatis di perangkat ini.",
+      "Izinkan",
+    ).then((result) => {
+      if (!result.isConfirmed) return;
+      void tryEnableDefaultPushNotifications(user, { requestPermission: true });
+    });
+  }, [hasHydrated, isLoggingOut, isStandalonePwa, user]);
 
   useEffect(() => {
     if (user || isLoggingOut || isNavigatingAwayRef.current) return;

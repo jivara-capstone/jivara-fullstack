@@ -87,7 +87,7 @@ export default function LoginForm() {
       }
 
       setAuth(user);
-      void tryEnableDefaultPushNotifications(user);
+      void tryEnableDefaultPushNotifications(user, { requestPermission: false });
 
       showToast("Anda berhasil masuk.", "success");
       const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
