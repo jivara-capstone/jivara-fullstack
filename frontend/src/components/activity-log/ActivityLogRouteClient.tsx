@@ -23,7 +23,7 @@ export default function ActivityLogRouteClient({ initialPatientName, initialCate
   if (dashboardRole === "super_admin") return <SuperAdminActivityLogPage />;
 
   return dashboardRole === "nurse" || isOperationalAdminRole(dashboardRole) ? (
-    <ActivityLogPage initialPatientName={initialPatientName} initialCategory={initialCategory} readOnly={isOperationalAdminRole(dashboardRole)} />
+    <ActivityLogPage initialPatientName={initialPatientName} initialCategory={initialCategory} readOnly={isOperationalAdminRole(dashboardRole)} showNurseFilter={dashboardRole !== "nurse"} />
   ) : (
     <PatientActivityLogPage initialCategory={initialCategory} />
   );

@@ -1,8 +1,8 @@
 import { db } from "../db";
 import { auditLogs, users } from "../db/schema";
-import { and, count, desc, eq, gte, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { AuditLogListQuery } from "../types/audit-log.types";
-import { AccessUser } from "./access-control.service";
+import { AccessUser, getOrganizationIdForUser } from "./access-control.service";
 
 type AuditChange = Record<string, unknown>;
 
@@ -70,6 +70,22 @@ export const listAuditLogs = async (query: AuditLogListQuery, user?: AccessUser)
 
   if (user?.role === "nurse") {
     conditions.push(eq(auditLogs.userId, user.id));
+  } else if (user?.role === "admin") {
+    const organizationId = await getOrganizationIdForUser(user.id);
+    if (organizationId) {
+      const orgUserIds = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.organizationId, organizationId));
+      const userIds = orgUserIds.map((row) => row.id);
+      if (userIds.length > 0) {
+        conditions.push(inArray(auditLogs.userId, userIds));
+      } else {
+        conditions.push(eq(auditLogs.userId, user.id));
+      }
+    } else {
+      conditions.push(eq(auditLogs.userId, user.id));
+    }
   } else if (userId) {
     conditions.push(eq(auditLogs.userId, userId));
   }

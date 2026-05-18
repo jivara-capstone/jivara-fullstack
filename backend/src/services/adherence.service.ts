@@ -14,17 +14,13 @@ import { AdherenceQuery } from "../types/adherence.types";
 import { AccessUser, assertCanAccessPatient, getNurseIdForUser, getAssignedPatientIdsForNurse, getOrganizationIdForUser, patientScopeCondition } from "./access-control.service";
 
 const getPeriodDays = (period?: string) => {
+  if (period === "1y") return 365;
   if (period === "90d") return 90;
   if (period === "30d") return 30;
   return 7;
 };
 
 const getDateKey = (date: Date) => date.toISOString().slice(0, 10);
-
-const getTimeKey = (date: Date) => date.toISOString().slice(11, 16);
-
-const getOccurrenceKey = (scheduleId: string, scheduledTime: Date) =>
-  `${scheduleId}|${getDateKey(scheduledTime)}|${getTimeKey(scheduledTime)}`;
 
 const getStartDate = (days: number) => {
   const start = new Date();
@@ -65,13 +61,14 @@ const buildScheduledOccurrences = (
 ) => {
   const now = new Date();
   const start = getStartDate(days);
-  const logsByOccurrence = new Map<string, string>();
 
+  // Group logs by scheduleId + date (not time)
+  const logsByScheduleDate = new Map<string, string>();
   for (const log of logs) {
-    const key = getOccurrenceKey(log.scheduleId, log.scheduledTime);
-    const existing = logsByOccurrence.get(key);
+    const key = `${log.scheduleId}|${getDateKey(log.scheduledTime)}`;
+    const existing = logsByScheduleDate.get(key);
     if (!existing || log.status === "confirmed") {
-      logsByOccurrence.set(key, log.status);
+      logsByScheduleDate.set(key, log.status);
     }
   }
 
@@ -82,21 +79,12 @@ const buildScheduledOccurrences = (
     day.setUTCDate(start.getUTCDate() + index);
 
     for (const schedule of schedules) {
-      const scheduledTimes = Array.isArray(schedule.scheduledTimes) ? schedule.scheduledTimes : [];
+      if (schedule.createdAt && getDateKey(day) < getDateKey(schedule.createdAt)) continue;
+      if (day > now) continue;
 
-      for (const time of scheduledTimes) {
-        if (typeof time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) continue;
-
-        const [hour, minute] = time.split(":").map(Number);
-        const scheduledTime = new Date(day);
-        scheduledTime.setUTCHours(hour, minute, 0, 0);
-
-        if (schedule.createdAt && getDateKey(scheduledTime) < getDateKey(schedule.createdAt)) continue;
-        if (scheduledTime > now) continue;
-
-        const status = logsByOccurrence.get(getOccurrenceKey(schedule.id, scheduledTime)) || "missed";
-        occurrences.push({ scheduledTime, status });
-      }
+      const scheduleDateKey = `${schedule.id}|${getDateKey(day)}`;
+      const status = logsByScheduleDate.get(scheduleDateKey) || "missed";
+      occurrences.push({ scheduledTime: day, status });
     }
   }
 

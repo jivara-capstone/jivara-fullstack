@@ -202,7 +202,6 @@ describe("route access control", async () => {
     ["patient creating patients", "post", "/patients", "patient", 403],
     ["patient managing nurses", "get", "/nurses", "patient", 403],
     ["patient reading prescriptions", "get", "/prescriptions", "patient", 403],
-    ["patient reading alerts", "get", "/alerts", "patient", 403],
     ["patient reading audit logs", "get", "/audit-logs", "patient", 403],
     ["nurse reading user notification preferences", "get", "/notifications/user-preferences", "patient", 403],
     ["nurse assigning patients", "put", `/patients/${validUuid}/assign`, "nurse", 403],

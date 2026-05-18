@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addMonths, getDateKey, getMonthLabel } from "@/helpers/patientSchedule";
 import { formatActivityTime } from "@/helpers/activityLogs";
@@ -42,6 +43,13 @@ export default function PatientActivityCalendar({ month, activities, onMonthChan
   const [openOverflowDateKey, setOpenOverflowDateKey] = useState<string | null>(null);
   const today = useMemo(() => new Date(), []);
   const calendarDays = useMemo(() => getActivityCalendarDays(month, activities, today), [activities, month, today]);
+
+  useEffect(() => {
+    if (openOverflowDateKey) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [openOverflowDateKey]);
 
   const goToToday = () => {
     setOpenOverflowDateKey(null);
@@ -110,6 +118,25 @@ export default function PatientActivityCalendar({ month, activities, onMonthChan
 function CalendarDayCell({ day, index, isOverflowOpen, onToggleOverflow, onViewDetail }: { readonly day: CalendarDay; readonly index: number; readonly isOverflowOpen: boolean; readonly onToggleOverflow: () => void; readonly onViewDetail: (activity: ActivityLogRecord) => void }) {
   const visibleActivities = day.activities.slice(0, 2);
   const overflowActivities = day.activities.slice(2);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [popupPosition, setPopupPosition] = useState<{ top: number; left: number; placement: "below" | "above" } | null>(null);
+
+  const handleToggleOverflow = () => {
+    if (!isOverflowOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const popupHeight = Math.min(overflowActivities.length * 48 + 16, window.innerHeight * 0.6);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placement = spaceBelow < popupHeight && rect.top > popupHeight ? "above" : "below";
+      setPopupPosition({
+        top: placement === "below" ? rect.bottom + 8 : rect.top - popupHeight - 8,
+        left: Math.min(rect.left, window.innerWidth - 260),
+        placement,
+      });
+    } else {
+      setPopupPosition(null);
+    }
+    onToggleOverflow();
+  };
 
   return (
     <motion.div
@@ -129,26 +156,33 @@ function CalendarDayCell({ day, index, isOverflowOpen, onToggleOverflow, onViewD
         {visibleActivities.map((activity, activityIndex) => <ActivityCalendarChip key={`${day.dateKey}-${activity.category}-${activity.id}-${activityIndex}`} activity={activity} onViewDetail={onViewDetail} />)}
 
         {overflowActivities.length > 0 && (
-          <div className="relative">
-            <button type="button" className="text-xs font-extrabold text-muted transition-colors hover:text-primary" onClick={onToggleOverflow}>
+          <div>
+            <button ref={buttonRef} type="button" className="text-xs font-extrabold text-muted transition-colors hover:text-primary" onClick={handleToggleOverflow}>
               + {overflowActivities.length} lainnya
             </button>
 
-            <AnimatePresence>
-              {isOverflowOpen && (
-              <motion.div
-                className="absolute left-0 top-7 z-50 w-[min(240px,80vw)] rounded-2xl border border-line bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            {isOverflowOpen && popupPosition && typeof window !== "undefined" && createPortal(
+              <div
+                className="fixed inset-0 z-[100] overflow-hidden"
+                style={{ overflow: "hidden" }}
+                onClick={() => { setPopupPosition(null); onToggleOverflow(); }}
               >
-                <div className="space-y-1">
-                  {overflowActivities.map((activity, activityIndex) => <ActivityOverflowItem key={`${day.dateKey}-overflow-${activity.category}-${activity.id}-${activityIndex}`} activity={activity} onViewDetail={onViewDetail} />)}
-                </div>
-              </motion.div>
-              )}
-            </AnimatePresence>
+                <motion.div
+                  className="absolute max-h-[60vh] w-[min(240px,80vw)] overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
+                  style={{ top: popupPosition.top, left: popupPosition.left }}
+                  initial={{ opacity: 0, y: popupPosition.placement === "above" ? 8 : -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: popupPosition.placement === "above" ? 6 : -6, scale: 0.98 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-1">
+                    {overflowActivities.map((activity, activityIndex) => <ActivityOverflowItem key={`${day.dateKey}-overflow-${activity.category}-${activity.id}-${activityIndex}`} activity={activity} onViewDetail={onViewDetail} />)}
+                  </div>
+                </motion.div>
+              </div>,
+              document.body,
+            )}
           </div>
         )}
       </div>

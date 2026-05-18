@@ -48,9 +48,10 @@ interface ActivityLogPageProps {
   readonly initialPatientName?: string;
   readonly initialCategory?: string;
   readonly readOnly?: boolean;
+  readonly showNurseFilter?: boolean;
 }
 
-export default function ActivityLogPage({ initialPatientName = "", initialCategory, readOnly = false }: ActivityLogPageProps) {
+export default function ActivityLogPage({ initialPatientName = "", initialCategory, readOnly = false, showNurseFilter = true }: ActivityLogPageProps) {
   const router = useRouter();
   const activities = useActivityLogStore((state) => state.activities);
   const setActivities = useActivityLogStore((state) => state.setActivities);
@@ -369,6 +370,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
           category={category}
           nurseId={nurseId}
           nurses={nurses}
+          showNurseFilter={showNurseFilter}
           date={date}
           hasActiveFilters={hasActiveFilters}
           onSearchChange={handleSearchChange}

@@ -52,9 +52,9 @@ router.use(authenticateToken);
  *       200:
  *         description: Alert berhasil diambil
  *       403:
- *         description: Hanya nurse/admin yang dapat melihat alert
+ *         description: Tidak memiliki izin untuk melihat alert pasien ini
  */
-router.get("/", authorizeRoles("nurse", "admin"), alertController.listAlerts);
+router.get("/", authorizeRoles("patient", "nurse", "admin"), alertController.listAlerts);
 
 /**
  * @swagger

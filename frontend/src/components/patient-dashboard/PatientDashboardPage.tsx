@@ -130,6 +130,8 @@ function getGreeting() {
 }
 
 function getAdherenceFromStats(stats: PatientAdherenceStatsResponse) {
-  if (stats.totalScheduled === 0) return 100;
-  return Math.round(stats.adherenceRate);
+  const totalScheduled = stats.dailyBreakdown.reduce((sum, day) => sum + day.scheduled, 0);
+  const totalConfirmed = stats.dailyBreakdown.reduce((sum, day) => sum + day.confirmed, 0);
+  if (totalScheduled === 0) return 100;
+  return Math.round((totalConfirmed / totalScheduled) * 100);
 }

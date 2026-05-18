@@ -326,6 +326,18 @@ export const setUserNotificationPreference = async (dto: UserNotificationPrefere
     throw { status: 401, message: "Autentikasi diperlukan", code: "MISSING_TOKEN" };
   }
 
+  const existing = await db
+    .select()
+    .from(userNotificationPreferences)
+    .where(and(
+      eq(userNotificationPreferences.userId, user.id),
+      eq(userNotificationPreferences.preferenceKey, dto.key),
+    ))
+    .limit(1);
+
+  const currentValue = existing[0]?.isEnabled ?? true;
+  const hasChanged = currentValue !== dto.enabled;
+
   const [preference] = await db
     .insert(userNotificationPreferences)
     .values({
@@ -339,13 +351,15 @@ export const setUserNotificationPreference = async (dto: UserNotificationPrefere
     })
     .returning();
 
-  writeAuditLogAsync({
-    userId: user.id,
-    action: "user_notification_preference.updated",
-    resourceType: "user",
-    resourceId: user.id,
-    changes: { key: dto.key, enabled: dto.enabled },
-  });
+  if (hasChanged) {
+    writeAuditLogAsync({
+      userId: user.id,
+      action: "user_notification_preference.updated",
+      resourceType: "user",
+      resourceId: user.id,
+      changes: { key: dto.key, enabled: dto.enabled, previousValue: currentValue },
+    });
+  }
 
   return {
     key: preference.preferenceKey,

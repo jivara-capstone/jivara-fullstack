@@ -58,7 +58,7 @@ export const getPatientDashboardData = async (): Promise<PatientDashboardData> =
   const [schedules, logResponse, adherenceResponse] = await Promise.all([
     getSchedulesFromApi(patients),
     api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { patient_id: patient.id, limit: 100 } }),
-    api.get<{ data: PatientAdherenceStatsResponse }>("/adherence", { params: { patient_id: patient.id, period: "30d" } }),
+    api.get<{ data: PatientAdherenceStatsResponse }>("/adherence", { params: { patient_id: patient.id, period: "1y" } }),
   ]);
 
   return {
