@@ -134,12 +134,13 @@ export const enableUserPushNotifications = async () => {
   });
 };
 
-export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">) => {
+export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">, options: { requestPermission?: boolean } = {}) => {
   if (typeof window === "undefined") return;
   const isIosStandalone = Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
   if (!window.matchMedia("(display-mode: standalone)").matches && !isIosStandalone) return;
   if (!("Notification" in window) || !("PushManager" in window)) return;
   if (Notification.permission === "denied") return;
+  if (Notification.permission === "default" && options.requestPermission !== true) return;
 
   try {
     if (user.role === "patient") {
