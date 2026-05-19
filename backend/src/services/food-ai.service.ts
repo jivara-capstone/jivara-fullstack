@@ -16,7 +16,11 @@ import {
 } from "../types/food-ai.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
 import { writeAuditLog } from "./audit-log.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import { sendCareTeamCriticalPushNotification } from "./notification.service";
+
+const FOOD_SCAN_CACHE_PREFIX = "food-scans:";
+const FOOD_SCAN_CACHE_TTL_MS = Number(process.env.FOOD_SCAN_CACHE_TTL_MS || 15_000);
 
 type DetectionItem = {
   label: string;
@@ -146,11 +150,62 @@ const postReasoning = async <T>(path: string, body: unknown): Promise<T> => {
   }
 };
 
-const checkFoodInteractionWithReasoning = (yoloClass: string, patientMedications: string[]) => postReasoning<ReasoningInteractionResponse>("/interaction-check", { yolo_class: yoloClass, patient_medications: patientMedications });
+const getFallbackInteraction = (yoloClass: string): ReasoningInteractionResponse => ({
+  detected_food: yoloClass,
+  highest_severity: 0,
+  status: "fallback",
+  detailed_predictions: [],
+  llm_reasoning: "Service AI reasoning sedang lambat, jadi hasil sementara ditandai aman sampai analisis berikutnya tersedia.",
+  recommended_foods: [],
+});
 
-const getFoodRecommendations = (patientMedications: string[], topN = 5) => postReasoning<ReasoningRecommendResponse>("/recommend", { patient_medications: patientMedications, top_n: topN });
+const getFallbackRecommendations = (patientMedications: string[]): ReasoningRecommendResponse => ({
+  patient_medications: patientMedications,
+  matched_categories: {},
+  summary: { safe: 0, avoid: 0 },
+  recommended_foods: [],
+  foods_to_avoid: [],
+});
 
-const getFoodNutrition = (yoloClass: string, portionGrams = 100) => postReasoning<ReasoningNutritionResponse>("/nutrition", { yolo_class: yoloClass, portion_grams: portionGrams });
+const getFallbackNutrition = (yoloClass: string, portionGrams: number): ReasoningNutritionResponse => ({
+  status: "fallback",
+  yolo_class: yoloClass,
+  matched_food: yoloClass.replace(/-/g, " "),
+  portion_grams: portionGrams,
+  nutrition_facts: {
+    calories_kcal: 0,
+    proteins_g: 0,
+    fats_g: 0,
+    carbohydrates_g: 0,
+  },
+});
+
+const checkFoodInteractionWithReasoning = async (yoloClass: string, patientMedications: string[]) => {
+  try {
+    return await postReasoning<ReasoningInteractionResponse>("/interaction-check", { yolo_class: yoloClass, patient_medications: patientMedications });
+  } catch (error) {
+    if (shouldUseDevelopmentFallback()) return getFallbackInteraction(yoloClass);
+    throw error;
+  }
+};
+
+const getFoodRecommendations = async (patientMedications: string[], topN = 5) => {
+  try {
+    return await postReasoning<ReasoningRecommendResponse>("/recommend", { patient_medications: patientMedications, top_n: topN });
+  } catch (error) {
+    if (shouldUseDevelopmentFallback()) return getFallbackRecommendations(patientMedications);
+    throw error;
+  }
+};
+
+const getFoodNutrition = async (yoloClass: string, portionGrams = 100) => {
+  try {
+    return await postReasoning<ReasoningNutritionResponse>("/nutrition", { yolo_class: yoloClass, portion_grams: portionGrams });
+  } catch (error) {
+    if (shouldUseDevelopmentFallback()) return getFallbackNutrition(yoloClass, portionGrams);
+    throw error;
+  }
+};
 
 const toDetectionItem = (item: Record<string, unknown>): DetectionItem => ({
   label: String(item.label || item.class || item.name || "makanan_terdeteksi"),
@@ -265,6 +320,10 @@ const mapScanSummary = (scan: typeof foodScans.$inferSelect) => ({
 });
 
 export const listFoodScans = async (query: { page?: string; limit?: string; patient_id?: string; patientId?: string } = {}, user?: AccessUser) => {
+  const cacheKey = `food-scans:list:${user?.id || "anon"}:${query.patientId || query.patient_id || "all"}:${query.page || 1}:${query.limit || 20}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const page = Math.max(Number(query.page || 1), 1);
   const limit = Math.min(Math.max(Number(query.limit || 20), 1), 100);
   const offset = (page - 1) * limit;
@@ -272,7 +331,9 @@ export const listFoodScans = async (query: { page?: string; limit?: string; pati
   const scopedFilter = await scopedPatientFilter(foodScans.patientId, user, patientId);
 
   if (!scopedFilter.scope.allowed) {
-    return { data: [], meta: { page, limit, total: 0 } };
+    const emptyResult = { data: [], meta: { page, limit, total: 0 } };
+    setCached(cacheKey, emptyResult, FOOD_SCAN_CACHE_TTL_MS);
+    return emptyResult;
   }
 
   const where = scopedFilter.condition ? and(scopedFilter.condition) : undefined;
@@ -281,13 +342,20 @@ export const listFoodScans = async (query: { page?: string; limit?: string; pati
     db.select({ total: count() }).from(foodScans).where(where),
   ]);
 
-  return {
+  const result = {
     data: rows.map(mapScanSummary),
     meta: { page, limit, total: totalRows[0]?.total || 0 },
   };
+
+  setCached(cacheKey, result, FOOD_SCAN_CACHE_TTL_MS);
+  return result;
 };
 
 export const getFoodScanById = async (scanId: string, user?: AccessUser) => {
+  const cacheKey = `food-scans:detail:${user?.id || "anon"}:${scanId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const scan = await ensureScanExists(scanId);
   if (user) await assertCanAccessPatient(user, scan.patientId);
 
@@ -304,19 +372,18 @@ export const getFoodScanById = async (scanId: string, user?: AccessUser) => {
   ]);
 
   const patientMedications = normalizeMedicationNames(activeMedications);
-  const recommendationData = patientMedications.length > 0
-    ? await getFoodRecommendations(patientMedications, 5).catch(() => ({ recommended_foods: [], foods_to_avoid: [] as ReasoningFoodScore[] }))
-    : { recommended_foods: [], foods_to_avoid: [] as ReasoningFoodScore[] };
-
-  return {
+  const result = {
     ...mapScanSummary(scan),
     detectedItems: items,
     interactions,
     patientMedications,
     analyzedMedicationCount: patientMedications.length,
-    recommendedFoods: recommendationData.recommended_foods,
-    foodsToAvoid: recommendationData.foods_to_avoid || [],
+    recommendedFoods: [],
+    foodsToAvoid: [] as ReasoningFoodScore[],
   };
+
+  setCached(cacheKey, result, FOOD_SCAN_CACHE_TTL_MS);
+  return result;
 };
 
 export const uploadFoodImage = async (dto: FoodUploadDTO, user?: AccessUser) => {
@@ -340,6 +407,8 @@ export const uploadFoodImage = async (dto: FoodUploadDTO, user?: AccessUser) => 
     resourceId: scan.id,
     changes: { patientId: dto.patientId, imageSizeKb: scan.imageSizeKb },
   });
+
+  deleteCachedByPrefix(FOOD_SCAN_CACHE_PREFIX);
 
   return {
     image_id: scan.id,
@@ -390,6 +459,8 @@ export const detectFood = async (dto: FoodDetectDTO, user?: AccessUser) => {
     resourceId: scan.id,
     changes: { patientId: dto.patientId, detectedItems: detectionResult.detectedItems.length, modelVersion: detectionResult.modelVersion },
   });
+
+  deleteCachedByPrefix(FOOD_SCAN_CACHE_PREFIX);
 
   return {
     scan_id: scan.id,
@@ -466,6 +537,8 @@ export const checkInteraction = async (dto: InteractionCheckDTO, user?: AccessUs
     resourceId: dto.scanId,
     changes: { patientId: dto.patientId, interactionCount: interactions.length, detectedItems: detectedLabels.length, recommendationCount: recommendationData.recommended_foods.length },
   });
+
+  deleteCachedByPrefix(FOOD_SCAN_CACHE_PREFIX);
 
   if (interactions.length > 0) {
     await sendCareTeamCriticalPushNotification(dto.patientId, {

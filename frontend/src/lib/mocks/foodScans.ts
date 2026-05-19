@@ -12,6 +12,7 @@ export interface FoodScanRecord {
   readonly aiReasoning: string;
   readonly result: string;
   readonly recommendation: string;
+  readonly hasDetectedFood?: boolean;
 }
 
 const today = new Date();

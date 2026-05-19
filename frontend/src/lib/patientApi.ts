@@ -92,9 +92,17 @@ const patientsCacheTtl = 30_000;
 let patientsCache: { data: PatientRecord[]; expiresAt: number } | null = null;
 let patientsRequest: Promise<PatientRecord[]> | null = null;
 
+const patientDetailCache = new Map<string, { data: PatientDetailData; expiresAt: number }>();
+const patientDetailCacheTtl = 30_000;
+
+const assignedPatientsCache = new Map<string, { data: PatientRecord[]; expiresAt: number }>();
+const assignedPatientsCacheTtl = 30_000;
+
 export const clearPatientsCache = () => {
   patientsCache = null;
   patientsRequest = null;
+  patientDetailCache.clear();
+  assignedPatientsCache.clear();
 };
 
 const getAge = (dateOfBirth?: string | null) => {
@@ -288,6 +296,10 @@ export const deactivatePatientViaApi = async (patientId: string) => {
 };
 
 export const getPatientDetailFromApi = async (patientId: string): Promise<PatientDetailData> => {
+  const now = Date.now();
+  const cached = patientDetailCache.get(patientId);
+  if (cached && cached.expiresAt > now) return cached.data;
+
   const response = await api.get<{ data: PatientDetailResponse }>(`/patients/${patientId}`);
   const detail = response.data.data;
   const adherence = detail.activeMedicationsCount === 0
@@ -298,17 +310,20 @@ export const getPatientDetailFromApi = async (patientId: string): Promise<Patien
   const scans = await getFoodScansForPatientFromApi(patientId).catch(() => []);
   const activities = await getPatientActivitiesFromApi(patient, scans).catch(() => []);
 
-  return {
-    patient,
-    schedules,
-    activities,
-    scans,
-  };
+  const result = { patient, schedules, activities, scans };
+  patientDetailCache.set(patientId, { data: result, expiresAt: Date.now() + patientDetailCacheTtl });
+  return result;
 };
 
 export const getPatientsAssignedToNurseFromApi = async (nurseId: string) => {
+  const now = Date.now();
+  const cached = assignedPatientsCache.get(nurseId);
+  if (cached && cached.expiresAt > now) return cached.data;
+
   const response = await api.get<PaginatedResponse<PatientListResponse>>("/patients", { params: { limit: 100, status: "active", nurseId } });
-  return response.data.data.map((patient) => mapPatient(patient));
+  const patients = response.data.data.map((patient) => mapPatient(patient));
+  assignedPatientsCache.set(nurseId, { data: patients, expiresAt: Date.now() + assignedPatientsCacheTtl });
+  return patients;
 };
 
 export const assignPatientToNurseViaApi = async (patientId: string, nurseId: string) => {

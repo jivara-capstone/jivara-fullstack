@@ -15,7 +15,7 @@ const validateScheduledTimes = (scheduledTimes: unknown) => {
 };
 
 export const validateMedicationScheduleCreate = (req: Request, res: Response, next: NextFunction) => {
-  const { patientId, prescriptionId, drugName, dosage, frequency, scheduledTimes } = req.body;
+  const { patientId, prescriptionId, drugName, dosage, stock, frequency, scheduledTimes } = req.body;
 
   if (isMissing(patientId) || !isValidUuid(patientId)) {
     return res.status(400).json({ status: "gagal", message: "patientId wajib berupa UUID valid", error_code: "VALIDATION_ERROR" });
@@ -35,6 +35,10 @@ export const validateMedicationScheduleCreate = (req: Request, res: Response, ne
 
   if (!Number.isInteger(frequency) || frequency < 1 || frequency > 3) {
     return res.status(400).json({ status: "gagal", message: "Frekuensi harus angka 1 sampai 3", error_code: "VALIDATION_ERROR" });
+  }
+
+  if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
+    return res.status(400).json({ status: "gagal", message: "Stok obat harus angka 0 atau lebih", error_code: "VALIDATION_ERROR" });
   }
 
   if (!validateScheduledTimes(scheduledTimes)) {
@@ -76,7 +80,7 @@ export const validateMedicationScheduleId = (req: Request, res: Response, next: 
 };
 
 export const validateMedicationScheduleUpdate = (req: Request, res: Response, next: NextFunction) => {
-  const { prescriptionId, frequency, scheduledTimes } = req.body;
+  const { prescriptionId, stock, frequency, scheduledTimes } = req.body;
 
   if (prescriptionId && !isValidUuid(prescriptionId)) {
     return res.status(400).json({ status: "gagal", message: "prescriptionId tidak valid", error_code: "VALIDATION_ERROR" });
@@ -84,6 +88,10 @@ export const validateMedicationScheduleUpdate = (req: Request, res: Response, ne
 
   if (frequency !== undefined && (!Number.isInteger(frequency) || frequency < 1 || frequency > 3)) {
     return res.status(400).json({ status: "gagal", message: "Frekuensi harus angka 1 sampai 3", error_code: "VALIDATION_ERROR" });
+  }
+
+  if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
+    return res.status(400).json({ status: "gagal", message: "Stok obat harus angka 0 atau lebih", error_code: "VALIDATION_ERROR" });
   }
 
   if (scheduledTimes !== undefined && !validateScheduledTimes(scheduledTimes)) {

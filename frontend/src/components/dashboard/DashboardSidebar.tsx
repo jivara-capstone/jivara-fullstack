@@ -16,12 +16,13 @@ interface DashboardSidebarProps {
 export default function DashboardSidebar({ activeItem, role, onLogout, onNavigate }: DashboardSidebarProps) {
   const patientId = usePatientDashboardStore((state) => state.patientId);
   const unreadActivityCount = useActivityLogStore((state) => isAdminDashboardRole(role) ? 0 : getUnreadActivityCount(state.activities, role === "patient" ? patientId ?? undefined : undefined));
+  const isActivityLogLoading = useActivityLogStore((state) => state.isLoading);
   const navItems = getDashboardNavItems(role);
 
   return (
     <>
       <div className="hidden lg:flex justify-start">
-        <h1 className="h-[56px] w-[172px] overflow-hidden">
+        <h1 className="h-[60px] w-[172px] overflow-hidden">
           <Image
             src="/images/logo/notext.png"
             alt="Jivara"
@@ -40,6 +41,7 @@ export default function DashboardSidebar({ activeItem, role, onLogout, onNavigat
             item={item}
             isActive={activeItem === item.label}
             badgeCount={item.href === "/activity-log" ? unreadActivityCount : 0}
+            isBadgeLoading={item.href === "/activity-log" && !isAdminDashboardRole(role) && isActivityLogLoading}
             onSelect={() => onNavigate?.()}
           />
         ))}

@@ -4,6 +4,19 @@ import type { FoodScanAnalysis } from "@/helpers/foodScans";
 import type { FoodScanRecord, FoodScanRisk } from "@/lib/mocks/foodScans";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 
+const foodScansCacheTtl = 15_000;
+let foodScansCache: { data: FoodScanRecord[]; expiresAt: number } | null = null;
+let foodScansRequest: Promise<FoodScanRecord[]> | null = null;
+const foodScanDetailCache = new Map<string, { data: FoodScanAnalysis; expiresAt: number }>();
+const foodScanDetailRequests = new Map<string, Promise<FoodScanAnalysis>>();
+
+export const clearFoodScansCache = () => {
+  foodScansCache = null;
+  foodScansRequest = null;
+  foodScanDetailCache.clear();
+  foodScanDetailRequests.clear();
+};
+
 interface PatientResponse {
   id: string;
   fullName?: string | null;
@@ -186,6 +199,7 @@ const mapScanDetail = (detail: FoodScanDetailResponse, patientName = "Pasien"): 
     image: getBackendImageUrl(detail.imageUrl),
     scannedAt: detail.createdAt || new Date().toISOString(),
     risk,
+    hasDetectedFood: (detail.detectedItems?.length ?? 0) > 0,
     aiReasoning: `Model ${detail.modelVersion || "AI"} menganalisis ${foodName}${detail.inferenceTimeMs ? ` dalam ${detail.inferenceTimeMs} ms` : ""}.`,
     result: detail.interactions?.length ? "Ditemukan potensi interaksi obat-makanan." : "Tidak ditemukan interaksi signifikan pada makanan yang terdeteksi.",
     recommendation: detail.interactions?.[0]?.recommendation || "Ikuti jadwal obat dan pantau gejala setelah makan.",
@@ -258,6 +272,9 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+  // Invalidate food scans cache after new scan
+  clearFoodScansCache();
+
   const upload = uploadResponse.data.data;
   const detectResponse = await api.post<{ data: DetectResponse }>(`/food-scans/${encodeURIComponent(upload.image_id)}/detections`, {
     patientId,
@@ -293,6 +310,7 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
     image,
     scannedAt: upload.timestamp,
     risk,
+    hasDetectedFood: detection.detected_items.length > 0,
     aiReasoning: `Model ${detection.model_version} mendeteksi ${foodName} dalam ${detection.inference_time_ms} ms dan mencocokkannya dengan obat aktif pasien.`,
     result: interactionData.interactions.length > 0 ? "Ditemukan potensi interaksi obat-makanan." : "Tidak ditemukan interaksi signifikan pada makanan yang terdeteksi.",
     recommendation: interactionData.overall_recommendation || interactionData.disclaimer,
@@ -328,8 +346,21 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
 };
 
 export const getFoodScansFromApi = async (params: { page?: number; limit?: number; patientId?: string } = {}): Promise<FoodScanRecord[]> => {
-  const response = await api.get<FoodScanListApiResponse>("/food-scans", { params: { page: params.page, limit: params.limit, patient_id: params.patientId } });
-  return response.data.data.map((detail) => mapScanDetail(detail).scan);
+  const now = Date.now();
+  if (foodScansCache && foodScansCache.expiresAt > now) return foodScansCache.data;
+  if (foodScansRequest) return foodScansRequest;
+
+  foodScansRequest = api.get<FoodScanListApiResponse>("/food-scans", { params: { page: params.page, limit: params.limit, patient_id: params.patientId } })
+    .then((response) => {
+      const scans = response.data.data.map((detail) => mapScanDetail(detail).scan);
+      foodScansCache = { data: scans, expiresAt: Date.now() + foodScansCacheTtl };
+      return scans;
+    })
+    .finally(() => {
+      foodScansRequest = null;
+    });
+
+  return foodScansRequest;
 };
 
 export const getFoodScansForPatientFromApi = async (patientId: string): Promise<FoodScanRecord[]> => {
@@ -338,6 +369,23 @@ export const getFoodScansForPatientFromApi = async (patientId: string): Promise<
 };
 
 export const getFoodScanAnalysisFromApi = async (scanId: string): Promise<FoodScanAnalysis> => {
-  const response = await api.get<FoodScanDetailApiResponse>(`/food-scans/${encodeURIComponent(scanId)}`);
-  return mapScanDetail(response.data.data);
+  const now = Date.now();
+  const cached = foodScanDetailCache.get(scanId);
+  if (cached && cached.expiresAt > now) return cached.data;
+
+  const inFlightRequest = foodScanDetailRequests.get(scanId);
+  if (inFlightRequest) return inFlightRequest;
+
+  const request = api.get<FoodScanDetailApiResponse>(`/food-scans/${encodeURIComponent(scanId)}`)
+    .then((response) => {
+      const analysis = mapScanDetail(response.data.data);
+      foodScanDetailCache.set(scanId, { data: analysis, expiresAt: Date.now() + foodScansCacheTtl });
+      return analysis;
+    })
+    .finally(() => {
+      foodScanDetailRequests.delete(scanId);
+    });
+
+  foodScanDetailRequests.set(scanId, request);
+  return request;
 };

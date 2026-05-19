@@ -32,11 +32,11 @@ describe("patient dashboard store", () => {
     expect(usePatientDashboardStore.getState().confirmedMedicineIds).toEqual(["med-1"]);
   });
 
-  it("confirms schedule for a date and mirrors it to confirmed medicines", () => {
+  it("records each confirmed schedule dose for a date and mirrors schedule to confirmed medicines", () => {
     usePatientDashboardStore.getState().confirmScheduleForDate("2026-05-09", "schedule-1");
     usePatientDashboardStore.getState().confirmScheduleForDate("2026-05-09", "schedule-1");
 
-    expect(usePatientDashboardStore.getState().confirmedScheduleDates).toEqual({ "2026-05-09": ["schedule-1"] });
+    expect(usePatientDashboardStore.getState().confirmedScheduleDates).toEqual({ "2026-05-09": ["schedule-1", "schedule-1"] });
     expect(usePatientDashboardStore.getState().confirmedMedicineIds).toEqual(["schedule-1"]);
   });
 

@@ -158,9 +158,11 @@ export const medicationSchedules = pgTable("medication_schedules", {
   prescriptionId: uuid("prescription_id").references(() => prescriptions.id, { onDelete: "set null" }),
   drugName: varchar("drug_name", { length: 256 }).notNull(),
   dosage: varchar("dosage", { length: 64 }).notNull(),
+  stock: integer("stock").default(0),
   frequency: integer("frequency").notNull(),
   scheduledTimes: jsonb("scheduled_times").notNull(),
   instructions: text("instructions"),
+  reminderEnabled: boolean("reminder_enabled").default(true),
   isActive: boolean("is_active").default(true),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -196,6 +198,7 @@ export const medicationLogs = pgTable("medication_logs", {
   reminderJobIdx: index("idx_med_logs_reminder_job").on(table.reminderJobId),
   patientTimeIdx: index("idx_med_logs_patient_time").on(table.patientId, table.scheduledTime),
   scheduleTimeStatusIdx: index("idx_med_logs_schedule_time_status").on(table.scheduleId, table.scheduledTime, table.status),
+  uniqueScheduleTime: uniqueIndex("uq_med_logs_schedule_time").on(table.scheduleId, table.scheduledTime),
 }));
 
 // ─────────────────────────────────────────────

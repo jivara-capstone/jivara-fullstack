@@ -29,13 +29,13 @@ const run = async () => {
 
   const uniqueRows = Array.from(new Map(rows.map((row) => [row.patientId, row])).values());
 
-  console.log(`Found ${uniqueRows.length} unassigned nurse-created patients.`);
+  // console.log(`Found ${uniqueRows.length} unassigned nurse-created patients.`);
 
   if (!shouldApply) {
-    uniqueRows.forEach((row) => {
-      console.log(`[dry-run] patient=${row.patientId} (${row.patientName}) nurse=${row.nurseId}`);
+    uniqueRows.forEach((_row) => {
+      // console.log(`[dry-run] patient=${row.patientId} (${row.patientName}) nurse=${row.nurseId}`);
     });
-    console.log("Run with --apply to insert active patient-nurse assignments.");
+    // console.log("Run with --apply to insert active patient-nurse assignments.");
     return;
   }
 
@@ -46,13 +46,13 @@ const run = async () => {
       assignedBy: row.nurseUserId,
     });
 
-    console.log(`Assigned patient=${row.patientId} to nurse=${row.nurseId}`);
+    // console.log(`Assigned patient=${row.patientId} to nurse=${row.nurseId}`);
   }
 };
 
 run()
   .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
+  .catch((_error) => {
+    // console.error(error);
     process.exit(1);
   });

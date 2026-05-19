@@ -31,7 +31,6 @@ export const usePatientDashboardStore = create<PatientDashboardState>()((set) =>
   confirmScheduleForDate: (dateKey, scheduleId) =>
     set((state) => {
       const currentScheduleIds = state.confirmedScheduleDates[dateKey] ?? [];
-      if (currentScheduleIds.includes(scheduleId)) return state;
 
       return {
         confirmedMedicineIds: state.confirmedMedicineIds.includes(scheduleId)

@@ -5,7 +5,61 @@ import { nurses, organizations, patientNurseAssignments, userNotificationPrefere
 import { AUTH_CONSTANTS } from "../types/auth.types";
 import { NurseCreateDTO, NurseListQuery, NurseUpdateDTO } from "../types/nurse.types";
 import { AccessUser, ensureOrganizationIdForUser, getOrganizationIdForUser } from "./access-control.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import { writeAuditLogAsync } from "./audit-log.service";
+
+const NURSE_CACHE_TTL_MS = Number(process.env.NURSE_CACHE_TTL_MS || 20_000);
+const NURSE_CACHE_PREFIX = "nurse:";
+
+const getNurseListCacheKey = (query: NurseListQuery, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${NURSE_CACHE_PREFIX}list:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+const getNurseByIdCacheKey = (nurseId: string) => `${NURSE_CACHE_PREFIX}byId:${nurseId}`;
+
+const invalidateNurseCache = () => deleteCachedByPrefix(NURSE_CACHE_PREFIX);
+
+type NurseListResult = {
+  data: Array<{
+    id: string;
+    organizationId: string | null;
+    userId: string;
+    fullName: string | null;
+    email: string | null;
+    phone: string | null;
+    age: number | null;
+    gender: string | null;
+    address: string | null;
+    employeeId: string | null;
+    department: string | null;
+    isActive: boolean | null;
+    createdAt: Date | null;
+    assignedPatients: number;
+  }>;
+  meta: { page: number; limit: number; total: number };
+};
+
+type NurseDetailResult = {
+  id: string;
+  organizationId: string | null;
+  userId: string;
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  age: number | null;
+  gender: string | null;
+  address: string | null;
+  employeeId: string | null;
+  department: string | null;
+  isActive: boolean | null;
+  userIsActive: boolean | null;
+  createdAt: Date | null;
+  assignedPatients: number;
+};
 
 const parsePagination = (query: NurseListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
@@ -50,7 +104,11 @@ const getNurseByIdInternal = async (nurseId: string, user?: AccessUser) => {
   return rows[0];
 };
 
-export const listNurses = async (query: NurseListQuery, user?: AccessUser) => {
+export const listNurses = async (query: NurseListQuery, user?: AccessUser): Promise<NurseListResult> => {
+  const cacheKey = getNurseListCacheKey(query, user);
+  const cached = getCached<NurseListResult>(cacheKey);
+  if (cached) return cached;
+
   const { page, limit, offset } = parsePagination(query);
   const conditions = [eq(users.role, "nurse")];
   const organizationId = user?.role === "admin" ? await getOrganizationIdForUser(user.id) : null;
@@ -124,13 +182,20 @@ export const listNurses = async (query: NurseListQuery, user?: AccessUser) => {
 
   const assignmentMap = new Map(assignments.map((assignment) => [assignment.nurseId, assignment.total]));
 
-  return {
+  const result = {
     data: rows.map((row) => ({ ...row, assignedPatients: assignmentMap.get(row.id) || 0 })),
     meta: { page, limit, total: totalRows[0]?.total || 0 },
   };
+
+  setCached(cacheKey, result, NURSE_CACHE_TTL_MS);
+  return result;
 };
 
-export const getNurseById = async (nurseId: string, user?: AccessUser) => {
+export const getNurseById = async (nurseId: string, user?: AccessUser): Promise<NurseDetailResult> => {
+  const cacheKey = getNurseByIdCacheKey(nurseId);
+  const cached = getCached<NurseDetailResult>(cacheKey);
+  if (cached) return cached;
+
   const nurse = await getNurseByIdInternal(nurseId, user);
   const assignedRows = await db
     .select({ total: count() })
@@ -140,7 +205,9 @@ export const getNurseById = async (nurseId: string, user?: AccessUser) => {
       eq(patientNurseAssignments.isActive, true),
     ));
 
-  return { ...nurse, assignedPatients: assignedRows[0]?.total || 0 };
+  const result = { ...nurse, assignedPatients: assignedRows[0]?.total || 0 };
+  setCached(cacheKey, result, NURSE_CACHE_TTL_MS);
+  return result;
 };
 
 export const createNurse = async (dto: NurseCreateDTO, user?: AccessUser) => {
@@ -209,6 +276,8 @@ export const createNurse = async (dto: NurseCreateDTO, user?: AccessUser) => {
     return { ...newNurse, user: newUser };
   });
 
+  invalidateNurseCache();
+
   writeAuditLogAsync({
     userId: user?.id || null,
     action: "nurse.created",
@@ -247,6 +316,8 @@ export const updateNurse = async (nurseId: string, dto: NurseUpdateDTO, user?: A
     }
   });
 
+  invalidateNurseCache();
+
   writeAuditLogAsync({
     userId: user?.id || null,
     action: "nurse.updated",
@@ -272,6 +343,8 @@ export const deactivateNurse = async (nurseId: string, user?: AccessUser) => {
         eq(patientNurseAssignments.isActive, true),
       ));
   });
+
+  invalidateNurseCache();
 
   writeAuditLogAsync({
     userId: user?.id || null,

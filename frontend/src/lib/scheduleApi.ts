@@ -9,9 +9,11 @@ interface ScheduleResponse {
   patientId: string;
   drugName: string;
   dosage: string;
+  stock?: number | null;
   frequency: number;
   scheduledTimes: unknown;
   instructions?: string | null;
+  reminderEnabled?: boolean | null;
   isActive?: boolean | null;
   createdAt?: string | null;
 }
@@ -52,23 +54,25 @@ const mapSchedule = (schedule: ScheduleResponse, patient?: PatientRecord): Medic
   medicineName: schedule.drugName,
   dose: schedule.dosage,
   medicineForm: "Tablet",
-  stock: 0,
+  stock: Math.max(Number(schedule.stock ?? 0), 0),
   frequency: `${schedule.frequency} kali sehari`,
   times: getScheduledTimes(schedule.scheduledTimes),
   mealRule: "Tidak tergantung makan",
   startDate: schedule.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
-  reminderEnabled: Boolean(schedule.isActive),
+  reminderEnabled: schedule.reminderEnabled ?? true,
   instructions: schedule.instructions ?? undefined,
-  status: schedule.isActive === false ? "Nonaktif" : "Aktif",
+  status: Number(schedule.stock ?? 0) <= 0 ? "Selesai" : schedule.isActive === false ? "Nonaktif" : "Aktif",
 });
 
 const mapMedicinePayload = (patientId: string, medicine: ScheduleMedicineFormValues, isActive = true) => ({
   patientId,
   drugName: medicine.medicineName,
   dosage: medicine.dose,
+  stock: medicine.stock,
   frequency: getFrequencyNumber(medicine.frequency),
   scheduledTimes: [...medicine.times],
   instructions: medicine.instructions || null,
+  reminderEnabled: medicine.reminderEnabled,
   isActive,
 });
 

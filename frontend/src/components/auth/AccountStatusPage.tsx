@@ -44,6 +44,17 @@ function getReviewStatus(status?: string | null): ReviewStatus | null {
   return "pending";
 }
 
+import type { User } from "@/types/auth";
+
+const accountStatusCacheTtl = 15_000;
+let accountStatusCache: { data: { user: User | null }; expiresAt: number } | null = null;
+let accountStatusRequest: Promise<{ user: User | null }> | null = null;
+
+export const clearAccountStatusCache = () => {
+  accountStatusCache = null;
+  accountStatusRequest = null;
+};
+
 export default function AccountStatusPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -60,18 +71,36 @@ export default function AccountStatusPage() {
   const refreshStatus = useCallback(async (showFeedback = true) => {
     setRefreshing(true);
     try {
-      const statusResponse = await axios.post("/api/auth/status");
-      const updatedUser = statusResponse.data.data.user;
-      updateUser(updatedUser);
+      const now = Date.now();
+      let updatedUser: User | null;
+
+      if (accountStatusCache && accountStatusCache.expiresAt > now) {
+        updatedUser = accountStatusCache.data.user;
+      } else if (accountStatusRequest) {
+        updatedUser = (await accountStatusRequest).user;
+      } else {
+        accountStatusRequest = axios.post<{ data: { user: User } }>("/api/auth/status")
+          .then((res) => {
+            const result = { user: res.data.data.user };
+            accountStatusCache = { data: result, expiresAt: Date.now() + accountStatusCacheTtl };
+            return result;
+          })
+          .finally(() => {
+            accountStatusRequest = null;
+          });
+        updatedUser = (await accountStatusRequest).user;
+      }
+
+      if (updatedUser) updateUser(updatedUser);
       setStatusCheckSucceeded(true);
 
-      if (updatedUser.role === "admin" && (updatedUser.accountStatus ?? "active") === "active") {
+      if (updatedUser?.role === "admin" && (updatedUser.accountStatus ?? "active") === "active") {
         if (showFeedback) showToast("Akun Anda sudah aktif.", "success");
         router.replace("/dashboard");
         return;
       }
 
-      if (updatedUser.role !== "admin") {
+      if (updatedUser?.role !== "admin") {
         router.replace("/dashboard");
         return;
       }

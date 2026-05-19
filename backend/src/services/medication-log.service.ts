@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db";
 import { medicationLogs, medicationReminderJobs, medicationSchedules } from "../db/schema";
 import {
@@ -7,7 +7,40 @@ import {
   MedicationSnoozeDTO,
 } from "../types/medication-log.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import { writeAuditLogAsync } from "./audit-log.service";
+import { invalidatePatientCache } from "./patient.service";
+import { invalidateMedicationScheduleCache } from "./medication-schedule.service";
+
+const MED_LOG_CACHE_TTL_MS = Number(process.env.MED_LOG_CACHE_TTL_MS || 15_000);
+const MED_LOG_CACHE_PREFIX = "med-log:";
+
+const getMedLogListCacheKey = (query: MedicationLogListQuery, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${MED_LOG_CACHE_PREFIX}list:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+const invalidateMedLogCache = () => deleteCachedByPrefix(MED_LOG_CACHE_PREFIX);
+
+type MedLogListResult = {
+  data: Array<{
+    id: string;
+    scheduleId: string;
+    patientId: string;
+    reminderJobId: string | null;
+    drugName: string;
+    dosage: string;
+    status: string;
+    scheduledTime: Date | null;
+    confirmedAt: Date | null;
+    snoozeCount: number | null;
+    createdAt: Date | null;
+  }>;
+  meta: { page: number; limit: number; total: number };
+};
 
 const parsePagination = (query: MedicationLogListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
@@ -38,6 +71,48 @@ const getScheduleById = async (scheduleId: string) => {
   }
 
   return schedule[0];
+};
+
+const getScheduleTimes = (schedule: typeof medicationSchedules.$inferSelect) => Array.isArray(schedule.scheduledTimes)
+  ? schedule.scheduledTimes.filter((time): time is string => typeof time === "string")
+  : [];
+
+const getDoseDate = (date: Date, time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const doseDate = new Date(date);
+  doseDate.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return doseDate;
+};
+
+const getDoseScheduleForDate = (schedule: typeof medicationSchedules.$inferSelect, date: Date) => getScheduleTimes(schedule)
+  .map((time) => getDoseDate(date, time))
+  .sort((first, second) => first.getTime() - second.getTime());
+
+const getDayBounds = (date: Date) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+};
+
+const findDoseIndex = (doseDates: readonly Date[], scheduledTime: Date) => doseDates.findIndex((doseDate) => doseDate.getTime() === scheduledTime.getTime());
+
+const assertConfirmationWindow = (doseDates: readonly Date[], doseIndex: number, now = new Date()) => {
+  const startsAt = doseDates[doseIndex];
+  const nextStartsAt = doseDates[doseIndex + 1];
+
+  if (!startsAt) {
+    throw { status: 400, message: "Waktu dosis tidak sesuai jadwal obat", code: "INVALID_DOSE_TIME" };
+  }
+
+  if (now < startsAt) {
+    throw { status: 400, message: "Konfirmasi belum tersedia untuk jam obat ini", code: "DOSE_NOT_DUE" };
+  }
+
+  if (nextStartsAt && now >= nextStartsAt) {
+    throw { status: 400, message: "Waktu konfirmasi dosis ini sudah terlewat", code: "DOSE_WINDOW_MISSED" };
+  }
 };
 
 const getReminderJobById = async (reminderJobId: string) => {
@@ -87,18 +162,103 @@ export const createMedicationLog = async (dto: MedicationLogCreateDTO, user?: Ac
       ? new Date(dto.confirmedAt)
       : null;
 
-  const [log] = await db
-    .insert(medicationLogs)
-    .values({
-      scheduleId: schedule.id,
-      patientId: schedule.patientId,
-      reminderJobId: dto.reminderJobId || null,
-      scheduledTime,
-      status: dto.status,
-      confirmedAt,
-      snoozeCount: dto.snoozeCount || 0,
-    })
-    .returning();
+  if (dto.status === "confirmed") {
+    if (schedule.isActive === false) {
+      throw { status: 400, message: "Jadwal obat sudah nonaktif atau selesai", code: "SCHEDULE_INACTIVE" };
+    }
+
+    const stock = Number(schedule.stock ?? 0);
+    if (stock <= 0) {
+      throw { status: 400, message: "Stok obat habis", code: "MEDICATION_OUT_OF_STOCK" };
+    }
+
+    const doseDates = getDoseScheduleForDate(schedule, scheduledTime);
+    const doseIndex = findDoseIndex(doseDates, scheduledTime);
+    if (doseIndex < 0) {
+      throw { status: 400, message: "Waktu konfirmasi tidak sesuai jadwal obat", code: "INVALID_DOSE_TIME" };
+    }
+
+    assertConfirmationWindow(doseDates, doseIndex, confirmedAt || new Date());
+  }
+
+  const { start, end } = getDayBounds(scheduledTime);
+  const existingLogs = await db
+    .select()
+    .from(medicationLogs)
+    .where(and(
+      eq(medicationLogs.scheduleId, schedule.id),
+      gte(medicationLogs.scheduledTime, start),
+      lt(medicationLogs.scheduledTime, end),
+    ));
+
+  if (dto.status === "confirmed" && existingLogs.some((log) => log.scheduledTime.getTime() === scheduledTime.getTime() && (log.status === "confirmed" || log.status === "missed"))) {
+    throw { status: 409, message: "Dosis pada jam ini sudah diproses", code: "DOSE_ALREADY_PROCESSED" };
+  }
+
+  const [log] = await db.transaction(async (tx) => {
+    if (dto.status === "confirmed") {
+      const doseDates = getDoseScheduleForDate(schedule, scheduledTime);
+      const missedDoseValues = doseDates
+        .filter((doseDate) => doseDate < scheduledTime)
+        .filter((doseDate) => !existingLogs.some((existingLog) => existingLog.scheduledTime.getTime() === doseDate.getTime()))
+        .map((doseDate) => ({
+          scheduleId: schedule.id,
+          patientId: schedule.patientId,
+          reminderJobId: null,
+          scheduledTime: doseDate,
+          status: "missed",
+          snoozeCount: 0,
+        }));
+
+      if (missedDoseValues.length > 0) {
+        await tx.insert(medicationLogs).values(missedDoseValues).onConflictDoNothing();
+      }
+    }
+
+    const [createdLog] = await tx
+      .insert(medicationLogs)
+      .values({
+        scheduleId: schedule.id,
+        patientId: schedule.patientId,
+        reminderJobId: dto.reminderJobId || null,
+        scheduledTime,
+        status: dto.status,
+        confirmedAt,
+        snoozeCount: dto.snoozeCount || 0,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    if (!createdLog) {
+      throw { status: 409, message: "Dosis pada jam ini sudah diproses", code: "DOSE_ALREADY_PROCESSED" };
+    }
+
+    if (dto.status === "confirmed") {
+      const [updatedSchedule] = await tx
+        .update(medicationSchedules)
+        .set({
+          stock: sql`greatest(${medicationSchedules.stock} - 1, 0)`,
+          isActive: sql`${medicationSchedules.stock} > 1`,
+          reminderEnabled: sql`${medicationSchedules.stock} > 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(medicationSchedules.id, schedule.id),
+          gt(medicationSchedules.stock, 0),
+        ))
+        .returning({ id: medicationSchedules.id });
+
+      if (!updatedSchedule) {
+        throw { status: 400, message: "Stok obat habis", code: "MEDICATION_OUT_OF_STOCK" };
+      }
+    }
+
+    return [createdLog];
+  });
+
+  invalidateMedLogCache();
+  invalidatePatientCache();
+  invalidateMedicationScheduleCache();
 
   if (dto.reminderJobId && dto.status === "confirmed") {
     await db
@@ -121,7 +281,11 @@ export const createMedicationLog = async (dto: MedicationLogCreateDTO, user?: Ac
   };
 };
 
-export const listMedicationLogs = async (query: MedicationLogListQuery, user?: AccessUser) => {
+export const listMedicationLogs = async (query: MedicationLogListQuery, user?: AccessUser): Promise<MedLogListResult> => {
+  const cacheKey = getMedLogListCacheKey(query, user);
+  const cached = getCached<MedLogListResult>(cacheKey);
+  if (cached) return cached;
+
   const { page, limit, offset } = parsePagination(query);
   const patientId = query.patientId || query.patient_id;
   const conditions = [];
@@ -169,7 +333,7 @@ export const listMedicationLogs = async (query: MedicationLogListQuery, user?: A
       .where(where),
   ]);
 
-  return {
+  const result = {
     data: rows.map((row) => ({
       ...row,
       drugName: `${row.drugName} ${row.dosage}`,
@@ -180,6 +344,9 @@ export const listMedicationLogs = async (query: MedicationLogListQuery, user?: A
       total: totalRows[0]?.total || 0,
     },
   };
+
+  setCached(cacheKey, result, MED_LOG_CACHE_TTL_MS);
+  return result;
 };
 
 export const snoozeMedicationReminder = async (dto: MedicationSnoozeDTO, user?: AccessUser) => {
@@ -228,6 +395,9 @@ export const snoozeMedicationReminder = async (dto: MedicationSnoozeDTO, user?: 
 
     return [createdLog, createdJob];
   });
+
+  invalidateMedLogCache();
+  invalidatePatientCache();
 
   writeAuditLogAsync({
     userId: user?.id || null,

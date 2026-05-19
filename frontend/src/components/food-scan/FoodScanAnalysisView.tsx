@@ -36,7 +36,7 @@ export default function FoodScanAnalysisView({ scanId, imageSizes = "(max-width:
         <DetailItem label="Obat Dianalisis" value={`${analyzedMedicationCount} obat`} />
       </motion.div>
 
-      <FoodInsightCard icon={<BrainCircuit size={20} />} title="AI Reasoning" text={analysis.scan.aiReasoning} risk={analysis.overallRisk} delay={0.12} />
+      <FoodInsightCard icon={<BrainCircuit size={20} />} title="AI Detection & Reasoning" text={analysis.scan.aiReasoning} risk={analysis.overallRisk} delay={0.12} />
 
       <InteractionAnalysisCard interactions={analysis.interactions} analyzedMedications={analysis.analyzedMedications ?? []} safeFoods={analysis.safeFoods ?? []} />
 
@@ -52,8 +52,8 @@ export default function FoodScanAnalysisView({ scanId, imageSizes = "(max-width:
 function FoodScanHero({ scan, risk, imageSizes }: { readonly scan: FoodScanAnalysis["scan"]; readonly risk: FoodScanRisk; readonly imageSizes: string }) {
   return (
     <motion.section className="overflow-hidden rounded-3xl bg-surface" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
-      <div className="relative aspect-video overflow-hidden rounded-3xl bg-line">
-        <Image src={scan.image} alt={scan.foodName} fill sizes={imageSizes} className="object-cover" />
+      <div className="relative mx-auto aspect-square w-full max-w-[520px] overflow-hidden rounded-3xl">
+        <Image src={scan.image} alt={scan.foodName} fill sizes={imageSizes} className="object-contain" />
       </div>
 
       <div className="p-5">

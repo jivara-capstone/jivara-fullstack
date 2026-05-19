@@ -8,6 +8,17 @@ interface ScrollProviderProps {
   children: ReactNode;
 }
 
+interface LenisControl {
+  stop: () => void;
+  start: () => void;
+}
+
+declare global {
+  interface Window {
+    __lenisControl__?: LenisControl;
+  }
+}
+
 export default function ScrollProvider({ children }: ScrollProviderProps) {
   const pathname = usePathname();
   const lenisRef = useRef<Lenis | null>(null);
@@ -28,6 +39,12 @@ export default function ScrollProvider({ children }: ScrollProviderProps) {
       touchMultiplier: 2,
     });
     lenisRef.current = lenis;
+
+    // Expose lenis control globally for popup scroll locking
+    window.__lenisControl__ = {
+      stop: () => lenis.stop(),
+      start: () => lenis.start(),
+    };
 
     let rafId: number;
 
@@ -77,6 +94,7 @@ export default function ScrollProvider({ children }: ScrollProviderProps) {
       cancelAnimationFrame(rafId);
       lenis.destroy();
       document.removeEventListener("click", handleAnchorClick);
+      delete window.__lenisControl__;
     };
   }, [shouldUseLenis]);
 

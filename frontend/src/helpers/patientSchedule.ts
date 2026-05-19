@@ -39,6 +39,67 @@ export function getSchedulesForDate(schedules: readonly MedicationScheduleRecord
   return getSchedulesForDateWithLimit(schedules, date);
 }
 
+export function getScheduleDoseCount(schedule: MedicationScheduleRecord) {
+  if (schedule.times.length > 0) return schedule.times.length;
+
+  const match = schedule.frequency.match(/\d+/);
+  const parsed = match ? Number(match[0]) : 1;
+  return Math.max(Number.isInteger(parsed) ? parsed : 1, 1);
+}
+
+export function getScheduleConfirmedDoseCount(schedule: MedicationScheduleRecord, date: Date, confirmedScheduleDates: Readonly<Record<string, readonly string[]>>) {
+  const confirmedIds = confirmedScheduleDates[getDateKey(date)] ?? [];
+  return Math.min(confirmedIds.filter((scheduleId) => scheduleId === schedule.id).length, getScheduleDoseCount(schedule));
+}
+
+export type ScheduleDoseWindow = {
+  readonly doseIndex: number | null;
+  readonly canConfirm: boolean;
+  readonly isBeforeFirstDose: boolean;
+  readonly isCurrentDoseConfirmed: boolean;
+  readonly isFullyConfirmed: boolean;
+  readonly nextDoseTime?: string;
+};
+
+const getDoseDate = (date: Date, time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const doseDate = new Date(date);
+  doseDate.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return doseDate;
+};
+
+export function getScheduleDoseWindow(schedule: MedicationScheduleRecord, date: Date, confirmedScheduleDates: Readonly<Record<string, readonly string[]>>, now = new Date()): ScheduleDoseWindow {
+  const doseCount = getScheduleDoseCount(schedule);
+  const confirmedDoseCount = getScheduleConfirmedDoseCount(schedule, date, confirmedScheduleDates);
+  const doseTimes = schedule.times.length > 0 ? schedule.times : ["00:00"];
+  const doseDates = doseTimes.map((time) => getDoseDate(date, time)).sort((first, second) => first.getTime() - second.getTime());
+  const isFullyConfirmed = confirmedDoseCount >= doseCount;
+
+  if (isFullyConfirmed) {
+    return { doseIndex: null, canConfirm: false, isBeforeFirstDose: false, isCurrentDoseConfirmed: true, isFullyConfirmed };
+  }
+
+  if (now < doseDates[0]) {
+    return { doseIndex: 0, canConfirm: false, isBeforeFirstDose: true, isCurrentDoseConfirmed: false, isFullyConfirmed, nextDoseTime: doseTimes[0] };
+  }
+
+  const currentIndex = Math.max(doseDates.findIndex((doseDate, index) => now >= doseDate && (!doseDates[index + 1] || now < doseDates[index + 1])), 0);
+  const isCurrentDoseConfirmed = confirmedDoseCount > currentIndex;
+
+  return {
+    doseIndex: currentIndex,
+    canConfirm: !isCurrentDoseConfirmed,
+    isBeforeFirstDose: false,
+    isCurrentDoseConfirmed,
+    isFullyConfirmed,
+    nextDoseTime: isCurrentDoseConfirmed ? doseTimes[currentIndex + 1] : undefined,
+  };
+}
+
+export function getTotalDoseCount(schedules: readonly MedicationScheduleRecord[]) {
+  return schedules.reduce((total, schedule) => total + getScheduleDoseCount(schedule), 0);
+}
+
 function addDays(dateKey: string, amount: number) {
   const [year, month, day] = dateKey.split("-").map(Number);
   const date = new Date(year, month - 1, day);
@@ -68,8 +129,9 @@ export function getDayStatus(schedules: readonly MedicationScheduleRecord[], dat
   if (schedulesForDate.length === 0) return "empty";
 
   const dateKey = getDateKey(date);
-  const confirmedIds = confirmedScheduleDates[dateKey] ?? [];
-  const isDone = schedulesForDate.every((schedule) => confirmedIds.includes(schedule.id));
+  const totalDoses = getTotalDoseCount(schedulesForDate);
+  const confirmedDoses = schedulesForDate.reduce((total, schedule) => total + getScheduleConfirmedDoseCount(schedule, date, confirmedScheduleDates), 0);
+  const isDone = totalDoses > 0 && confirmedDoses >= totalDoses;
 
   if (isDone) return "done";
   if (dateKey < getDateKey(today)) return "missed";
@@ -98,6 +160,5 @@ export function getCalendarDays(month: Date, selectedDate: Date, schedules: read
 }
 
 export function getConfirmedCount(schedules: readonly MedicationScheduleRecord[], date: Date, confirmedScheduleDates: Readonly<Record<string, readonly string[]>>) {
-  const confirmedIds = confirmedScheduleDates[getDateKey(date)] ?? [];
-  return schedules.filter((schedule) => confirmedIds.includes(schedule.id)).length;
+  return schedules.reduce((total, schedule) => total + getScheduleConfirmedDoseCount(schedule, date, confirmedScheduleDates), 0);
 }

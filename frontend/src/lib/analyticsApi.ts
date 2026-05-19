@@ -11,7 +11,29 @@ export interface NotificationAnalyticsData {
   readonly byType: Array<{ type: string; total: number; delivered: number; opened: number }>;
 }
 
+const analyticsCacheTtl = 30_000;
+let analyticsCache: { data: NotificationAnalyticsData; expiresAt: number } | null = null;
+let analyticsRequest: Promise<NotificationAnalyticsData> | null = null;
+
+export const clearAnalyticsCache = () => {
+  analyticsCache = null;
+  analyticsRequest = null;
+};
+
 export const getNotificationAnalyticsFromApi = async () => {
-  const response = await api.get<{ data: NotificationAnalyticsData }>("/notifications/analytics");
-  return response.data.data;
+  const now = Date.now();
+  if (analyticsCache && analyticsCache.expiresAt > now) return analyticsCache.data;
+  if (analyticsRequest) return analyticsRequest;
+
+  analyticsRequest = api.get<{ data: NotificationAnalyticsData }>("/notifications/analytics")
+    .then((response) => {
+      const data = response.data.data;
+      analyticsCache = { data, expiresAt: Date.now() + analyticsCacheTtl };
+      return data;
+    })
+    .finally(() => {
+      analyticsRequest = null;
+    });
+
+  return analyticsRequest;
 };

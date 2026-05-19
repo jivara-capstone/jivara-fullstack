@@ -3,7 +3,7 @@ import type { ActivityLogRecord } from "@/lib/mocks/activityLogs";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import { getFoodScansForPatientFromApi } from "@/lib/foodScanApi";
-import { getPatientDetailFromApi, getPatientsFromApi } from "@/lib/patientApi";
+import { clearPatientsCache, getPatientsFromApi } from "@/lib/patientApi";
 import { getSchedulesFromApi } from "@/lib/scheduleApi";
 
 export interface MedicationLogResponse {
@@ -40,39 +40,56 @@ export interface PatientDashboardData {
   adherenceStats: PatientAdherenceStatsResponse;
 }
 
-export const getCurrentPatientFromApi = async () => {
-  const patients = await getPatientsFromApi();
-  const patient = patients[0];
+const dashboardCacheTtl = 15_000;
+let dashboardCache: { data: PatientDashboardData; expiresAt: number } | null = null;
+let dashboardRequest: Promise<PatientDashboardData> | null = null;
 
-  if (!patient) {
-    throw new Error("Data pasien tidak ditemukan.");
-  }
+const activitiesCacheTtl = 15_000;
+let activitiesCache: { data: ActivityLogRecord[]; expiresAt: number } | null = null;
+let activitiesRequest: Promise<ActivityLogRecord[]> | null = null;
 
-  const detail = await getPatientDetailFromApi(patient.id);
-  return detail.patient;
+export const clearPatientDashboardCache = () => {
+  dashboardCache = null;
+  dashboardRequest = null;
+  activitiesCache = null;
+  activitiesRequest = null;
 };
 
 export const getPatientDashboardData = async (): Promise<PatientDashboardData> => {
-  const patient = await getCurrentPatientFromApi();
-  const patients = await getPatientsFromApi();
-  const [schedules, logResponse, adherenceResponse] = await Promise.all([
-    getSchedulesFromApi(patients),
-    api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { patient_id: patient.id, limit: 100 } }),
-    api.get<{ data: PatientAdherenceStatsResponse }>("/adherence", { params: { patient_id: patient.id, period: "1y" } }),
-  ]);
+  const now = Date.now();
+  if (dashboardCache && dashboardCache.expiresAt > now) return dashboardCache.data;
+  if (dashboardRequest) return dashboardRequest;
 
-  return {
-    patient,
-    schedules: schedules.filter((schedule) => schedule.patientId === patient.id),
-    medicationLogs: logResponse.data.data,
-    adherenceStats: adherenceResponse.data.data,
-  };
+  dashboardRequest = (async () => {
+    const patients = await getPatientsFromApi();
+    const patient = patients[0];
+    if (!patient) throw new Error("Data pasien tidak ditemukan.");
+
+    const [schedules, logResponse, adherenceResponse] = await Promise.all([
+      getSchedulesFromApi(patients),
+      api.get<PaginatedResponse<MedicationLogResponse>>("/medication-logs", { params: { patient_id: patient.id, limit: 100 } }),
+      api.get<{ data: PatientAdherenceStatsResponse }>("/adherence", { params: { patient_id: patient.id, period: "1y" } }),
+    ]);
+
+    const result = {
+      patient,
+      schedules: schedules.filter((schedule) => schedule.patientId === patient.id),
+      medicationLogs: logResponse.data.data,
+      adherenceStats: adherenceResponse.data.data,
+    };
+    dashboardCache = { data: result, expiresAt: Date.now() + dashboardCacheTtl };
+    return result;
+  })().finally(() => {
+    dashboardRequest = null;
+  });
+
+  return dashboardRequest;
 };
 
 export const getConfirmedScheduleDates = (logs: readonly MedicationLogResponse[]) => logs.reduce<Record<string, string[]>>((confirmedDates, log) => {
   if (log.status !== "confirmed") return confirmedDates;
 
-  const dateKey = (log.confirmedAt || log.scheduledTime || log.createdAt || "").slice(0, 10);
+  const dateKey = (log.scheduledTime || log.confirmedAt || log.createdAt || "").slice(0, 10);
   if (!dateKey) return confirmedDates;
 
   return {
@@ -84,7 +101,7 @@ export const getConfirmedScheduleDates = (logs: readonly MedicationLogResponse[]
 export const getCompletedScheduleDates = (logs: readonly MedicationLogResponse[]) => logs.reduce<Record<string, string[]>>((completedDates, log) => {
   if (log.status !== "confirmed" && log.status !== "missed") return completedDates;
 
-  const dateKey = (log.confirmedAt || log.scheduledTime || log.createdAt || "").slice(0, 10);
+  const dateKey = (log.scheduledTime || log.confirmedAt || log.createdAt || "").slice(0, 10);
   if (!dateKey) return completedDates;
 
   return {
@@ -94,48 +111,60 @@ export const getCompletedScheduleDates = (logs: readonly MedicationLogResponse[]
 }, {});
 
 export const getPatientActivitiesFromApi = async (): Promise<ActivityLogRecord[]> => {
-  const data = await getPatientDashboardData();
-  const scans = await getFoodScansForPatientFromApi(data.patient.id).catch(() => []);
+  const now = Date.now();
+  if (activitiesCache && activitiesCache.expiresAt > now) return activitiesCache.data;
+  if (activitiesRequest) return activitiesRequest;
 
-  const medicationActivities: ActivityLogRecord[] = data.medicationLogs.map((log) => ({
-    id: log.id,
-    title: log.status === "confirmed" ? "Obat dikonfirmasi" : log.status === "missed" ? "Obat terlewat" : "Aktivitas obat",
-    description: `${log.drugName} berstatus ${log.status}.`,
-    category: "Reminder",
-    severity: log.status === "missed" ? "Kritis" : log.status === "snoozed" ? "Peringatan" : "Sukses",
-    timestamp: log.confirmedAt || log.createdAt || log.scheduledTime,
-    patientId: log.patientId,
-    patientName: data.patient.name,
-    patientAvatar: data.patient.avatar,
-    scheduleId: log.scheduleId,
-    medicineName: log.drugName,
-    read: false,
-  }));
+  activitiesRequest = (async () => {
+    const data = await getPatientDashboardData();
+    const scans = await getFoodScansForPatientFromApi(data.patient.id).catch(() => []);
 
-  const scanActivities: ActivityLogRecord[] = scans.map((scan) => ({
-    id: `food-scan-${scan.id}`,
-    title: scan.risk === "High Risk" ? "Scan makanan berisiko" : "Scan makanan selesai",
-    description: scan.result,
-    category: "Scan Makanan",
-    severity: scan.risk === "High Risk" ? "Peringatan" : "Sukses",
-    timestamp: scan.scannedAt,
-    patientId: scan.patientId,
-    patientName: data.patient.name,
-    patientAvatar: data.patient.avatar,
-    scanId: scan.id,
-    read: false,
-  }));
+    const medicationActivities: ActivityLogRecord[] = data.medicationLogs.map((log) => ({
+      id: log.id,
+      title: log.status === "confirmed" ? "Obat dikonfirmasi" : log.status === "missed" ? "Obat terlewat" : "Aktivitas obat",
+      description: `${log.drugName} berstatus ${log.status}.`,
+      category: "Reminder",
+      severity: log.status === "missed" ? "Kritis" : log.status === "snoozed" ? "Peringatan" : "Sukses",
+      timestamp: log.confirmedAt || log.createdAt || log.scheduledTime,
+      patientId: log.patientId,
+      patientName: data.patient.name,
+      patientAvatar: data.patient.avatar,
+      scheduleId: log.scheduleId,
+      medicineName: log.drugName,
+      read: false,
+    }));
 
-  return [...medicationActivities, ...scanActivities]
-    .sort((first, second) => Date.parse(second.timestamp) - Date.parse(first.timestamp));
+    const scanActivities: ActivityLogRecord[] = scans.map((scan) => ({
+      id: `food-scan-${scan.id}`,
+      title: scan.risk === "High Risk" ? "Scan makanan berisiko" : "Scan makanan selesai",
+      description: scan.result,
+      category: "Scan Makanan",
+      severity: scan.risk === "High Risk" ? "Peringatan" : "Sukses",
+      timestamp: scan.scannedAt,
+      patientId: scan.patientId,
+      patientName: data.patient.name,
+      patientAvatar: data.patient.avatar,
+      scanId: scan.id,
+      read: false,
+    }));
+
+    const result = [...medicationActivities, ...scanActivities]
+      .sort((first, second) => Date.parse(second.timestamp) - Date.parse(first.timestamp));
+    activitiesCache = { data: result, expiresAt: Date.now() + activitiesCacheTtl };
+    return result;
+  })().finally(() => {
+    activitiesRequest = null;
+  });
+
+  return activitiesRequest;
 };
 
-export const confirmMedicationScheduleViaApi = async (schedule: MedicationScheduleRecord, selectedDate: Date) => {
+export const confirmMedicationScheduleViaApi = async (schedule: MedicationScheduleRecord, selectedDate: Date, doseIndex = 0) => {
   const scheduledTime = new Date(selectedDate);
-  const [firstTime] = schedule.times;
+  const selectedTime = schedule.times[doseIndex] ?? schedule.times[0];
 
-  if (firstTime) {
-    const [hours, minutes] = firstTime.split(":").map(Number);
+  if (selectedTime) {
+    const [hours, minutes] = selectedTime.split(":").map(Number);
     scheduledTime.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
   }
 
@@ -145,4 +174,8 @@ export const confirmMedicationScheduleViaApi = async (schedule: MedicationSchedu
     scheduledTime: scheduledTime.toISOString(),
     confirmedAt: new Date().toISOString(),
   });
+
+  // Invalidate caches after confirmation
+  clearPatientDashboardCache();
+  clearPatientsCache();
 };

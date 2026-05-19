@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { Bell, Box, CheckCircle2, Clock3 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
-import { getDateKey, isSameDate } from "@/helpers/patientSchedule";
+import { getDateKey, getScheduleConfirmedDoseCount, getScheduleDoseCount, getScheduleDoseWindow, isSameDate } from "@/helpers/patientSchedule";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import ScheduleStatusBadge from "./ScheduleStatusBadge";
 
@@ -12,11 +12,13 @@ interface PatientDailyMedicineListProps {
   readonly selectedDate: Date;
   readonly schedules: readonly MedicationScheduleRecord[];
   readonly canConfirm: boolean;
+  readonly hasFoodScan: boolean;
   readonly confirmedScheduleIds: readonly string[];
+  readonly confirmedScheduleDates: Readonly<Record<string, readonly string[]>>;
   readonly onConfirm: (schedule: MedicationScheduleRecord) => void;
 }
 
-export default function PatientDailyMedicineList({ selectedDate, schedules, canConfirm, confirmedScheduleIds, onConfirm }: PatientDailyMedicineListProps) {
+export default function PatientDailyMedicineList({ selectedDate, schedules, canConfirm, hasFoodScan, confirmedScheduleIds, confirmedScheduleDates, onConfirm }: PatientDailyMedicineListProps) {
   const isToday = isSameDate(selectedDate, new Date());
 
   return (
@@ -35,8 +37,11 @@ export default function PatientDailyMedicineList({ selectedDate, schedules, canC
             schedule={schedule}
             index={index}
             canConfirm={isToday && canConfirm}
+            hasFoodScan={hasFoodScan}
             isToday={isToday}
-            confirmed={confirmedScheduleIds.includes(schedule.id)}
+            confirmed={confirmedScheduleIds.filter((scheduleId) => scheduleId === schedule.id).length >= getScheduleDoseCount(schedule)}
+            confirmedDoseCount={getScheduleConfirmedDoseCount(schedule, selectedDate, { [getDateKey(selectedDate)]: confirmedScheduleIds })}
+            doseWindow={getScheduleDoseWindow(schedule, selectedDate, confirmedScheduleDates)}
             onConfirm={() => onConfirm(schedule)}
           />
         )) : (
@@ -47,7 +52,11 @@ export default function PatientDailyMedicineList({ selectedDate, schedules, canC
   );
 }
 
-function DailyMedicineCard({ schedule, index, canConfirm, isToday, confirmed, onConfirm }: { readonly schedule: MedicationScheduleRecord; readonly index: number; readonly canConfirm: boolean; readonly isToday: boolean; readonly confirmed: boolean; readonly onConfirm: () => void }) {
+function DailyMedicineCard({ schedule, index, canConfirm, hasFoodScan, isToday, confirmed, confirmedDoseCount, doseWindow, onConfirm }: { readonly schedule: MedicationScheduleRecord; readonly index: number; readonly canConfirm: boolean; readonly hasFoodScan: boolean; readonly isToday: boolean; readonly confirmed: boolean; readonly confirmedDoseCount: number; readonly doseWindow: ReturnType<typeof getScheduleDoseWindow>; readonly onConfirm: () => void }) {
+  const doseCount = getScheduleDoseCount(schedule);
+  const isOutOfStock = schedule.stock <= 0 || schedule.status === "Selesai";
+  const canConfirmCurrentDose = canConfirm && doseWindow.canConfirm && !isOutOfStock;
+
   return (
     <motion.article
       className="rounded-3xl bg-surface p-5 sm:p-6"
@@ -74,11 +83,21 @@ function DailyMedicineCard({ schedule, index, canConfirm, isToday, confirmed, on
           </div>
 
           <div className="mt-5 flex flex-col items-stretch gap-3">
-            <Button size="sm" className="rounded-full bg-primary text-[12px]" disabled={!canConfirm || confirmed} onClick={onConfirm} icon={<CheckCircle2 size={16} />}>
-              {confirmed ? "Sudah Dikonfirmasi" : "Konfirmasi Minum"}
-            </Button>
+            <p className="text-center text-xs font-extrabold leading-5 text-muted">{confirmedDoseCount}/{doseCount} dosis selesai</p>
+            {confirmed ? (
+              <p className="rounded-full bg-leaf/10 px-4 py-3 text-center text-xs font-extrabold leading-5 text-leaf">Anda telah konfirmasi obat ini.</p>
+            ) : isOutOfStock ? (
+              <p className="rounded-full bg-danger/10 px-4 py-3 text-center text-xs font-extrabold leading-5 text-danger">Stok obat habis. Jadwal obat selesai.</p>
+            ) : (
+              <Button size="sm" className="rounded-full bg-primary text-[12px]" disabled={!canConfirmCurrentDose} onClick={onConfirm} icon={<CheckCircle2 size={16} />}>
+                Konfirmasi Minum
+              </Button>
+            )}
             {!isToday && <p className="text-center text-xs font-extrabold leading-5 text-muted">Konfirmasi hanya tersedia untuk hari ini.</p>}
-            {isToday && !canConfirm && !confirmed && <p className="text-center text-xs font-extrabold leading-5 text-danger">Scan makanan dulu sebelum konfirmasi minum obat.</p>}
+            {isToday && !hasFoodScan && !confirmed && !isOutOfStock && <p className="text-center text-xs font-extrabold leading-5 text-danger">Scan makanan dulu sebelum konfirmasi minum obat.</p>}
+            {isToday && hasFoodScan && !canConfirm && !confirmed && !isOutOfStock && <p className="text-center text-xs font-extrabold leading-5 text-danger">Hasil scan belum mendeteksi makanan. Konfirmasi tersedia setelah makanan terdeteksi.</p>}
+            {isToday && doseWindow.isBeforeFirstDose && !confirmed && !isOutOfStock && <p className="text-center text-xs font-extrabold leading-5 text-muted">Konfirmasi tersedia mulai jam {schedule.times[0] ?? "jadwal pertama"}.</p>}
+            {isToday && doseWindow.isCurrentDoseConfirmed && !confirmed && !isOutOfStock && <p className="text-center text-xs font-extrabold leading-5 text-leaf">Dosis jam ini sudah dikonfirmasi. Tunggu jadwal berikutnya{doseWindow.nextDoseTime ? ` pukul ${doseWindow.nextDoseTime}` : ""}.</p>}
           </div>
         </div>
       </div>

@@ -49,10 +49,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([getAdminDashboardStats(), getPatientsFromApi(), getAlertActivitiesFromApi(), getAuditActivitiesFromApi()])
-      .then(async ([data, apiPatients, alertActivities, auditActivities]) => {
+    Promise.all([getAdminDashboardStats(), getPatientsFromApi(), getAlertActivitiesFromApi(), getAuditActivitiesFromApi(), getNursesFromApi()])
+      .then(async ([data, apiPatients, alertActivities, auditActivities, apiNurses]) => {
         if (!isMounted) return;
-        const [apiNurses, schedules] = await Promise.all([getNursesFromApi(), getSchedulesFromApi(apiPatients)]);
+        const schedules = await getSchedulesFromApi(apiPatients);
         if (!isMounted) return;
         setHasLoadError(false);
         setNurses(apiNurses);
@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [nurses.length, setNurses]);
+  }, [setNurses]);
 
   return (
     <DashboardPageShell>

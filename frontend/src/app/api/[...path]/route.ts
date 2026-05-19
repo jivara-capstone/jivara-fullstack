@@ -44,6 +44,16 @@ const buildHeaders = (request: NextRequest) => {
   return headers;
 };
 
+const getProxyTimeoutMs = (url: URL) => {
+  const pathname = url.pathname;
+
+  if (pathname.includes("/food-scans/") || pathname.includes("/nutrition-estimates")) {
+    return Number(process.env.FOOD_SCAN_PROXY_TIMEOUT_MS || 60_000);
+  }
+
+  return Number(process.env.API_PROXY_TIMEOUT_MS || 10_000);
+};
+
 const proxyRequest = async (request: NextRequest, context: ProxyRouteContext) => {
   const backendUrl = await buildBackendUrl(request, context);
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
@@ -55,7 +65,7 @@ const proxyRequest = async (request: NextRequest, context: ProxyRouteContext) =>
       headers: buildHeaders(request),
       body: hasBody ? await request.arrayBuffer() : undefined,
       cache: "no-store",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(getProxyTimeoutMs(backendUrl)),
     });
   } catch {
     return NextResponse.json(

@@ -156,6 +156,10 @@ const getScheduleForJob = async (job: typeof medicationReminderJobs.$inferSelect
   return schedule[0] || null;
 };
 
+const shouldSendReminderForSchedule = (schedule: typeof medicationSchedules.$inferSelect | null) => {
+  return Boolean(schedule && schedule.isActive !== false && schedule.reminderEnabled !== false && Number(schedule.stock ?? 0) > 0);
+};
+
 const hasTerminalLog = async (job: typeof medicationReminderJobs.$inferSelect) => {
   const rows = await db
     .select({ status: medicationLogs.status })
@@ -166,6 +170,54 @@ const hasTerminalLog = async (job: typeof medicationReminderJobs.$inferSelect) =
     ));
 
   return rows.some((row) => row.status === "confirmed" || row.status === "missed");
+};
+
+const hasTerminalLogForScheduleTime = async (scheduleId: string, scheduledTime: Date) => {
+  const rows = await db
+    .select({ status: medicationLogs.status })
+    .from(medicationLogs)
+    .where(and(
+      eq(medicationLogs.scheduleId, scheduleId),
+      eq(medicationLogs.scheduledTime, scheduledTime),
+    ));
+
+  return rows.some((row) => row.status === "confirmed" || row.status === "missed");
+};
+
+const markElapsedNonReminderDosesMissed = async (now: Date, dateKeys: readonly string[]) => {
+  const nowJakarta = getJakartaDate(now);
+  const schedules = await db
+    .select()
+    .from(medicationSchedules)
+    .where(and(
+      eq(medicationSchedules.isActive, true),
+      eq(medicationSchedules.reminderEnabled, false),
+    ));
+
+  let processed = 0;
+
+  for (const schedule of schedules) {
+    if (Number(schedule.stock ?? 0) <= 0) continue;
+
+    for (const dateKey of dateKeys) {
+      for (const time of parseScheduledTimes(schedule.scheduledTimes)) {
+        const scheduledTime = toScheduledDate(dateKey, time);
+        if (nowJakarta < getMissedAt(schedule, scheduledTime)) continue;
+        if (await hasTerminalLogForScheduleTime(schedule.id, scheduledTime)) continue;
+
+        await db.insert(medicationLogs).values({
+          scheduleId: schedule.id,
+          patientId: schedule.patientId,
+          reminderJobId: null,
+          scheduledTime,
+          status: "missed",
+        }).onConflictDoNothing();
+        processed += 1;
+      }
+    }
+  }
+
+  return processed;
 };
 
 const processPendingJobs = async (now: Date) => {
@@ -184,7 +236,7 @@ const processPendingJobs = async (now: Date) => {
 
   for (const job of jobs) {
     const schedule = await getScheduleForJob(job);
-    if (!schedule || schedule.isActive === false) continue;
+    if (!shouldSendReminderForSchedule(schedule)) continue;
 
     try {
       if (job.scheduledTime <= nowJakarta) {
@@ -217,7 +269,7 @@ const processDueReminderJobs = async (now: Date) => {
 
   for (const job of jobs) {
     const schedule = await getScheduleForJob(job);
-    if (!schedule || schedule.isActive === false) continue;
+    if (!shouldSendReminderForSchedule(schedule)) continue;
 
     try {
       await sendReminderForJob(job, schedule);
@@ -287,9 +339,10 @@ const markMissedAndNotify = async (job: typeof medicationReminderJobs.$inferSele
         scheduledTime: job.scheduledTime,
         status: "missed",
       })
+      .onConflictDoNothing()
       .returning({ id: medicationLogs.id });
 
-    logId = log.id;
+    logId = log?.id ?? null;
   }
 
   const result = await sendPushNotification({
@@ -355,7 +408,7 @@ const processEscalations = async (now: Date) => {
     }
 
     const schedule = await getScheduleForJob(job);
-    if (!schedule || schedule.isActive === false) continue;
+    if (!shouldSendReminderForSchedule(schedule)) continue;
 
     const ageMinutes = (nowJakarta.getTime() - job.scheduledTime.getTime()) / 60_000;
     const missedAt = getMissedAt(schedule, job.scheduledTime);
@@ -393,12 +446,14 @@ export const processDueMedicationReminders = async (now = new Date()) => {
     let processed = await processPendingJobs(now);
     processed += await processDueReminderJobs(now);
     processed += await processEscalations(now);
+    processed += await markElapsedNonReminderDosesMissed(now, dateKeys);
 
     const schedules = await db
       .select()
       .from(medicationSchedules)
       .where(and(
         eq(medicationSchedules.isActive, true),
+        eq(medicationSchedules.reminderEnabled, true),
         lte(medicationSchedules.createdAt, now),
       ));
 
