@@ -54,22 +54,39 @@ const buildDailyBreakdown = (days: number, occurrences: Array<{ scheduledTime: D
   return Array.from(breakdown.values());
 };
 
+const getScheduleTimes = (scheduledTimes: unknown, frequency?: number | null) => {
+  if (Array.isArray(scheduledTimes)) {
+    const times = scheduledTimes.filter((time): time is string => typeof time === "string" && /^\d{1,2}:\d{2}$/.test(time));
+    if (times.length > 0) return times;
+  }
+
+  const count = Math.max(Number.isInteger(frequency) ? Number(frequency) : 1, 1);
+  return Array.from({ length: count }, (_, index) => `${String(index).padStart(2, "0")}:00`);
+};
+
+const getOccurrenceDateTime = (day: Date, time: string) => {
+  const occurrence = new Date(day);
+  const [hours, minutes] = time.split(":").map(Number);
+  occurrence.setUTCHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return occurrence;
+};
+
 const buildScheduledOccurrences = (
   days: number,
-  schedules: Array<{ id: string; createdAt: Date | null; scheduledTimes: unknown }>,
+  schedules: Array<{ id: string; createdAt: Date | null; scheduledTimes: unknown; frequency?: number | null }>,
   logs: Array<{ scheduleId: string; scheduledTime: Date; status: string }>,
 ) => {
   const now = new Date();
   const start = getStartDate(days);
 
-  // Group logs by scheduleId + date (not time)
-  const logsByScheduleDate = new Map<string, string>();
+  const logsByScheduleDate = new Map<string, { confirmed: number; snoozed: number; missed: number }>();
   for (const log of logs) {
     const key = `${log.scheduleId}|${getDateKey(log.scheduledTime)}`;
-    const existing = logsByScheduleDate.get(key);
-    if (!existing || log.status === "confirmed") {
-      logsByScheduleDate.set(key, log.status);
-    }
+    const bucket = logsByScheduleDate.get(key) || { confirmed: 0, snoozed: 0, missed: 0 };
+    if (log.status === "confirmed") bucket.confirmed += 1;
+    else if (log.status === "snoozed") bucket.snoozed += 1;
+    else if (log.status === "missed") bucket.missed += 1;
+    logsByScheduleDate.set(key, bucket);
   }
 
   const occurrences: Array<{ scheduledTime: Date; status: string }> = [];
@@ -82,9 +99,22 @@ const buildScheduledOccurrences = (
       if (schedule.createdAt && getDateKey(day) < getDateKey(schedule.createdAt)) continue;
       if (day > now) continue;
 
-      const scheduleDateKey = `${schedule.id}|${getDateKey(day)}`;
-      const status = logsByScheduleDate.get(scheduleDateKey) || "missed";
-      occurrences.push({ scheduledTime: day, status });
+      for (const time of getScheduleTimes(schedule.scheduledTimes, schedule.frequency)) {
+        const scheduledTime = getOccurrenceDateTime(day, time);
+
+        const bucket = logsByScheduleDate.get(`${schedule.id}|${getDateKey(scheduledTime)}`);
+        const status = bucket?.confirmed
+          ? "confirmed"
+          : bucket?.snoozed
+            ? "snoozed"
+            : bucket?.missed
+              ? "missed"
+              : "missed";
+        if (bucket?.confirmed) bucket.confirmed -= 1;
+        else if (bucket?.snoozed) bucket.snoozed -= 1;
+        else if (bucket?.missed) bucket.missed -= 1;
+        occurrences.push({ scheduledTime, status });
+      }
     }
   }
 
@@ -146,6 +176,7 @@ export const getAdherenceStats = async (query: AdherenceQuery, user?: AccessUser
         id: medicationSchedules.id,
         createdAt: medicationSchedules.createdAt,
         scheduledTimes: medicationSchedules.scheduledTimes,
+        frequency: medicationSchedules.frequency,
       })
       .from(medicationSchedules)
       .where(and(...scheduleConditions)),
@@ -246,6 +277,7 @@ export const getAggregateAdherenceStats = async (query: AdherenceQuery = {}, use
         patientId: medicationSchedules.patientId,
         createdAt: medicationSchedules.createdAt,
         scheduledTimes: medicationSchedules.scheduledTimes,
+        frequency: medicationSchedules.frequency,
       })
       .from(medicationSchedules)
       .where(and(...scheduleConditions)),

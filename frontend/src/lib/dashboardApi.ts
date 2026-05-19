@@ -53,6 +53,21 @@ export interface AdminDashboardStatsData {
   stats: SummaryCardItem[];
 }
 
+const nurseDashboardCacheTtl = 15_000;
+let nurseDashboardCache: { data: NurseDashboardData; expiresAt: number } | null = null;
+let nurseDashboardRequest: Promise<NurseDashboardData> | null = null;
+
+const adminDashboardCacheTtl = 15_000;
+let adminDashboardCache: { data: AdminDashboardStatsData; expiresAt: number } | null = null;
+let adminDashboardRequest: Promise<AdminDashboardStatsData> | null = null;
+
+export const clearDashboardCache = () => {
+  nurseDashboardCache = null;
+  nurseDashboardRequest = null;
+  adminDashboardCache = null;
+  adminDashboardRequest = null;
+};
+
 const getAge = (dateOfBirth?: string | null) => {
   if (!dateOfBirth) return 0;
 
@@ -99,49 +114,73 @@ const normalizeAdherence = (adherence: number | null | undefined, totalScheduled
 };
 
 export const getNurseDashboardData = async (): Promise<NurseDashboardData> => {
-  const [patientsResponse, alertsResponse, adherenceResponse] = await Promise.all([
-    api.get<PaginatedResponse<PatientListResponse>>("/patients", { params: { limit: 5, status: "active" } }),
-    api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { limit: 100 } }),
-    api.get<{ data: AdherenceStatsResponse }>("/adherence", { params: { period: "30d" } }),
-  ]);
+  const now = Date.now();
+  if (nurseDashboardCache && nurseDashboardCache.expiresAt > now) return nurseDashboardCache.data;
+  if (nurseDashboardRequest) return nurseDashboardRequest;
 
-  const alerts = alertsResponse.data.data;
-  const criticalAlerts = alerts.filter((alert) => alert.severity === "critical" || alert.status === "missed").length;
-  const warningAlerts = Math.max(alerts.length - criticalAlerts, 0);
-  const totalPatients = patientsResponse.data.meta?.total ?? patientsResponse.data.data.length;
-  const patientAdherence = patientsResponse.data.data.map(getPatientListAdherence);
-  const averageAdherenceRate = patientAdherence.length > 0
-    ? Math.round(patientAdherence.reduce((total, adherence) => total + adherence, 0) / patientAdherence.length)
-    : normalizeAdherence(adherenceResponse.data.data.adherenceRate, adherenceResponse.data.data.totalScheduled);
-  const patients = patientsResponse.data.data.map((patient, index) => {
-    const adherence = patientAdherence[index] ?? 0;
-    return mapPatient(patient, adherence, getStatusFromAdherence(adherence));
+  nurseDashboardRequest = (async () => {
+    const [patientsResponse, alertsResponse, adherenceResponse] = await Promise.all([
+      api.get<PaginatedResponse<PatientListResponse>>("/patients", { params: { limit: 5, status: "active" } }),
+      api.get<PaginatedResponse<AlertResponse>>("/alerts", { params: { limit: 100 } }),
+      api.get<{ data: AdherenceStatsResponse }>("/adherence", { params: { period: "30d" } }),
+    ]);
+
+    const alerts = alertsResponse.data.data;
+    const criticalAlerts = alerts.filter((alert) => alert.severity === "critical" || alert.status === "missed").length;
+    const warningAlerts = Math.max(alerts.length - criticalAlerts, 0);
+    const totalPatients = patientsResponse.data.meta?.total ?? patientsResponse.data.data.length;
+    const patientAdherence = patientsResponse.data.data.map(getPatientListAdherence);
+    const averageAdherenceRate = patientAdherence.length > 0
+      ? Math.round(patientAdherence.reduce((total, adherence) => total + adherence, 0) / patientAdherence.length)
+      : normalizeAdherence(adherenceResponse.data.data.adherenceRate, adherenceResponse.data.data.totalScheduled);
+    const patients = patientsResponse.data.data.map((patient, index) => {
+      const adherence = patientAdherence[index] ?? 0;
+      return mapPatient(patient, adherence, getStatusFromAdherence(adherence));
+    });
+
+    const result: NurseDashboardData = {
+      stats: [
+        { label: "Total Pasien Saya", value: String(totalPatients), helper: "", tone: "safe", color: "pine", icon: UsersRound },
+        { label: "Notifikasi Peringatan Pasien", value: String(criticalAlerts), helper: warningAlerts > 0 ? `${warningAlerts} peringatan aktif` : "", tone: criticalAlerts > 0 ? "critical" : "safe", color: "lime", icon: AlertTriangle },
+        { label: "Kepatuhan Pasien Keseluruhan", value: `${averageAdherenceRate}%`, helper: "Rata-rata 30 hari", tone: averageAdherenceRate >= 80 ? "safe" : averageAdherenceRate >= 60 ? "warning" : "critical", color: "leaf", icon: CheckCircle2, progress: averageAdherenceRate },
+      ],
+      patients,
+    };
+    nurseDashboardCache = { data: result, expiresAt: Date.now() + nurseDashboardCacheTtl };
+    return result;
+  })().finally(() => {
+    nurseDashboardRequest = null;
   });
 
-  return {
-    stats: [
-      { label: "Total Pasien Saya", value: String(totalPatients), helper: "", tone: "safe", color: "pine", icon: UsersRound },
-      { label: "Notifikasi Peringatan Pasien", value: String(criticalAlerts), helper: warningAlerts > 0 ? `${warningAlerts} peringatan aktif` : "", tone: criticalAlerts > 0 ? "critical" : "safe", color: "lime", icon: AlertTriangle },
-      { label: "Kepatuhan Pasien Keseluruhan", value: `${averageAdherenceRate}%`, helper: "Rata-rata 30 hari", tone: averageAdherenceRate >= 80 ? "safe" : averageAdherenceRate >= 60 ? "warning" : "critical", color: "leaf", icon: CheckCircle2, progress: averageAdherenceRate },
-    ],
-    patients,
-  };
+  return nurseDashboardRequest;
 };
 
 export const getAdminDashboardStats = async (): Promise<AdminDashboardStatsData> => {
-  const [response, nurses] = await Promise.all([
-    api.get<{ data: AggregateAdherenceResponse }>("/adherence/aggregate", { params: { period: "30d" } }),
-    getNursesFromApi(),
-  ]);
-  const aggregate = response.data.data;
+  const now = Date.now();
+  if (adminDashboardCache && adminDashboardCache.expiresAt > now) return adminDashboardCache.data;
+  if (adminDashboardRequest) return adminDashboardRequest;
 
-  return {
-    stats: [
-      { label: "Total Perawat Saya", value: String(nurses.length), tone: "neutral", color: "pine", icon: UsersRound },
-      { label: "Total Pasien Saya", value: String(aggregate.totalActivePatients), tone: "safe", color: "leaf", icon: UserRound },
-      { label: "Jadwal Pasien Aktif", value: String(aggregate.totalScheduled), tone: "neutral", color: "lime", icon: CalendarClock },
-    ],
-  };
+  adminDashboardRequest = (async () => {
+    const [response, nurses] = await Promise.all([
+      api.get<{ data: AggregateAdherenceResponse }>("/adherence/aggregate", { params: { period: "30d" } }),
+      getNursesFromApi(),
+    ]);
+    const aggregate = response.data.data;
+
+    const result: AdminDashboardStatsData = {
+      stats: [
+        { label: "Total Perawat Saya", value: String(nurses.length), tone: "neutral", color: "pine", icon: UsersRound },
+        { label: "Total Pasien Saya", value: String(aggregate.totalActivePatients), tone: "safe", color: "leaf", icon: UserRound },
+        { label: "Jadwal Pasien Aktif", value: String(aggregate.totalScheduled), tone: "neutral", color: "lime", icon: CalendarClock },
+      ],
+    };
+    adminDashboardCache = { data: result, expiresAt: Date.now() + adminDashboardCacheTtl };
+    return result;
+  })().finally(() => {
+    adminDashboardRequest = null;
+  });
+
+  return adminDashboardRequest;
 };
 
 export const emptyNurseDashboardData: NurseDashboardData = {

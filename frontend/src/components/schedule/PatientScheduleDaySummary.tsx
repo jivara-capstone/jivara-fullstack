@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, CalendarCheck2, CalendarClock, CheckCircle2, Eye } from "lucide-react";
-import { getConfirmedCount, getDayStatus, getReadableDate } from "@/helpers/patientSchedule";
+import { getConfirmedCount, getDayStatus, getReadableDate, getTotalDoseCount } from "@/helpers/patientSchedule";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import PatientMedicineDetailModal from "./PatientMedicineDetailModal";
 
@@ -28,13 +28,17 @@ export default function PatientScheduleDaySummary({ selectedDate, schedulesForDa
   const content = statusContent[status];
   const Icon = content.icon;
   const confirmedCount = getConfirmedCount(schedulesForDate, selectedDate, confirmedScheduleDates);
-  const totalSchedules = schedulesForDate.length;
-  const safeTotal = Math.max(totalSchedules, 1);
-  const missedCount = status === "missed" ? Math.max(totalSchedules - confirmedCount, 0) : 0;
-  const upcomingCount = status === "missed" ? 0 : Math.max(totalSchedules - confirmedCount, 0);
+  const totalDoses = getTotalDoseCount(schedulesForDate);
+  const safeTotal = Math.max(totalDoses, 1);
+  const missedCount = status === "missed" ? Math.max(totalDoses - confirmedCount, 0) : 0;
+  const upcomingCount = status === "missed" ? 0 : Math.max(totalDoses - confirmedCount, 0);
   const completedWidth = `${(confirmedCount / safeTotal) * 100}%`;
   const upcomingWidth = `${(upcomingCount / safeTotal) * 100}%`;
   const missedWidth = `${(missedCount / safeTotal) * 100}%`;
+
+  const activeSchedules = allSchedules.filter((s) => s.status === "Aktif");
+  const completedSchedules = allSchedules.filter((s) => s.status === "Selesai");
+  const inactiveSchedules = allSchedules.filter((s) => s.status === "Nonaktif");
 
   return (
     <motion.section
@@ -57,7 +61,7 @@ export default function PatientScheduleDaySummary({ selectedDate, schedulesForDa
       <div className="mt-6 rounded-[28px] bg-primary/5 px-5 py-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm font-extrabold text-text-main">Progress Obat</p>
-          <p className="text-sm font-bold text-muted">{confirmedCount}/{totalSchedules} Selesai</p>
+          <p className="text-sm font-bold text-muted">{confirmedCount}/{totalDoses} dosis selesai</p>
         </div>
 
         <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-line">
@@ -79,11 +83,11 @@ export default function PatientScheduleDaySummary({ selectedDate, schedulesForDa
             <h3 className="text-sm font-extrabold text-text-main">Semua Obat Saya</h3>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">Daftar obat aktif yang sedang dijadwalkan.</p>
           </div>
-          <p className="text-xs font-extrabold text-muted">{allSchedules.length} obat</p>
+          <p className="shrink-0 whitespace-nowrap text-xs font-extrabold text-muted">{activeSchedules.length} obat</p>
         </div>
 
         <div className="mt-4 space-y-2">
-          {allSchedules.length > 0 ? allSchedules.map((schedule, index) => (
+          {activeSchedules.length > 0 ? activeSchedules.map((schedule, index) => (
             <div key={`day-summary-schedule-${schedule.id}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3">
               <p className="min-w-0 truncate text-sm font-extrabold text-text-main">{schedule.medicineName}</p>
               <button
@@ -97,6 +101,62 @@ export default function PatientScheduleDaySummary({ selectedDate, schedulesForDa
             </div>
           )) : (
             <div className="rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-muted">Belum ada obat aktif.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-text-main">Obat Selesai Saya</h3>
+            <p className="mt-1 text-xs font-semibold leading-5 text-muted">Daftar obat yang stoknya habis atau terapinya sudah selesai.</p>
+          </div>
+          <p className="shrink-0 whitespace-nowrap text-xs font-extrabold text-muted">{completedSchedules.length} obat</p>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {completedSchedules.length > 0 ? completedSchedules.map((schedule, index) => (
+            <div key={`day-summary-completed-schedule-${schedule.id}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-primary/5 px-4 py-3">
+              <p className="min-w-0 truncate text-sm font-extrabold text-text-main">{schedule.medicineName}</p>
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-line/60 hover:text-text-main"
+                onClick={() => setSelectedSchedule(schedule)}
+                aria-label={`Lihat detail ${schedule.medicineName}`}
+              >
+                <Eye size={17} />
+              </button>
+            </div>
+          )) : (
+            <div className="rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-muted">Belum ada obat selesai.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-text-main">Obat Nonaktif Saya</h3>
+            <p className="mt-1 text-xs font-semibold leading-5 text-muted">Daftar obat yang dijeda manual dan sedang tidak dijadwalkan.</p>
+          </div>
+          <p className="shrink-0 whitespace-nowrap text-xs font-extrabold text-muted">{inactiveSchedules.length} obat</p>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {inactiveSchedules.length > 0 ? inactiveSchedules.map((schedule, index) => (
+            <div key={`day-summary-inactive-schedule-${schedule.id}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl bg-surface/70 px-4 py-3 opacity-80">
+              <p className="min-w-0 truncate text-sm font-extrabold text-text-main">{schedule.medicineName}</p>
+              <button
+                type="button"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-line/60 hover:text-text-main"
+                onClick={() => setSelectedSchedule(schedule)}
+                aria-label={`Lihat detail ${schedule.medicineName}`}
+              >
+                <Eye size={17} />
+              </button>
+            </div>
+          )) : (
+            <div className="rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-muted">Belum ada obat nonaktif.</div>
           )}
         </div>
       </div>

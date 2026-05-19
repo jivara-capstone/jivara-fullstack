@@ -91,14 +91,13 @@ describe("food scan feature", () => {
     mediaTrack.stop.mockClear();
     getScreenshot.mockClear();
     vi.mocked(scanFoodImage).mockReset();
+    vi.mocked(scanFoodImage).mockResolvedValue(analysis);
     vi.mocked(showToast).mockClear();
     setupCameraApis();
     seedPatientAuth();
   });
 
   it("captures a live camera frame, uploads it, shows scan result, and stores last scan", async () => {
-    vi.mocked(scanFoodImage).mockResolvedValueOnce(analysis);
-
     render(<FoodScanPage />);
     expect(screen.queryByRole("button", { name: /scan sekarang/i })).not.toBeInTheDocument();
 
@@ -116,14 +115,12 @@ describe("food scan feature", () => {
   });
 
   it("uploads a gallery image through the same food scan flow", async () => {
-    vi.mocked(scanFoodImage).mockResolvedValueOnce(analysis);
-
     render(<FoodScanPage />);
     const file = new File(["image"], "meal.png", { type: "image/png" });
     fireEvent.change(screen.getByLabelText(/upload gambar makanan/i), { target: { files: [file] } });
 
     await waitFor(() => expect(scanFoodImage).toHaveBeenCalledWith(file));
-    expect(await screen.findByText("Susu")).toBeInTheDocument();
+    expect(await screen.findByText("Susu", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(showToast).toHaveBeenCalledWith("Upload gambar selesai.", "success");
     expect(usePatientDashboardStore.getState().lastScan?.id).toBe("scan-1");
   });

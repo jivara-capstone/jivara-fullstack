@@ -39,9 +39,9 @@ export const register = async (req: AuthRequest, res: Response) => {
     const err = error as { status?: number; message?: string; code?: string };
     const status = err.status || 500;
     const isInternalError = status === 500;
-    
+
     // console.error("Register Error:", error);
-    
+
     res.status(status).json({
       status: "gagal",
       message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
@@ -63,9 +63,9 @@ export const login = async (req: AuthRequest, res: Response) => {
     const err = error as { status?: number; message?: string; code?: string };
     const status = err.status || 500;
     const isInternalError = status === 500;
-    
+
     // console.error("Login Error:", error);
-    
+
     res.status(status).json({
       status: "gagal",
       message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
@@ -343,9 +343,9 @@ export const refresh = async (req: AuthRequest, res: Response) => {
     const err = error as { status?: number; message?: string; code?: string };
     const status = err.status || 500;
     const isInternalError = status === 500;
-    
+
     // console.error("Refresh Error:", error);
-    
+
     res.status(status).json({
       status: "gagal",
       message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),
@@ -413,9 +413,9 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     const err = error as { status?: number; message?: string };
     const status = err.status || 500;
     const isInternalError = status === 500;
-    
+
     // console.error("GetMe Error:", error);
-    
+
     res.status(status).json({
       status: "gagal",
       message: isInternalError ? "Terjadi kesalahan pada server" : (err.message || "Terjadi kesalahan"),

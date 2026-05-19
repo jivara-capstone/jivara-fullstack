@@ -67,7 +67,7 @@ const getPushSubscription = async (registration: ServiceWorkerRegistration, publ
       userVisibleOnly: true,
       applicationServerKey,
     });
-  } catch (error) {
+  } catch {
     const staleSubscription = await registration.pushManager.getSubscription();
     await staleSubscription?.unsubscribe().catch(() => undefined);
 
@@ -77,16 +77,6 @@ const getPushSubscription = async (registration: ServiceWorkerRegistration, publ
         applicationServerKey,
       });
     } catch {
-
-      const message = error instanceof Error && error.message ? error.message : "Push service error";
-      const diagnostics = {
-        permission: Notification.permission,
-        secureContext: window.isSecureContext,
-        hasController: Boolean(navigator.serviceWorker.controller),
-        registrationScope: registration.scope,
-        serviceWorkerState: registration.active?.state || registration.installing?.state || registration.waiting?.state || null,
-      };
-      console.warn("[Jivara Push] Subscription failed", { ...diagnostics, errorMessage: message });
       throw new Error("Gagal mengaktifkan notifikasi di browser ini. Pastikan menggunakan HTTPS dan browser mendukung push notification.");
     }
   }
@@ -156,8 +146,8 @@ export const disableDefaultPushPreference = async (user: Pick<User, "role">) => 
 
     const preferenceKey = getDefaultUserPreferenceKey(String(user.role));
     if (preferenceKey) await updateUserNotificationPreferenceViaApi(preferenceKey, false);
-  } catch (error) {
-    console.warn("[Jivara Push] Failed to disable default preference", error);
+  } catch {
+    // console.warn("[Jivara Push] Failed to disable default preference", error);
   }
 };
 
@@ -179,9 +169,9 @@ export const tryEnableDefaultPushNotifications = async (user: Pick<User, "role">
       await enableUserPushNotifications();
       await updateUserNotificationPreferenceViaApi(preferenceKey, true);
     }
-  } catch (error) {
+  } catch {
     await disableDefaultPushPreference(user);
-    console.warn("[Jivara Push] Default subscription skipped", error);
+    // console.warn("[Jivara Push] Default subscription skipped", error);
   }
 };
 

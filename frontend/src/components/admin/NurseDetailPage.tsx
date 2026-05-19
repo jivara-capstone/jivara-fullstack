@@ -64,6 +64,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
   const nurses = useNurseStore((state) => state.nurses);
   const activities = useActivityLogStore((state) => state.activities);
   const setActivities = useActivityLogStore((state) => state.setActivities);
+  const setActivityLogLoading = useActivityLogStore((state) => state.setLoading);
   const markActivityAsRead = useActivityLogStore((state) => state.markAsRead);
   const nurse = nurses.find((item) => item.id === nurseId);
   const [assignedPatients, setAssignedPatients] = useState<PatientRecord[]>([]);
@@ -130,6 +131,7 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
     if (isLoadingPatients) return;
 
     let isMounted = true;
+    setActivityLogLoading(true);
     const readIdsRequest = getActivityReadIdsFromApi().catch(() => new Set<string>());
     const patientById = new Map(assignedPatients.map((patient) => [patient.id, patient]));
     const patientActivityRequest = Promise.all([
@@ -186,12 +188,16 @@ export default function NurseDetailPage({ nurseId }: NurseDetailPageProps) {
       })
       .catch(() => {
         if (isMounted) setActivities([]);
+      })
+      .finally(() => {
+        if (isMounted) setActivityLogLoading(false);
       });
 
     return () => {
       isMounted = false;
+      setActivityLogLoading(false);
     };
-  }, [assignedPatientIds, assignedPatients, dashboardRole, hasAuthHydrated, isLoadingPatients, setActivities]);
+  }, [assignedPatientIds, assignedPatients, dashboardRole, hasAuthHydrated, isLoadingPatients, setActivities, setActivityLogLoading]);
 
   if (!hasAuthHydrated || (dashboardRole !== "nurse" && !isOperationalAdminRole(dashboardRole))) return null;
 

@@ -4,7 +4,59 @@ import { db } from "../db";
 import { notifications, nurses, patientNurseAssignments, patients, pushSubscriptions, userNotificationPreferences, userPushSubscriptions, users } from "../db/schema";
 import { NotificationPreferenceDTO, PushSubscriptionDTO, SendNotificationDTO, UserNotificationPreferenceDTO, UserPushSubscriptionDTO } from "../types/notification.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import { writeAuditLogAsync } from "./audit-log.service";
+
+const NOTIF_CACHE_TTL_MS = Number(process.env.NOTIF_CACHE_TTL_MS || 15_000);
+const NOTIF_CACHE_PREFIX = "notif:";
+
+const getNotifListCacheKey = (query: Record<string, unknown>, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${NOTIF_CACHE_PREFIX}list:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+const getNotifPrefCacheKey = (patientId: string) => `${NOTIF_CACHE_PREFIX}pref:${patientId}`;
+const getUserNotifPrefCacheKey = (key: string, userId: string) => `${NOTIF_CACHE_PREFIX}user-pref:${userId}:${key}`;
+const getNotifAnalyticsCacheKey = (query: Record<string, unknown>, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${NOTIF_CACHE_PREFIX}analytics:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+const invalidateNotifCache = () => deleteCachedByPrefix(NOTIF_CACHE_PREFIX);
+
+type NotifListResult = {
+  data: unknown[];
+  meta: { page: number; limit: number; total: number };
+};
+
+type NotifPrefResult = {
+  patientId: string;
+  enabled: boolean;
+  subscriptionCount: number;
+  activeSubscriptions: number;
+};
+
+type UserNotifPrefResult = {
+  key: string;
+  enabled: boolean;
+};
+
+type NotifAnalyticsResult = {
+  total: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  openRate: number;
+  clickThroughRate?: number;
+  averageTimeToOpenMs: number | null;
+  byType?: Array<{ type: string; total: number; delivered: number; opened: number }>;
+};
 
 const configureWebPush = () => {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -161,11 +213,13 @@ export const subscribeDevice = async (dto: PushSubscriptionDTO, user: AccessUser
         updatedAt: new Date(),
       })
       .where(eq(pushSubscriptions.id, existing[0].id))
-      .returning();
+    .returning();
 
-    writeAuditLogAsync({
-      userId: user?.id || null,
-      action: "push_subscription.updated",
+  invalidateNotifCache();
+
+  writeAuditLogAsync({
+    userId: user?.id || null,
+    action: "push_subscription.updated",
       resourceType: "push_subscription",
       resourceId: subscription.id,
       changes: { patientId: dto.patientId, enabled: true },
@@ -186,6 +240,8 @@ export const subscribeDevice = async (dto: PushSubscriptionDTO, user: AccessUser
       isEnabled: true,
     })
     .returning();
+
+  invalidateNotifCache();
 
   writeAuditLogAsync({
     userId: user?.id || null,
@@ -223,9 +279,11 @@ export const subscribeUserDevice = async (dto: UserPushSubscriptionDTO, user: Ac
       .where(eq(userPushSubscriptions.id, existing[0].id))
       .returning();
 
-    writeAuditLogAsync({
-      userId: user.id,
-      action: "user_push_subscription.updated",
+  invalidateNotifCache();
+
+  writeAuditLogAsync({
+    userId: user.id,
+    action: "user_push_subscription.updated",
       resourceType: "user_push_subscription",
       resourceId: subscription.id,
       changes: { enabled: true },
@@ -245,6 +303,8 @@ export const subscribeUserDevice = async (dto: UserPushSubscriptionDTO, user: Ac
       isEnabled: true,
     })
     .returning();
+
+  invalidateNotifCache();
 
   writeAuditLogAsync({
     userId: user.id,
@@ -269,6 +329,8 @@ export const setNotificationPreference = async (dto: NotificationPreferenceDTO, 
     ))
     .returning();
 
+  invalidateNotifCache();
+
   writeAuditLogAsync({
     userId: user?.id || null,
     action: "notification.preference.updated",
@@ -280,7 +342,11 @@ export const setNotificationPreference = async (dto: NotificationPreferenceDTO, 
   return { enabled: dto.enabled, updatedSubscriptions: rows.length };
 };
 
-export const getNotificationPreference = async (patientId: string, user: AccessUser | undefined) => {
+export const getNotificationPreference = async (patientId: string, user: AccessUser | undefined): Promise<NotifPrefResult> => {
+  const cacheKey = getNotifPrefCacheKey(patientId);
+  const cached = getCached<NotifPrefResult>(cacheKey);
+  if (cached) return cached;
+
   await assertCanAccessPatient(user, patientId);
 
   const subscriptions = await db
@@ -293,18 +359,24 @@ export const getNotificationPreference = async (patientId: string, user: AccessU
 
   const activeSubscriptions = subscriptions.filter((subscription) => subscription.isEnabled).length;
 
-  return {
+  const result = {
     patientId,
     enabled: activeSubscriptions > 0,
     subscriptionCount: subscriptions.length,
     activeSubscriptions,
   };
+  setCached(cacheKey, result, NOTIF_CACHE_TTL_MS);
+  return result;
 };
 
-export const getUserNotificationPreference = async (key: string, user: AccessUser | undefined) => {
+export const getUserNotificationPreference = async (key: string, user: AccessUser | undefined): Promise<UserNotifPrefResult> => {
   if (!user) {
     throw { status: 401, message: "Autentikasi diperlukan", code: "MISSING_TOKEN" };
   }
+
+  const cacheKey = getUserNotifPrefCacheKey(key, user.id);
+  const cached = getCached<UserNotifPrefResult>(cacheKey);
+  if (cached) return cached;
 
   const rows = await db
     .select()
@@ -315,10 +387,12 @@ export const getUserNotificationPreference = async (key: string, user: AccessUse
     ))
     .limit(1);
 
-  return {
+  const result = {
     key,
     enabled: rows[0]?.isEnabled ?? true,
   };
+  setCached(cacheKey, result, NOTIF_CACHE_TTL_MS);
+  return result;
 };
 
 export const setUserNotificationPreference = async (dto: UserNotificationPreferenceDTO, user: AccessUser | undefined) => {
@@ -351,6 +425,8 @@ export const setUserNotificationPreference = async (dto: UserNotificationPrefere
     })
     .returning();
 
+  invalidateNotifCache();
+
   if (hasChanged) {
     writeAuditLogAsync({
       userId: user.id,
@@ -367,14 +443,22 @@ export const setUserNotificationPreference = async (dto: UserNotificationPrefere
   };
 };
 
-export const listNotifications = async (query: Record<string, unknown>, user: AccessUser | undefined) => {
+export const listNotifications = async (query: Record<string, unknown>, user: AccessUser | undefined): Promise<NotifListResult> => {
+  const cacheKey = getNotifListCacheKey(query, user);
+  const cached = getCached<NotifListResult>(cacheKey);
+  if (cached) return cached;
+
   const patientId = typeof query.patient_id === "string" ? query.patient_id : typeof query.patientId === "string" ? query.patientId : undefined;
   const type = typeof query.type === "string" ? query.type : undefined;
   const conditions = [];
   const { page, limit, offset } = parsePagination(query);
   const scopedFilter = await scopedPatientFilter(notifications.patientId, user, patientId);
 
-  if (!scopedFilter.scope.allowed) return { data: [], meta: { page, limit, total: 0 } };
+  if (!scopedFilter.scope.allowed) {
+    const emptyResult = { data: [], meta: { page, limit, total: 0 } };
+    setCached(cacheKey, emptyResult, NOTIF_CACHE_TTL_MS);
+    return emptyResult;
+  }
   if (scopedFilter.condition) conditions.push(scopedFilter.condition);
   if (type) conditions.push(eq(notifications.type, type));
 
@@ -394,7 +478,9 @@ export const listNotifications = async (query: Record<string, unknown>, user: Ac
       .where(where),
   ]);
 
-  return { data: rows, meta: { page, limit, total: totalRows[0]?.total || 0 } };
+  const result = { data: rows, meta: { page, limit, total: totalRows[0]?.total || 0 } };
+  setCached(cacheKey, result, NOTIF_CACHE_TTL_MS);
+  return result;
 };
 
 export const trackNotificationEvent = async (notificationId: string, eventType: "opened" | "clicked") => {
@@ -407,6 +493,8 @@ export const trackNotificationEvent = async (notificationId: string, eventType: 
 
   const readAt = notification.readAt || new Date();
   await db.update(notifications).set({ readAt }).where(eq(notifications.id, notificationId));
+
+  invalidateNotifCache();
 
   writeAuditLogAsync({
     userId: null,
@@ -424,12 +512,20 @@ export const trackNotificationEvent = async (notificationId: string, eventType: 
   };
 };
 
-export const getNotificationAnalytics = async (query: Record<string, unknown>, user: AccessUser | undefined) => {
+export const getNotificationAnalytics = async (query: Record<string, unknown>, user: AccessUser | undefined): Promise<NotifAnalyticsResult> => {
+  const cacheKey = getNotifAnalyticsCacheKey(query, user);
+  const cached = getCached<NotifAnalyticsResult>(cacheKey);
+  if (cached) return cached;
+
   const patientId = typeof query.patient_id === "string" ? query.patient_id : typeof query.patientId === "string" ? query.patientId : undefined;
   const conditions = [];
   const scopedFilter = await scopedPatientFilter(notifications.patientId, user, patientId);
 
-  if (!scopedFilter.scope.allowed) return { total: 0, delivered: 0, opened: 0, clicked: 0, openRate: 0, averageTimeToOpenMs: null };
+  if (!scopedFilter.scope.allowed) {
+    const emptyResult = { total: 0, delivered: 0, opened: 0, clicked: 0, openRate: 0, averageTimeToOpenMs: null };
+    setCached(cacheKey, emptyResult, NOTIF_CACHE_TTL_MS);
+    return emptyResult;
+  }
   if (scopedFilter.condition) conditions.push(scopedFilter.condition);
 
   const rows = await db.select().from(notifications).where(conditions.length > 0 ? and(...conditions) : undefined);
@@ -442,7 +538,7 @@ export const getNotificationAnalytics = async (query: Record<string, unknown>, u
     ? Math.round(timeToOpenValues.reduce((total, value) => total + value, 0) / timeToOpenValues.length)
     : null;
 
-  return {
+  const result = {
     total: rows.length,
     delivered: deliveredRows.length,
     opened: openedRows.length,
@@ -459,6 +555,9 @@ export const getNotificationAnalytics = async (query: Record<string, unknown>, u
       return summary;
     }, {})),
   };
+
+  setCached(cacheKey, result, NOTIF_CACHE_TTL_MS);
+  return result;
 };
 
 export const sendUserPushNotification = async (dto: UserPushNotificationDTO) => {
@@ -586,6 +685,8 @@ export const sendPushNotification = async (dto: SendNotificationDTO, user?: Acce
       scheduledAt: new Date(),
     })
     .returning();
+
+  invalidateNotifCache();
 
   const trackingUrl = "/api/v1/notifications/events";
   const payload = {

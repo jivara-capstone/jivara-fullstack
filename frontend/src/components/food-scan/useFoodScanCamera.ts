@@ -12,6 +12,7 @@ export function useFoodScanCamera() {
   const [cameraPermission, setCameraPermission] = useState<PermissionState | null>(null);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [cameraAspectRatio, setCameraAspectRatio] = useState<number | null>(null);
   const [cameraKey, setCameraKey] = useState(0);
   const webcamRef = useRef<Webcam>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -30,6 +31,7 @@ export function useFoodScanCamera() {
     setIsCameraReady(false);
     setIsCameraStarting(false);
     setIsCameraEnabled(false);
+    setCameraAspectRatio(null);
     setCameraError("Akses kamera berubah. Izinkan kamera lalu klik Coba Kamera.");
   }, []);
 
@@ -37,6 +39,7 @@ export function useFoodScanCamera() {
     setIsCameraStarting(true);
     setCameraError(null);
     setIsCameraReady(false);
+    setCameraAspectRatio(null);
 
     const permission = await queryCameraPermission();
     setCameraPermission(permission);
@@ -46,6 +49,7 @@ export function useFoodScanCamera() {
       setIsCameraReady(false);
       setIsCameraStarting(false);
       setIsCameraEnabled(false);
+      setCameraAspectRatio(null);
       return;
     }
 
@@ -59,11 +63,17 @@ export function useFoodScanCamera() {
       setCameraError(getCameraErrorMessage(error instanceof DOMException ? error : undefined));
       setIsCameraEnabled(false);
       setIsCameraStarting(false);
+      setCameraAspectRatio(null);
     }
   }, [refreshCameraDevices]);
 
   const handleCameraReady = useCallback((stream: MediaStream) => {
     cameraStreamRef.current = stream;
+    const videoTrack = stream.getVideoTracks()[0];
+    const settings = typeof videoTrack?.getSettings === "function" ? videoTrack.getSettings() : undefined;
+    const nextAspectRatio = settings?.aspectRatio || (settings?.width && settings?.height ? settings.width / settings.height : null);
+
+    setCameraAspectRatio(nextAspectRatio && Number.isFinite(nextAspectRatio) ? nextAspectRatio : null);
     stream.getVideoTracks().forEach((track) => {
       track.onended = markCameraUnavailable;
       track.onmute = markCameraUnavailable;
@@ -79,6 +89,7 @@ export function useFoodScanCamera() {
     setIsCameraReady(false);
     setIsCameraStarting(false);
     setIsCameraEnabled(false);
+    setCameraAspectRatio(null);
     setCameraError(getCameraErrorMessage(error));
   }, []);
 
@@ -88,6 +99,7 @@ export function useFoodScanCamera() {
     setSelectedCameraId(deviceId);
     setIsCameraReady(false);
     setIsCameraStarting(true);
+    setCameraAspectRatio(null);
     setCameraKey((key) => key + 1);
   }, []);
 
@@ -173,6 +185,7 @@ export function useFoodScanCamera() {
   return {
     cameraDevices,
     cameraError,
+    cameraAspectRatio,
     cameraKey,
     captureFoodImage,
     handleCameraError,

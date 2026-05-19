@@ -3,7 +3,9 @@ import type { ActivityLogRecord } from "@/lib/mocks/activityLogs";
 
 interface ActivityLogState {
   readonly activities: ActivityLogRecord[];
+  readonly isLoading: boolean;
   readonly setActivities: (activities: ActivityLogRecord[]) => void;
+  readonly setLoading: (isLoading: boolean) => void;
   readonly addActivity: (activity: ActivityLogRecord) => void;
   readonly markAsRead: (activityId: string) => void;
   readonly markAllAsRead: () => void;
@@ -11,7 +13,9 @@ interface ActivityLogState {
 
 export const useActivityLogStore = create<ActivityLogState>()((set) => ({
   activities: [],
+  isLoading: false,
   setActivities: (activities) => set({ activities }),
+  setLoading: (isLoading) => set({ isLoading }),
   addActivity: (activity) => set((state) => ({
     activities: [activity, ...state.activities],
   })),

@@ -278,7 +278,7 @@ function getTooltipLabel(day: HeatmapDay) {
   if (day.isFuture || day.total === 0) return `${dateFormatter.format(day.date)} - Belum ada data`;
 
   const percentage = Math.round((day.confirmed / day.total) * 100);
-  return `${dateFormatter.format(day.date)} - ${percentage}% (${day.confirmed}/${day.total} jadwal dikonfirmasi)`;
+  return `${dateFormatter.format(day.date)} - ${percentage}% (${day.confirmed}/${day.total} dosis dikonfirmasi)`;
 }
 
 function getDateKey(date: Date) {

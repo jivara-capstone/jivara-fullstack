@@ -7,7 +7,42 @@ import {
   PrescriptionUpdateDTO,
 } from "../types/prescription.types";
 import { AccessUser, assertCanAccessPatient, scopedPatientFilter } from "./access-control.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import { diffChanges, writeAuditLogAsync } from "./audit-log.service";
+
+const PRESCRIPTION_CACHE_TTL_MS = Number(process.env.PRESCRIPTION_CACHE_TTL_MS || 20_000);
+const PRESCRIPTION_CACHE_PREFIX = "prescription:";
+
+const getPrescriptionListCacheKey = (query: PrescriptionListQuery, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${PRESCRIPTION_CACHE_PREFIX}list:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+const getPrescriptionByIdCacheKey = (id: string) => `${PRESCRIPTION_CACHE_PREFIX}byId:${id}`;
+
+const invalidatePrescriptionCache = () => deleteCachedByPrefix(PRESCRIPTION_CACHE_PREFIX);
+
+type PrescriptionWithMeds = {
+  id: string;
+  patientId: string;
+  diagnosis: string | null;
+  prescribingDoctor: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdBy: string | null;
+  createdAt: Date | null;
+  medications: Array<{
+    id: string;
+    drugName: string;
+    dosage: string;
+    frequency: number;
+    scheduledTimes: unknown;
+    isActive: boolean | null;
+  }>;
+};
 
 const ensurePatientExists = async (patientId: string) => {
   const patient = await db.select({ id: patients.id }).from(patients).where(eq(patients.id, patientId)).limit(1);
@@ -17,10 +52,18 @@ const ensurePatientExists = async (patientId: string) => {
 };
 
 export const listPrescriptions = async (query: PrescriptionListQuery, user?: AccessUser) => {
+  const cacheKey = getPrescriptionListCacheKey(query, user);
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const patientId = query.patientId || query.patient_id;
   const scopedFilter = await scopedPatientFilter(prescriptions.patientId, user, patientId);
 
-  if (!scopedFilter.scope.allowed) return [];
+  if (!scopedFilter.scope.allowed) {
+    const emptyResult: never[] = [];
+    setCached(cacheKey, emptyResult, PRESCRIPTION_CACHE_TTL_MS);
+    return emptyResult;
+  }
 
   const where = scopedFilter.condition || undefined;
 
@@ -55,10 +98,16 @@ export const listPrescriptions = async (query: PrescriptionListQuery, user?: Acc
     medicationByPrescriptionId.set(medication.prescriptionId ?? "", current);
   }
 
-  return rows.map((prescription) => ({ ...prescription, medications: medicationByPrescriptionId.get(prescription.id) ?? [] }));
+  const result = rows.map((prescription) => ({ ...prescription, medications: medicationByPrescriptionId.get(prescription.id) ?? [] }));
+  setCached(cacheKey, result, PRESCRIPTION_CACHE_TTL_MS);
+  return result;
 };
 
-export const getPrescriptionById = async (id: string, user?: AccessUser) => {
+export const getPrescriptionById = async (id: string, user?: AccessUser): Promise<PrescriptionWithMeds> => {
+  const cacheKey = getPrescriptionByIdCacheKey(id);
+  const cached = getCached<PrescriptionWithMeds>(cacheKey);
+  if (cached) return cached;
+
   const prescription = await db.select().from(prescriptions).where(eq(prescriptions.id, id)).limit(1);
 
   if (prescription.length === 0) {
@@ -79,7 +128,9 @@ export const getPrescriptionById = async (id: string, user?: AccessUser) => {
     .from(medicationSchedules)
     .where(eq(medicationSchedules.prescriptionId, id));
 
-  return { ...prescription[0], medications };
+  const result = { ...prescription[0], medications };
+  setCached(cacheKey, result, PRESCRIPTION_CACHE_TTL_MS);
+  return result;
 };
 
 export const createPrescription = async (dto: PrescriptionCreateDTO, createdBy?: string, user?: AccessUser) => {
@@ -97,6 +148,8 @@ export const createPrescription = async (dto: PrescriptionCreateDTO, createdBy?:
       createdBy: createdBy || null,
     })
     .returning();
+
+  invalidatePrescriptionCache();
 
   writeAuditLogAsync({
     userId: createdBy || user?.id || null,
@@ -124,7 +177,7 @@ export const updatePrescription = async (id: string, dto: PrescriptionUpdateDTO,
     .where(eq(prescriptions.id, id))
     .returning();
 
-  const changes = diffChanges(existing, prescription, ["diagnosis", "prescribingDoctor", "startDate", "endDate"]);
+  const changes = diffChanges(existing as Record<string, unknown>, prescription, ["diagnosis", "prescribingDoctor", "startDate", "endDate"]);
   if (Object.keys(changes).length > 0) {
     writeAuditLogAsync({
       userId: user?.id || null,
@@ -135,6 +188,7 @@ export const updatePrescription = async (id: string, dto: PrescriptionUpdateDTO,
     });
   }
 
+  invalidatePrescriptionCache();
   return getPrescriptionById(prescription.id, user);
 };
 
@@ -149,6 +203,8 @@ export const deletePrescription = async (id: string, user?: AccessUser) => {
 
     await tx.delete(prescriptions).where(eq(prescriptions.id, id));
   });
+
+  invalidatePrescriptionCache();
 
   writeAuditLogAsync({
     userId: user?.id || null,

@@ -55,6 +55,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
   const router = useRouter();
   const activities = useActivityLogStore((state) => state.activities);
   const setActivities = useActivityLogStore((state) => state.setActivities);
+  const setActivityLogLoading = useActivityLogStore((state) => state.setLoading);
   const nurses = useNurseStore((state) => state.nurses);
   const markActivityAsRead = useActivityLogStore((state) => state.markAsRead);
   const markAllActivitiesAsRead = useActivityLogStore((state) => state.markAllAsRead);
@@ -76,6 +77,7 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
 
   useEffect(() => {
     let isMounted = true;
+    setActivityLogLoading(true);
 
     const loadActivities = async () => {
       const patients = await getPatientsFromApi();
@@ -163,13 +165,17 @@ export default function ActivityLogPage({ initialPatientName = "", initialCatego
         if (isMounted) setActivities([]);
       })
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+          setActivityLogLoading(false);
+        }
       });
 
     return () => {
       isMounted = false;
+      setActivityLogLoading(false);
     };
-  }, [readOnly, setActivities]);
+  }, [readOnly, setActivities, setActivityLogLoading]);
 
   const loadMoreFromServer = async () => {
     if (isLoadingMore) return;

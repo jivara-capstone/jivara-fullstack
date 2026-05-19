@@ -67,4 +67,9 @@ export const getAlertActivitiesFromApi = async (params: { page?: number; limit?:
 export const resolveAlertViaApi = async (alertId: string) => {
   await api.patch(`/alerts/${encodeURIComponent(alertId)}/resolve`);
   clearAlertsCache();
+  // Also clear dashboard cache since alerts affect nurse dashboard stats
+  if (typeof window !== "undefined") {
+    const { clearDashboardCache } = await import("./dashboardApi");
+    clearDashboardCache();
+  }
 };

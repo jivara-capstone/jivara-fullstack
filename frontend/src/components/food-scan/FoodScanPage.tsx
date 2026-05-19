@@ -89,6 +89,7 @@ export default function FoodScanPage() {
         <FoodScanCameraCard
           cameraDevices={camera.cameraDevices}
           cameraError={camera.cameraError}
+          cameraAspectRatio={camera.cameraAspectRatio}
           isCameraEnabled={camera.isCameraEnabled}
           isCameraReady={camera.isCameraReady}
           isCameraStarting={camera.isCameraStarting}

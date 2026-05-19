@@ -26,20 +26,36 @@ const getPublicStatsUrls = () => {
   return [...new Set(urls)];
 };
 
+const publicStatsCacheTtl = 60_000;
+let publicStatsCache: { data: PublicStatsResponse; expiresAt: number } | null = null;
+let publicStatsRequest: Promise<PublicStatsResponse> | null = null;
+
 const fetchPublicStats = async () => {
-  let lastError: unknown;
+  const now = Date.now();
+  if (publicStatsCache && publicStatsCache.expiresAt > now) return publicStatsCache.data;
+  if (publicStatsRequest) return publicStatsRequest;
 
-  for (const url of getPublicStatsUrls()) {
-    try {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error("PUBLIC_STATS_FAILED");
-      return response.json() as Promise<PublicStatsResponse>;
-    } catch (error) {
-      lastError = error;
+  publicStatsRequest = (async () => {
+    let lastError: unknown;
+
+    for (const url of getPublicStatsUrls()) {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) throw new Error("PUBLIC_STATS_FAILED");
+        const data = (await response.json()) as PublicStatsResponse;
+        publicStatsCache = { data, expiresAt: Date.now() + publicStatsCacheTtl };
+        return data;
+      } catch (error) {
+        lastError = error;
+      }
     }
-  }
 
-  throw lastError;
+    throw lastError;
+  })().finally(() => {
+    publicStatsRequest = null;
+  });
+
+  return publicStatsRequest;
 };
 
 export default function Stats() {

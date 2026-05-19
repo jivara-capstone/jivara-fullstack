@@ -149,6 +149,11 @@ export function useScheduleManager(initialPatientName: string) {
       return;
     }
     if (action === "toggle") {
+      if (schedule.status === "Selesai") {
+        showToast("Jadwal sudah selesai karena stok obat habis.");
+        return;
+      }
+
       const actionKey = `toggle-${schedule.id}`;
       if (processingAction) return;
       setProcessingAction(actionKey);

@@ -14,6 +14,7 @@ interface ScheduleActionsProps {
 
 export default function ScheduleActions({ schedule, actions = ["view", "edit", "toggle", "delete"], processingAction = null, onAction }: ScheduleActionsProps) {
   const isInactive = schedule.status === "Nonaktif";
+  const isCompleted = schedule.status === "Selesai";
   const isProcessing = Boolean(processingAction);
 
   return (
@@ -28,7 +29,7 @@ export default function ScheduleActions({ schedule, actions = ["view", "edit", "
           <Pencil size={16} />
         </ActionButton>
       )}
-      {actions.includes("toggle") && (
+      {actions.includes("toggle") && !isCompleted && (
         <ActionButton label={isInactive ? "Aktifkan jadwal" : "Nonaktifkan jadwal"} variant="blue" loading={processingAction === `toggle-${schedule.id}`} disabled={isProcessing} onClick={() => onAction("toggle", schedule)}>
           {isInactive ? <PlayCircle size={16} /> : <PauseCircle size={16} />}
         </ActionButton>

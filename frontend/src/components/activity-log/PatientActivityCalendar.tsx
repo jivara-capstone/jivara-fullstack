@@ -47,7 +47,11 @@ export default function PatientActivityCalendar({ month, activities, onMonthChan
   useEffect(() => {
     if (openOverflowDateKey) {
       document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
+      window.__lenisControl__?.stop();
+      return () => {
+        document.body.style.overflow = "";
+        window.__lenisControl__?.start();
+      };
     }
   }, [openOverflowDateKey]);
 
@@ -121,14 +125,15 @@ function CalendarDayCell({ day, index, isOverflowOpen, onToggleOverflow, onViewD
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number; left: number; placement: "below" | "above" } | null>(null);
 
+  const popupMaxHeight = Math.min(5, overflowActivities.length) * 64 + 16;
+
   const handleToggleOverflow = () => {
     if (!isOverflowOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      const popupHeight = Math.min(overflowActivities.length * 48 + 16, window.innerHeight * 0.6);
       const spaceBelow = window.innerHeight - rect.bottom;
-      const placement = spaceBelow < popupHeight && rect.top > popupHeight ? "above" : "below";
+      const placement = spaceBelow < popupMaxHeight && rect.top > popupMaxHeight ? "above" : "below";
       setPopupPosition({
-        top: placement === "below" ? rect.bottom + 8 : rect.top - popupHeight - 8,
+        top: placement === "below" ? rect.bottom + 8 : rect.top - popupMaxHeight - 8,
         left: Math.min(rect.left, window.innerWidth - 260),
         placement,
       });
@@ -163,18 +168,22 @@ function CalendarDayCell({ day, index, isOverflowOpen, onToggleOverflow, onViewD
 
             {isOverflowOpen && popupPosition && typeof window !== "undefined" && createPortal(
               <div
-                className="fixed inset-0 z-[100] overflow-hidden"
-                style={{ overflow: "hidden" }}
+                className="fixed inset-0 z-[100]"
                 onClick={() => { setPopupPosition(null); onToggleOverflow(); }}
               >
                 <motion.div
-                  className="absolute max-h-[60vh] w-[min(240px,80vw)] overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
-                  style={{ top: popupPosition.top, left: popupPosition.left }}
+                  data-lenis-prevent
+                  data-lenis-prevent-wheel
+                  data-lenis-prevent-touch
+                  className="absolute w-[min(240px,80vw)] overflow-y-auto rounded-2xl border border-line bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)]"
+                  style={{ top: popupPosition.top, left: popupPosition.left, height: `${popupMaxHeight}px`, overscrollBehavior: "contain", touchAction: "pan-y", WebkitOverflowScrolling: "touch" }}
                   initial={{ opacity: 0, y: popupPosition.placement === "above" ? 8 : -8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: popupPosition.placement === "above" ? 6 : -6, scale: 0.98 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   onClick={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                  onWheel={(e) => e.stopPropagation()}
                 >
                   <div className="space-y-1">
                     {overflowActivities.map((activity, activityIndex) => <ActivityOverflowItem key={`${day.dateKey}-overflow-${activity.category}-${activity.id}-${activityIndex}`} activity={activity} onViewDetail={onViewDetail} />)}

@@ -28,7 +28,7 @@ const NUM_NURSES = 15;
 const NUM_PATIENTS = 30;
 
 const clearDatabase = async () => {
-  console.log("Clearing database...");
+  // console.log("Clearing database...");
   await db.delete(auditLogs);
   await db.delete(medicationReminderJobs);
   await db.delete(notifications);
@@ -46,13 +46,13 @@ const clearDatabase = async () => {
 };
 
 const main = async () => {
-  console.log("Starting seeder with diverse Faker data...");
+  // console.log("Starting seeder with diverse Faker data...");
   await clearDatabase();
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, AUTH_CONSTANTS.BCRYPT_SALT_ROUNDS);
 
   // 1. Organizations
-  console.log("Seeding Organizations...");
+  // console.log("Seeding Organizations...");
   const orgs = await db.insert(organizations).values(
     Array.from({ length: NUM_ORGS }).map(() => ({
       name: `RS ${faker.company.name()}`,
@@ -72,7 +72,7 @@ const main = async () => {
   }).returning();
 
   // 3. Admins with varied account statuses
-  console.log("Seeding Admins with various statuses...");
+  // console.log("Seeding Admins with various statuses...");
   const adminVariations = [
     { name: "Admin Active", email: "admin@jivara.test", status: "active", approvedBy: superAdmin.id, approvedAt: new Date() },
     { name: "Admin Pending", email: "admin.pending@jivara.test", status: "pending", approvedBy: null, approvedAt: null },
@@ -99,7 +99,7 @@ const main = async () => {
   ).returning();
 
   // 4. Nurses with varied statuses
-  console.log("Seeding Nurses...");
+  // console.log("Seeding Nurses...");
   const nurseUsers = await db.insert(users).values(
     Array.from({ length: NUM_NURSES }).map((_, i) => {
       // 80% active, 10% suspended, 10% pending
@@ -141,7 +141,7 @@ const main = async () => {
   ).returning();
 
   // 5. Patients with varied profiles
-  console.log("Seeding Patients...");
+  // console.log("Seeding Patients...");
   const patientUsers = await db.insert(users).values(
     Array.from({ length: NUM_PATIENTS }).map((_, i) => {
       // 90% active, 10% suspended
@@ -190,7 +190,7 @@ const main = async () => {
   ).returning();
 
   // 6. Patient-Nurse Assignments
-  console.log("Seeding Assignments...");
+  // console.log("Seeding Assignments...");
   // Hanya tugaskan ke perawat dan pasien yang aktif
   const activeNurses = nursesData.filter(n => n.isActive);
   const activePatients = patientsData.filter(p => p.isActive);
@@ -211,11 +211,11 @@ const main = async () => {
   }
 
   // 7. Prescriptions, Schedules, Logs
-  console.log("Seeding Medical Records (Prescriptions, Schedules, Logs)...");
+  // console.log("Seeding Medical Records (Prescriptions, Schedules, Logs)...");
   for (const patient of activePatients) {
     // 1-3 Resep per pasien
     const numPrescriptions = faker.number.int({ min: 1, max: 3 });
-    
+
     for (let i = 0; i < numPrescriptions; i++) {
       const [prescription] = await db.insert(prescriptions).values({
         patientId: patient.id,
@@ -294,7 +294,7 @@ const main = async () => {
   }
 
   // 8. Food Scans & Interactions (Varied severity)
-  console.log("Seeding Food Scans & Drug Interactions...");
+  // console.log("Seeding Food Scans & Drug Interactions...");
   for (let i = 0; i < 20; i++) {
     const patient = faker.helpers.arrayElement(activePatients);
     const riskLevel = faker.helpers.weightedArrayElement([
@@ -303,8 +303,8 @@ const main = async () => {
       { weight: 2, value: "high" }
     ]);
     const score = riskLevel === "low" ? faker.number.float({ min: 0.1, max: 0.3 }) :
-                  riskLevel === "medium" ? faker.number.float({ min: 0.4, max: 0.6 }) :
-                  faker.number.float({ min: 0.7, max: 0.99 });
+      riskLevel === "medium" ? faker.number.float({ min: 0.4, max: 0.6 }) :
+        faker.number.float({ min: 0.7, max: 0.99 });
 
     const [scan] = await db.insert(foodScans).values({
       patientId: patient.id,
@@ -337,12 +337,12 @@ const main = async () => {
   }
 
   // 9. Notifications (Varied statuses: pending, read, delivered / urgency: low, normal, high)
-  console.log("Seeding Notifications...");
+  // console.log("Seeding Notifications...");
   const notificationsData = [];
   for (let i = 0; i < 50; i++) {
     const patient = faker.helpers.arrayElement(activePatients);
     const notifStatus = faker.helpers.arrayElement(["pending", "delivered", "read"]);
-    
+
     notificationsData.push({
       patientId: patient.id,
       type: faker.helpers.arrayElement(["medication_reminder", "appointment", "system_alert", "food_warning"]),
@@ -357,25 +357,25 @@ const main = async () => {
   }
   await db.insert(notifications).values(notificationsData);
 
-  console.log(JSON.stringify({
-    status: "berhasil",
-    message: "Data dummy SUPER LENGKAP dengan berbagai variasi status berhasil digenerate!",
-    credentials: {
-      password: DEMO_PASSWORD,
-      superAdmin: "superadmin@jivara.test",
-      adminActive: "admin@jivara.test",
-      adminPending: "admin.pending@jivara.test",
-      adminSuspended: "admin.suspended@jivara.test",
-      adminRejected: "admin.rejected@jivara.test",
-      nurseExample: "nurse1@jivara.test",
-      patientExample: "patient1@jivara.test",
-    }
-  }, null, 2));
+  // console.log(JSON.stringify({
+  //   status: "berhasil",
+  //   message: "Data dummy SUPER LENGKAP dengan berbagai variasi status berhasil digenerate!",
+  //   credentials: {
+  //     password: DEMO_PASSWORD,
+  //     superAdmin: "superadmin@jivara.test",
+  //     adminActive: "admin@jivara.test",
+  //     adminPending: "admin.pending@jivara.test",
+  //     adminSuspended: "admin.suspended@jivara.test",
+  //     adminRejected: "admin.rejected@jivara.test",
+  //     nurseExample: "nurse1@jivara.test",
+  //     patientExample: "patient1@jivara.test",
+  //   }
+  // }, null, 2));
 };
 
 main()
   .then(() => process.exit(0))
-  .catch((error) => {
-    console.error("Error during seeding:", error);
+  .catch((_error) => {
+    // console.error("Error during seeding:", error);
     process.exit(1);
   });

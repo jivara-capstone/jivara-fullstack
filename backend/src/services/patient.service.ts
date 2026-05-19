@@ -13,6 +13,7 @@ import {
 import { AUTH_CONSTANTS } from "../types/auth.types";
 import { AccessUser, assertCanAccessPatient, ensureOrganizationIdForUser, getNurseIdForUser, getOrganizationIdForUser, scopedPatientFilter } from "./access-control.service";
 import { writeAuditLogAsync } from "./audit-log.service";
+import { deleteCachedByPrefix, getCached, setCached } from "./cache.service";
 import {
   PatientCreateDTO,
   PatientListQuery,
@@ -20,22 +21,64 @@ import {
 } from "../types/patient.types";
 import { getAdherenceStats } from "./adherence.service";
 
+const PATIENT_CACHE_PREFIX = "patients:";
+const PATIENT_CACHE_TTL_MS = Number(process.env.PATIENT_CACHE_TTL_MS || 30_000);
+
+const getPatientListCacheKey = (query: PatientListQuery, user?: AccessUser) => {
+  const normalizedQuery = Object.entries(query)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join("&");
+  return `${PATIENT_CACHE_PREFIX}list:${user?.id || "anon"}:${normalizedQuery}`;
+};
+
+export const invalidatePatientCache = () => deleteCachedByPrefix(PATIENT_CACHE_PREFIX);
+
 const parsePagination = (query: PatientListQuery) => {
   const page = Math.max(Number(query.page || 1), 1);
   const limit = Math.min(Math.max(Number(query.limit || 20), 1), 100);
   return { page, limit, offset: (page - 1) * limit };
 };
 
-export const listPatients = async (query: PatientListQuery, user?: AccessUser) => {
+type PatientListResult = {
+  data: Array<{
+    id: string;
+    organizationId: string | null;
+    userId: string;
+    fullName: string | null;
+    phone: string | null;
+    email: string | null;
+    dateOfBirth: string | null;
+    gender: string | null;
+    address: string | null;
+    diagnosis: string | null;
+    emergencyContact: string | null;
+    assignedNurseId: string | null;
+    isActive: boolean;
+    createdAt: Date | null;
+    adherenceRate7d: number | null;
+    adherenceRate30d: number | null;
+    totalScheduled30d: number;
+  }>;
+  meta: { page: number; limit: number; total: number };
+};
+
+export const listPatients = async (query: PatientListQuery, user?: AccessUser): Promise<PatientListResult> => {
+  const cacheKey = getPatientListCacheKey(query, user);
+  const cached = getCached(cacheKey);
+  if (cached) return cached as PatientListResult;
+
   const { page, limit, offset } = parsePagination(query);
   const conditions = [];
   const scopedFilter = await scopedPatientFilter(patients.id, user);
 
   if (!scopedFilter.scope.allowed) {
-    return {
+    const emptyResult = {
       data: [],
       meta: { page, limit, total: 0 },
     };
+    setCached(cacheKey, emptyResult, PATIENT_CACHE_TTL_MS);
+    return emptyResult;
   }
 
   if (scopedFilter.condition) conditions.push(scopedFilter.condition);
@@ -104,14 +147,27 @@ export const listPatients = async (query: PatientListQuery, user?: AccessUser) =
     const adherence7d = await getAdherenceStats({ patientId: row.id, period: "7d" }, user).catch(() => null);
 
     return {
-      ...row,
+      id: row.id,
+      organizationId: row.organizationId,
+      userId: row.userId,
+      fullName: row.fullName,
+      phone: row.phone,
+      email: row.email,
+      dateOfBirth: row.dateOfBirth,
+      gender: row.gender,
+      address: row.address,
+      diagnosis: row.diagnosis,
+      emergencyContact: row.emergencyContact as string | null,
+      assignedNurseId: row.assignedNurseId,
+      isActive: row.isActive ?? true,
+      createdAt: row.createdAt,
       adherenceRate7d: adherence7d?.adherenceRate ?? null,
       adherenceRate30d: adherence30d?.adherenceRate ?? null,
       totalScheduled30d: adherence30d?.totalScheduled ?? 0,
     };
   }));
 
-  return {
+  const result = {
     data: rowsWithAdherence,
     meta: {
       page,
@@ -119,6 +175,9 @@ export const listPatients = async (query: PatientListQuery, user?: AccessUser) =
       total: totalRows[0]?.total || 0,
     },
   };
+
+  setCached(cacheKey, result, PATIENT_CACHE_TTL_MS);
+  return result;
 };
 
 export const getPatientById = async (patientId: string, user?: AccessUser) => {
@@ -203,8 +262,8 @@ export const getPatientById = async (patientId: string, user?: AccessUser) => {
     assignedNurse,
     activeMedications,
     activeMedicationsCount: activeMedications.length,
-    adherenceRate7d: adherence7d.adherenceRate,
-    adherenceRate30d: adherence30d.adherenceRate,
+    adherenceRate7d: adherence7d?.adherenceRate ?? null,
+    adherenceRate30d: adherence30d?.adherenceRate ?? null,
     totalFoodScans: foodScanCount[0]?.total || 0,
     totalInteractionWarnings: interactionWarningCount[0]?.total || 0,
   };
@@ -327,6 +386,17 @@ export const createPatient = async (dto: PatientCreateDTO, createdBy?: string) =
     });
 
     return patient;
+  }).then(async (patient) => {
+    writeAuditLogAsync({
+      userId: createdBy || null,
+      action: "patient.created",
+      resourceType: "patient",
+      resourceId: patient.id,
+      changes: { after: { id: patient.id, userId: patient.userId, assignedNurseId: patient.assignedNurseId } },
+    });
+
+    invalidatePatientCache();
+    return patient;
   });
 };
 
@@ -367,6 +437,7 @@ export const updatePatient = async (patientId: string, dto: PatientUpdateDTO, us
     changes: { before: existing, requested: dto },
   });
 
+  invalidatePatientCache();
   return getPatientCoreById(patientId, user);
 };
 
@@ -420,6 +491,7 @@ export const assignPatient = async (patientId: string, nurseId: string, assigned
     changes: { nurseId },
   });
 
+  invalidatePatientCache();
   return getPatientCoreById(patientId, assignedBy ? { id: assignedBy, email: "", role: isSuperAdmin ? "super_admin" : "admin" } : undefined);
 };
 
@@ -438,4 +510,6 @@ export const deactivatePatient = async (patientId: string, user?: AccessUser) =>
     resourceId: patientId,
     changes: { isActive: { from: existing.isActive, to: false } },
   });
+
+  invalidatePatientCache();
 };

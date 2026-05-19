@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import api from "@/lib/axios";
-import { confirmMedicationScheduleViaApi, getConfirmedScheduleDates, getPatientActivitiesFromApi, getPatientDashboardData } from "@/lib/patientDashboardApi";
+import { clearPatientDashboardCache, confirmMedicationScheduleViaApi, getConfirmedScheduleDates, getPatientActivitiesFromApi, getPatientDashboardData } from "@/lib/patientDashboardApi";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 
@@ -17,6 +17,7 @@ vi.mock("@/lib/axios", () => ({
 vi.mock("@/lib/patientApi", () => ({
   getPatientsFromApi: vi.fn(async () => [patient]),
   getPatientDetailFromApi: vi.fn(async () => ({ patient, schedules: [], activities: [], scans: [] })),
+  clearPatientsCache: vi.fn(),
 }));
 
 vi.mock("@/lib/scheduleApi", () => ({
@@ -28,6 +29,7 @@ const mockedPost = api.post as Mock;
 
 describe("patientDashboardApi", () => {
   beforeEach(() => {
+    clearPatientDashboardCache();
     mockedGet.mockReset();
     mockedPost.mockReset();
   });

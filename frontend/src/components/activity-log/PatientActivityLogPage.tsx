@@ -29,6 +29,7 @@ interface PatientActivityLogPageProps {
 export default function PatientActivityLogPage({ initialCategory }: PatientActivityLogPageProps) {
   const activities = useActivityLogStore((state) => state.activities);
   const setActivities = useActivityLogStore((state) => state.setActivities);
+  const setActivityLogLoading = useActivityLogStore((state) => state.setLoading);
   const markActivityAsRead = useActivityLogStore((state) => state.markAsRead);
   const markAllActivitiesAsRead = useActivityLogStore((state) => state.markAllAsRead);
   const [search, setSearch] = useState("");
@@ -49,6 +50,7 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
 
   useEffect(() => {
     let isMounted = true;
+    setActivityLogLoading(true);
 
     Promise.all([getPatientActivitiesFromApi(), getPatientDashboardData(), getActivityReadIdsFromApi().catch(() => new Set<string>())])
       .then(([nextActivities, dashboardData, readIds]) => {
@@ -62,13 +64,17 @@ export default function PatientActivityLogPage({ initialCategory }: PatientActiv
         setSchedules([]);
       })
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+          setActivityLogLoading(false);
+        }
       });
 
     return () => {
       isMounted = false;
+      setActivityLogLoading(false);
     };
-  }, [setActivities]);
+  }, [setActivities, setActivityLogLoading]);
 
   const patientActivities = useMemo(() => activities, [activities]);
 

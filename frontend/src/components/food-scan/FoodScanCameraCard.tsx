@@ -12,6 +12,7 @@ import { getCameraLabel, getVideoConstraints } from "@/helpers/foodScanCamera";
 interface FoodScanCameraCardProps {
   readonly cameraDevices: MediaDeviceInfo[];
   readonly cameraError: string | null;
+  readonly cameraAspectRatio: number | null;
   readonly cameraKey: number;
   readonly isCameraEnabled: boolean;
   readonly isCameraReady: boolean;
@@ -27,7 +28,7 @@ interface FoodScanCameraCardProps {
   readonly webcamRef: RefObject<Webcam | null>;
 }
 
-export default function FoodScanCameraCard({ cameraDevices, cameraError, cameraKey, isCameraEnabled, isCameraReady, isCameraStarting, isScanning, onCameraError, onCameraReady, onRetryCamera, onScan, onSelectCamera, onUploadImage, selectedCameraId, webcamRef }: FoodScanCameraCardProps) {
+export default function FoodScanCameraCard({ cameraDevices, cameraError, cameraAspectRatio, cameraKey, isCameraEnabled, isCameraReady, isCameraStarting, isScanning, onCameraError, onCameraReady, onRetryCamera, onScan, onSelectCamera, onUploadImage, selectedCameraId, webcamRef }: FoodScanCameraCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -50,17 +51,17 @@ export default function FoodScanCameraCard({ cameraDevices, cameraError, cameraK
         </div>
       </div> */}
 
-      <div data-food-scan-camera className="relative flex h-64 items-center justify-center overflow-hidden rounded-[28px] bg-dark outline-2 outline-dashed outline-primary/45 sm:h-80">
+      <div data-food-scan-camera className="relative mx-auto flex w-full max-w-[520px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-dashed border-primary/45 bg-surface" style={{ aspectRatio: cameraAspectRatio ? String(cameraAspectRatio) : "1 / 1" }}>
         {isCameraEnabled && !cameraError && (
           <Webcam key={cameraKey} ref={webcamRef} audio={false} className="h-full w-full object-cover" disablePictureInPicture forceScreenshotSourceSize imageSmoothing muted screenshotFormat="image/jpeg" screenshotQuality={0.92} videoConstraints={getVideoConstraints(selectedCameraId)} onUserMedia={onCameraReady} onUserMediaError={onCameraError} />
         )}
 
-        {isCameraStarting && !isScanning && <div className="absolute inset-0 flex items-center justify-center bg-dark/75 text-white"><Loader2 className="h-12 w-12 animate-spin" aria-hidden="true" /></div>}
+        {isCameraStarting && !isScanning && <div className="absolute inset-[2px] rounded-[26px] flex items-center justify-center bg-dark/75 text-white"><Loader2 className="h-12 w-12 animate-spin" aria-hidden="true" /></div>}
 
-        {isScanning && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-dark/55 text-white backdrop-blur-sm"><Loader2 className="h-12 w-12 animate-spin" /><p className="text-sm font-bold uppercase tracking-[0.14em]">Menganalisis makanan</p></div>}
+        {isScanning && <div className="absolute inset-[2px] flex flex-col items-center justify-center gap-4 rounded-[26px] bg-dark/55 text-white backdrop-blur-sm"><Loader2 className="h-12 w-12 animate-spin" /><p className="text-sm font-bold uppercase tracking-[0.14em]">Menganalisis makanan</p></div>}
 
         {(!isCameraEnabled || cameraError) && !isCameraStarting && !isScanning && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
+          <div className="absolute inset-[2px] flex flex-col items-center justify-center gap-4 rounded-[26px] bg-surface px-6 text-center">
             {cameraError ? <CameraOff className="h-12 w-12 text-danger" /> : <Camera className="h-12 w-12 text-primary" />}
             <div>
               <h2 className="font-display text-2xl font-extrabold tracking-[-0.05em] text-text-main">{cameraError ? "Kamera belum aktif" : "Aktifkan kamera"}</h2>
@@ -69,7 +70,7 @@ export default function FoodScanCameraCard({ cameraDevices, cameraError, cameraK
           </div>
         )}
 
-        {isCameraEnabled && !cameraError && !isCameraStarting && !isCameraReady && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface px-6 text-center"><Camera className="h-12 w-12 text-primary" /><p className="text-sm font-bold uppercase tracking-[0.14em] text-muted">Menunggu kamera</p></div>}
+        {isCameraEnabled && !cameraError && !isCameraStarting && !isCameraReady && <div className="absolute inset-[2px] flex flex-col items-center justify-center gap-4 rounded-[26px] bg-surface px-6 text-center"><Camera className="h-12 w-12 text-primary" /><p className="text-sm font-bold uppercase tracking-[0.14em] text-muted">Menunggu kamera</p></div>}
       </div>
 
       <div className="mt-6 flex flex-col justify-center gap-3 min-[420px]:flex-row">
@@ -82,7 +83,7 @@ export default function FoodScanCameraCard({ cameraDevices, cameraError, cameraK
       {isCameraEnabled && cameraDevices.length > 1 && (
         <div className="mt-4">
           <label htmlFor="food-scan-camera" className="mb-2 block text-center text-xs font-bold uppercase tracking-[0.12em] text-muted">Pilih Kamera</label>
-          <SelectField id="food-scan-camera" value={selectedCameraId ?? ""} options={cameraDevices.map((device, index) => ({ label: getCameraLabel(device, index), value: device.deviceId }))} className="h-12 w-full rounded-full border-0 bg-surface px-5 text-sm font-bold text-text-main outline-none transition-colors hover:bg-line/40" onChange={onSelectCamera} />
+          <SelectField id="food-scan-camera" value={selectedCameraId ?? ""} options={cameraDevices.map((device, index) => ({ label: getCameraLabel(device, index), value: device.deviceId }))} optionsPlacement="top" className="h-12 w-full rounded-full border-0 bg-surface px-5 text-sm font-bold text-text-main outline-none transition-colors hover:bg-line/40" onChange={onSelectCamera} />
         </div>
       )}
     </motion.section>

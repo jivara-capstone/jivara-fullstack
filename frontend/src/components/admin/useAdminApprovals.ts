@@ -18,15 +18,16 @@ export type ApprovalFilter = "all" | "pending" | "active" | "rejected" | "suspen
 export const emptySummary: AdminApprovalSummary = { pending: 0, active: 0, rejected: 0, suspended: 0 };
 export const pageSize = 10;
 
-const removePendingUser = (users: User[], userId: string) => users.filter((item) => item.id !== userId);
+const approvalsCacheTtl = 15_000;
+let approvalsCache: { data: { users: User[]; summary: AdminApprovalSummary }; expiresAt: number } | null = null;
+let approvalsRequest: Promise<{ users: User[]; summary: AdminApprovalSummary }> | null = null;
 
-const getSummaryFromUsers = (users: User[]): AdminApprovalSummary => users.reduce<AdminApprovalSummary>((summary, user) => {
-  const status = user.accountStatus ?? "active";
-  if (status === "pending") return { ...summary, pending: summary.pending + 1 };
-  if (status === "rejected") return { ...summary, rejected: summary.rejected + 1 };
-  if (status === "suspended") return { ...summary, suspended: summary.suspended + 1 };
-  return { ...summary, active: summary.active + 1 };
-}, emptySummary);
+export const clearApprovalsCache = () => {
+  approvalsCache = null;
+  approvalsRequest = null;
+};
+
+const removePendingUser = (users: User[], userId: string) => users.filter((item) => item.id !== userId);
 
 export function useAdminApprovals(canLoad: boolean) {
   const [approvals, setApprovals] = useState<User[]>([]);
@@ -56,11 +57,32 @@ export function useAdminApprovals(canLoad: boolean) {
   const loadApprovals = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get("/auth/admin-approvals");
-      const users = response.data.data.users ?? [];
+      const now = Date.now();
+      let data: { users: User[]; summary: AdminApprovalSummary };
+
+      if (approvalsCache && approvalsCache.expiresAt > now) {
+        data = approvalsCache.data;
+      } else if (approvalsRequest) {
+        data = await approvalsRequest;
+      } else {
+        approvalsRequest = api.get("/auth/admin-approvals")
+          .then((response) => {
+            const result = {
+              users: response.data.data.users ?? [],
+              summary: response.data.data.summary ?? emptySummary,
+            };
+            approvalsCache = { data: result, expiresAt: Date.now() + approvalsCacheTtl };
+            return result;
+          })
+          .finally(() => {
+            approvalsRequest = null;
+          });
+        data = await approvalsRequest;
+      }
+
       setLoadError(false);
-      setApprovals(users);
-      setSummary(response.data.data.summary ?? getSummaryFromUsers(users));
+      setApprovals(data.users);
+      setSummary(data.summary);
     } catch (error) {
       setLoadError(true);
       setApprovals([]);
@@ -89,6 +111,7 @@ export function useAdminApprovals(canLoad: boolean) {
     setProcessingId(user.id);
     try {
       await api.post(`/auth/admin-approvals/${encodeURIComponent(user.id)}/approve`);
+      clearApprovalsCache();
       setApprovals((current) => removePendingUser(current, user.id));
       setSummary((current) => ({ ...current, pending: Math.max(0, current.pending - 1), active: current.active + 1 }));
       showToast("Admin berhasil disetujui.", "success");
@@ -104,6 +127,7 @@ export function useAdminApprovals(canLoad: boolean) {
     setProcessingId(rejectingUser.id);
     try {
       await api.post(`/auth/admin-approvals/${encodeURIComponent(rejectingUser.id)}/reject`, { reason });
+      clearApprovalsCache();
       setApprovals((current) => removePendingUser(current, rejectingUser.id));
       setSummary((current) => ({ ...current, pending: Math.max(0, current.pending - 1), rejected: current.rejected + 1 }));
       setRejectingUser(null);
@@ -119,6 +143,7 @@ export function useAdminApprovals(canLoad: boolean) {
     setProcessingId(user.id);
     try {
       await api.post(`/auth/admin-approvals/${encodeURIComponent(user.id)}/${endpoint}`);
+      clearApprovalsCache();
       setApprovals((current) => current.map((item) => item.id === user.id ? { ...item, accountStatus: status, ...(status === "pending" ? { rejectedReason: null, rejectedAt: null } : {}) } : item));
       setSummary((current) => {
         if (endpoint === "activate") return { ...current, suspended: Math.max(0, current.suspended - 1), active: current.active + 1 };

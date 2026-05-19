@@ -38,8 +38,8 @@ export const writeAuditLog = async ({ userId, action, resourceType, resourceId, 
 };
 
 export const writeAuditLogAsync = (input: AuditLogInput) => {
-  void writeAuditLog(input).catch((error) => {
-    console.error("Failed to write audit log", error);
+  void writeAuditLog(input).catch((_error) => {
+    // console.error("Failed to write audit log", error);
   });
 };
 
@@ -97,15 +97,12 @@ export const listAuditLogs = async (query: AuditLogListQuery, user?: AccessUser)
     conditions.push(lt(auditLogs.createdAt, dateRange.end));
   }
 
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-
   const [rows, totalRows] = await Promise.all([
     db
       .select({
         id: auditLogs.id,
         userId: auditLogs.userId,
         userName: users.fullName,
-        userEmail: users.email,
         action: auditLogs.action,
         resourceType: auditLogs.resourceType,
         resourceId: auditLogs.resourceId,
@@ -115,23 +112,19 @@ export const listAuditLogs = async (query: AuditLogListQuery, user?: AccessUser)
       })
       .from(auditLogs)
       .leftJoin(users, eq(auditLogs.userId, users.id))
-      .where(where)
+      .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit)
       .offset(offset),
     db
       .select({ total: count() })
       .from(auditLogs)
-      .where(where),
+      .where(and(...conditions)),
   ]);
 
   return {
     data: rows,
-    meta: {
-      page,
-      limit,
-      total: totalRows[0]?.total || 0,
-    },
+    meta: { page, limit, total: totalRows[0]?.total || 0 },
   };
 };
 

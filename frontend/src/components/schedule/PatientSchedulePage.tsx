@@ -7,9 +7,9 @@ import DashboardPageShell from "@/components/dashboard/DashboardPageShell";
 import { ActivityDataSkeleton, SummaryCardsSkeleton } from "@/components/ui/PageSkeletons";
 import SummaryCardGrid from "@/components/ui/SummaryCardGrid";
 import type { SummaryCardItem } from "@/components/ui/SummaryCard";
-import { getDateKey, getMonthStart, getSchedulesForDate, isSameDate } from "@/helpers/patientSchedule";
+import { getDateKey, getMonthStart, getScheduleDoseWindow, getSchedulesForDate, isSameDate } from "@/helpers/patientSchedule";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
-import { confirmMedicationScheduleViaApi, getCompletedScheduleDates, getConfirmedScheduleDates, getPatientDashboardData } from "@/lib/patientDashboardApi";
+import { confirmMedicationScheduleViaApi, getConfirmedScheduleDates, getPatientDashboardData } from "@/lib/patientDashboardApi";
 import { showConfirm, showToast } from "@/lib/swal";
 import { usePatientDashboardStore } from "@/store/patientDashboard";
 import PatientDailyMedicineList from "./PatientDailyMedicineList";
@@ -26,7 +26,6 @@ export default function PatientSchedulePage() {
   const setPatientId = usePatientDashboardStore((state) => state.setPatientId);
   const confirmScheduleForDate = usePatientDashboardStore((state) => state.confirmScheduleForDate);
   const [patientSchedules, setPatientSchedules] = useState<MedicationScheduleRecord[]>([]);
-  const [completedScheduleDates, setCompletedScheduleDates] = useState<Readonly<Record<string, readonly string[]>>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,14 +37,12 @@ export default function PatientSchedulePage() {
         setPatientId(data.patient.id);
         setPatientSchedules(data.schedules);
         setConfirmedScheduleDates(getConfirmedScheduleDates(data.medicationLogs));
-        setCompletedScheduleDates(getCompletedScheduleDates(data.medicationLogs));
       })
       .catch(() => {
         if (!isMounted) return;
         setPatientId(null);
         setPatientSchedules([]);
         setConfirmedScheduleDates({});
-        setCompletedScheduleDates({});
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -58,8 +55,6 @@ export default function PatientSchedulePage() {
   const schedulesForSelectedDate = useMemo(() => getSchedulesForDate(patientSchedules, selectedDate), [patientSchedules, selectedDate]);
   const selectedDateKey = getDateKey(selectedDate);
   const confirmedScheduleIds = confirmedScheduleDates[selectedDateKey] ?? [];
-  const completedScheduleIds = completedScheduleDates[selectedDateKey] ?? [];
-  const pendingSchedulesForSelectedDate = schedulesForSelectedDate.filter((schedule) => !completedScheduleIds.includes(schedule.id));
   const activeSchedules = patientSchedules.filter((schedule) => schedule.status === "Aktif");
   const scheduleStats: SummaryCardItem[] = [
     {
@@ -91,7 +86,7 @@ export default function PatientSchedulePage() {
   };
 
   const handleConfirmSchedule = async (scheduleId: string) => {
-    if (!isSameDate(selectedDate, today) || !lastScan) return;
+    if (!isSameDate(selectedDate, today) || !lastScan?.hasDetectedFood) return;
 
     if (lastScan.risk === "High Risk") {
       const result = await showConfirm(
@@ -106,13 +101,15 @@ export default function PatientSchedulePage() {
     const schedule = patientSchedules.find((currentSchedule) => currentSchedule.id === scheduleId);
     if (!schedule) return;
 
+    const doseWindow = getScheduleDoseWindow(schedule, selectedDate, confirmedScheduleDates);
+    if (doseWindow.doseIndex === null || !doseWindow.canConfirm || schedule.stock <= 0) return;
+
     try {
-      await confirmMedicationScheduleViaApi(schedule, selectedDate);
+      await confirmMedicationScheduleViaApi(schedule, selectedDate, doseWindow.doseIndex);
       confirmScheduleForDate(selectedDateKey, scheduleId);
-      setCompletedScheduleDates((current) => ({
-        ...current,
-        [selectedDateKey]: [...(current[selectedDateKey] ?? []), scheduleId],
-      }));
+      setPatientSchedules((currentSchedules) => currentSchedules.map((currentSchedule) => currentSchedule.id === scheduleId
+        ? { ...currentSchedule, stock: Math.max(currentSchedule.stock - 1, 0), status: currentSchedule.stock <= 1 ? "Selesai" : currentSchedule.status, reminderEnabled: currentSchedule.stock <= 1 ? false : currentSchedule.reminderEnabled }
+        : currentSchedule));
     } catch {
       return;
     }
@@ -128,9 +125,11 @@ export default function PatientSchedulePage() {
       <div className="mt-6 space-y-6">
         {isLoading ? <ActivityDataSkeleton rows={3} /> : <PatientDailyMedicineList
           selectedDate={selectedDate}
-          schedules={pendingSchedulesForSelectedDate}
-          canConfirm={Boolean(lastScan)}
+          schedules={schedulesForSelectedDate}
+          canConfirm={Boolean(lastScan?.hasDetectedFood)}
+          hasFoodScan={Boolean(lastScan)}
           confirmedScheduleIds={confirmedScheduleIds}
+          confirmedScheduleDates={confirmedScheduleDates}
           onConfirm={(schedule) => handleConfirmSchedule(schedule.id)}
         />}
       </div>

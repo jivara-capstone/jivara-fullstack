@@ -47,7 +47,7 @@ const getListCacheKey = (query: MedicationScheduleListQuery, user?: AccessUser) 
 
 const getDetailCacheKey = (id: string, user?: AccessUser) => `${CACHE_PREFIX}detail:${getCacheScope(user)}:${id}`;
 
-const invalidateMedicationScheduleCache = () => deleteCachedByPrefix(CACHE_PREFIX);
+export const invalidateMedicationScheduleCache = () => deleteCachedByPrefix(CACHE_PREFIX);
 
 export const listMedicationSchedules = async (query: MedicationScheduleListQuery, user?: AccessUser) => {
   const cacheKey = getListCacheKey(query, user);
@@ -103,9 +103,12 @@ export const createMedicationSchedule = async (dto: MedicationScheduleCreateDTO,
       prescriptionId: dto.prescriptionId || null,
       drugName: dto.drugName,
       dosage: dto.dosage,
+      stock: dto.stock ?? 0,
       frequency: dto.frequency,
       scheduledTimes: dto.scheduledTimes,
       instructions: dto.instructions || null,
+      reminderEnabled: dto.reminderEnabled ?? true,
+      isActive: dto.isActive ?? true,
       createdBy: createdBy || null,
     })
     .returning();
@@ -139,9 +142,11 @@ export const updateMedicationSchedule = async (id: string, dto: MedicationSchedu
   if (dto.prescriptionId !== undefined) updates.prescriptionId = dto.prescriptionId;
   if (dto.drugName !== undefined) updates.drugName = dto.drugName;
   if (dto.dosage !== undefined) updates.dosage = dto.dosage;
+  if (dto.stock !== undefined) updates.stock = dto.stock;
   if (dto.frequency !== undefined) updates.frequency = dto.frequency;
   if (dto.scheduledTimes !== undefined) updates.scheduledTimes = dto.scheduledTimes;
   if (dto.instructions !== undefined) updates.instructions = dto.instructions;
+  if (dto.reminderEnabled !== undefined) updates.reminderEnabled = dto.reminderEnabled;
   if (dto.isActive !== undefined) updates.isActive = dto.isActive;
 
   const [schedule] = await db
@@ -150,7 +155,7 @@ export const updateMedicationSchedule = async (id: string, dto: MedicationSchedu
     .where(eq(medicationSchedules.id, id))
     .returning();
 
-  const changes = diffChanges(existing, schedule, ["prescriptionId", "drugName", "dosage", "frequency", "scheduledTimes", "instructions", "isActive"]);
+  const changes = diffChanges(existing, schedule, ["prescriptionId", "drugName", "dosage", "stock", "frequency", "scheduledTimes", "instructions", "reminderEnabled", "isActive"]);
   if (Object.keys(changes).length > 0) {
     writeAuditLogAsync({
       userId: user?.id || null,

@@ -16,6 +16,7 @@ export default function DashboardBottomNav() {
   const hasAuthHydrated = useAuthStore((state) => state.hasHydrated);
   const dashboardRole = getDashboardRole(userRole);
   const unreadActivityCount = useActivityLogStore((state) => isAdminDashboardRole(dashboardRole) ? 0 : getUnreadActivityCount(state.activities, dashboardRole === "patient" ? patientId ?? undefined : undefined));
+  const isActivityLogLoading = useActivityLogStore((state) => state.isLoading);
   const bottomNavItems = getDashboardBottomNavItems(dashboardRole);
   const columnCount = bottomNavItems.length;
 
@@ -34,6 +35,7 @@ export default function DashboardBottomNav() {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const badgeCount = item.href === "/activity-log" ? unreadActivityCount : 0;
+          const isBadgeLoading = item.href === "/activity-log" && !isAdminDashboardRole(dashboardRole) && isActivityLogLoading;
           const isFeatured = "featured" in item && item.featured;
 
           return (
@@ -59,7 +61,8 @@ export default function DashboardBottomNav() {
                   transition={{ type: "spring", stiffness: 420, damping: 22 }}
                 >
                   <Icon size={isFeatured ? 26 : 20} strokeWidth={2.4} className={isFeatured ? "text-white" : isActive ? "text-primary" : "text-text-main transition-colors group-hover:text-primary"} />
-                  {badgeCount > 0 && (
+                  {isBadgeLoading && <span className="absolute -right-2 -top-2 h-4 min-w-5 animate-pulse rounded-full bg-line" aria-label="Memuat jumlah log aktivitas" />}
+                  {!isBadgeLoading && badgeCount > 0 && (
                     <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black leading-none text-white">
                       {badgeCount > 99 ? "99+" : badgeCount}
                     </span>

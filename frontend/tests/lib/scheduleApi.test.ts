@@ -36,8 +36,8 @@ const medicine: ScheduleMedicineFormValues = {
   instructions: "Sesudah makan",
   status: "Aktif",
 };
-const scheduleResponse = { id: "schedule-1", patientId: "patient-1", drugName: "Metformin", dosage: "500 mg", frequency: 2, scheduledTimes: ["08:00", 20], instructions: "Sesudah makan", isActive: true, createdAt: "2026-05-09T08:00:00.000Z" };
-const scheduleRecord: MedicationScheduleRecord = { id: "schedule-1", patientId: "patient-1", patientName: "Budi", patientAvatar: "BD", medicineName: "Metformin", dose: "500 mg", medicineForm: "Tablet", stock: 0, frequency: "2 kali sehari", times: ["08:00"], mealRule: "Tidak tergantung makan", startDate: "2026-05-09", reminderEnabled: true, status: "Aktif" };
+const scheduleResponse = { id: "schedule-1", patientId: "patient-1", drugName: "Metformin", dosage: "500 mg", stock: 10, frequency: 2, scheduledTimes: ["08:00", 20], instructions: "Sesudah makan", isActive: true, createdAt: "2026-05-09T08:00:00.000Z" };
+const scheduleRecord: MedicationScheduleRecord = { id: "schedule-1", patientId: "patient-1", patientName: "Budi", patientAvatar: "BD", medicineName: "Metformin", dose: "500 mg", medicineForm: "Tablet", stock: 10, frequency: "2 kali sehari", times: ["08:00"], mealRule: "Tidak tergantung makan", startDate: "2026-05-09", reminderEnabled: true, status: "Aktif" };
 
 describe("scheduleApi", () => {
   beforeEach(() => {
