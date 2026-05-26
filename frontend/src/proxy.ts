@@ -21,6 +21,7 @@ async function createContentSecurityPolicy(nonce: string, pathname: string, host
   const isDev = process.env.NODE_ENV === 'development' || isLocalhost;
   const isLandingPage = pathname === '/';
   const allowInlineStyles = isDev || isLandingPage;
+  const allowWasmEval = isDev || isLandingPage;
   const apiOrigin = getConfiguredApiOrigin();
   const shouldUpgradeInsecureRequests = !apiOrigin?.startsWith('http://');
   const connectSources = [
@@ -45,7 +46,7 @@ async function createContentSecurityPolicy(nonce: string, pathname: string, host
   const jsonLdHash = await createSha256Hash(JSON_LD_SCRIPT);
   const scriptSource = isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://ajax.googleapis.com"
-    : `script-src 'self' 'nonce-${nonce}' 'sha256-${jsonLdHash}' 'strict-dynamic' https://ajax.googleapis.com`;
+    : `script-src 'self' 'nonce-${nonce}' 'sha256-${jsonLdHash}'${allowWasmEval ? " 'wasm-unsafe-eval'" : ''} 'strict-dynamic' https://ajax.googleapis.com`;
   const scriptElementSource = isDev
     ? "script-src-elem 'self' 'unsafe-inline' blob: http://localhost:* http://127.0.0.1:* https://ajax.googleapis.com"
     : `script-src-elem 'self' 'nonce-${nonce}' 'sha256-${jsonLdHash}' https://ajax.googleapis.com`;
