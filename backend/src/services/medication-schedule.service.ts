@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gt, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
-import { medicationSchedules, patients, prescriptions } from "../db/schema";
+import { medicationSchedules, patients } from "../db/schema";
 import {
   MedicationScheduleCreateDTO,
   MedicationScheduleListQuery,
@@ -25,13 +25,6 @@ const ensurePatientExists = async (patientId: string) => {
   const patient = await db.select({ id: patients.id }).from(patients).where(eq(patients.id, patientId)).limit(1);
   if (patient.length === 0) {
     throw { status: 404, message: "Pasien tidak ditemukan", code: "PATIENT_NOT_FOUND" };
-  }
-};
-
-const ensurePrescriptionExists = async (prescriptionId: string) => {
-  const prescription = await db.select({ id: prescriptions.id }).from(prescriptions).where(eq(prescriptions.id, prescriptionId)).limit(1);
-  if (prescription.length === 0) {
-    throw { status: 404, message: "Resep tidak ditemukan", code: "PRESCRIPTION_NOT_FOUND" };
   }
 };
 
@@ -189,14 +182,12 @@ export const getMedicationScheduleById = async (id: string, user?: AccessUser) =
 export const createMedicationSchedule = async (dto: MedicationScheduleCreateDTO, createdBy?: string, user?: AccessUser) => {
   await ensurePatientExists(dto.patientId);
   if (user) await assertCanAccessPatient(user, dto.patientId);
-  if (dto.prescriptionId) await ensurePrescriptionExists(dto.prescriptionId);
 
   const stock = dto.stock ?? 0;
   const [schedule] = await db
     .insert(medicationSchedules)
     .values({
       patientId: dto.patientId,
-      prescriptionId: dto.prescriptionId || null,
       drugName: dto.drugName,
       dosage: dto.dosage,
       stock,
@@ -230,13 +221,10 @@ export const createMedicationSchedules = async (dtos: MedicationScheduleCreateDT
 export const updateMedicationSchedule = async (id: string, dto: MedicationScheduleUpdateDTO, user?: AccessUser) => {
   const existing = await getMedicationScheduleById(id, user);
 
-  if (dto.prescriptionId) await ensurePrescriptionExists(dto.prescriptionId);
-
   const updates: Partial<typeof medicationSchedules.$inferInsert> = {
     updatedAt: new Date(),
   };
 
-  if (dto.prescriptionId !== undefined) updates.prescriptionId = dto.prescriptionId;
   if (dto.drugName !== undefined) updates.drugName = dto.drugName;
   if (dto.dosage !== undefined) updates.dosage = dto.dosage;
   if (dto.stock !== undefined) updates.stock = dto.stock;
@@ -260,7 +248,7 @@ export const updateMedicationSchedule = async (id: string, dto: MedicationSchedu
     .where(eq(medicationSchedules.id, id))
     .returning();
 
-  const changes = diffChanges(existing, schedule, ["prescriptionId", "drugName", "dosage", "stock", "frequency", "scheduledTimes", "instructions", "reminderEnabled", "isActive", "completedAt"]);
+  const changes = diffChanges(existing, schedule, ["drugName", "dosage", "stock", "frequency", "scheduledTimes", "instructions", "reminderEnabled", "isActive", "completedAt"]);
   if (Object.keys(changes).length > 0) {
     writeAuditLogAsync({
       userId: user?.id || null,

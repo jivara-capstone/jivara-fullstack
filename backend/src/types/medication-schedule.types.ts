@@ -1,6 +1,5 @@
 export interface MedicationScheduleCreateDTO {
   patientId: string;
-  prescriptionId?: string;
   drugName: string;
   dosage: string;
   stock?: number;
@@ -12,7 +11,6 @@ export interface MedicationScheduleCreateDTO {
 }
 
 export interface MedicationScheduleUpdateDTO {
-  prescriptionId?: string | null;
   drugName?: string;
   dosage?: string;
   stock?: number;

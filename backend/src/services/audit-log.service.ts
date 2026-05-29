@@ -100,7 +100,7 @@ const activityCategoryResourceTypes: Record<NonNullable<AuditLogListQuery["activ
   reminder: ["medication_reminder_job"],
   adherence: ["patient", "medication_schedule", "medication_log", "alert"],
   food_scan: ["food_scan", "interaction_result"],
-  administration: ["user", "admin_approval", "nurse", "prescription"],
+  administration: ["user", "admin_approval", "nurse"],
 };
 
 const hiddenActivityResourceTypes = ["notification", "push_subscription", "user_push_subscription"];

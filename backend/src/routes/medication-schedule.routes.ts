@@ -255,9 +255,6 @@ router.post("/", authorizeRoles("nurse", "admin"), validateMedicationScheduleCre
  *                     patientId:
  *                       type: string
  *                       format: uuid
- *                     prescriptionId:
- *                       type: string
- *                       format: uuid
  *                     drugName:
  *                       type: string
  *                     dosage:

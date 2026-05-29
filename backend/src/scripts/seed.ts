@@ -10,7 +10,6 @@ import {
   patients,
   nurses,
   patientNurseAssignments,
-  prescriptions,
   medicationSchedules,
   medicationLogs,
   foodScans,
@@ -37,7 +36,6 @@ const clearDatabase = async () => {
   await db.delete(foodScans);
   await db.delete(medicationLogs);
   await db.delete(medicationSchedules);
-  await db.delete(prescriptions);
   await db.delete(patientNurseAssignments);
   await db.delete(nurses);
   await db.delete(patients);
@@ -210,86 +208,71 @@ const main = async () => {
     }
   }
 
-  // 7. Prescriptions, Schedules, Logs
-  // console.log("Seeding Medical Records (Prescriptions, Schedules, Logs)...");
+  // 7. Schedules & Logs
+  // console.log("Seeding Medical Records (Schedules, Logs)...");
   for (const patient of activePatients) {
-    // 1-3 Resep per pasien
-    const numPrescriptions = faker.number.int({ min: 1, max: 3 });
+    // 1-6 jadwal per pasien
+    const numSchedules = faker.number.int({ min: 1, max: 6 });
+    for (let j = 0; j < numSchedules; j++) {
+      const drug = faker.helpers.arrayElement(["Amlodipine", "Metformin", "Lisinopril", "Omeprazole", "Salbutamol", "Atorvastatin", "Ibuprofen"]);
+      const freqs = [
+        { freq: 1, times: ["08:00"] },
+        { freq: 2, times: ["08:00", "20:00"] },
+        { freq: 3, times: ["08:00", "14:00", "20:00"] }
+      ];
+      const selectedFreq = faker.helpers.arrayElement(freqs);
 
-    for (let i = 0; i < numPrescriptions; i++) {
-      const [prescription] = await db.insert(prescriptions).values({
+      const [schedule] = await db.insert(medicationSchedules).values({
         patientId: patient.id,
-        diagnosis: patient.diagnosis,
-        prescribingDoctor: `Dr. ${faker.person.lastName()}`,
-        startDate: faker.date.recent({ days: 30 }).toISOString().split('T')[0],
-        endDate: faker.date.future({ years: 0.5 }).toISOString().split('T')[0],
+        drugName: drug,
+        dosage: faker.helpers.arrayElement(["5mg", "10mg", "20mg", "50mg", "500mg"]),
+        frequency: selectedFreq.freq,
+        scheduledTimes: selectedFreq.times,
+        instructions: faker.helpers.arrayElement(["Sesudah makan", "Sebelum makan", "Bersama makanan", "Sebelum tidur"]),
         createdBy: adminUsers[0].id,
+        isActive: faker.helpers.weightedArrayElement([{ weight: 8, value: true }, { weight: 2, value: false }]),
       }).returning();
 
-      // 1-2 Jadwal per resep
-      const numSchedules = faker.number.int({ min: 1, max: 2 });
-      for (let j = 0; j < numSchedules; j++) {
-        const drug = faker.helpers.arrayElement(["Amlodipine", "Metformin", "Lisinopril", "Omeprazole", "Salbutamol", "Atorvastatin", "Ibuprofen"]);
-        const freqs = [
-          { freq: 1, times: ["08:00"] },
-          { freq: 2, times: ["08:00", "20:00"] },
-          { freq: 3, times: ["08:00", "14:00", "20:00"] }
-        ];
-        const selectedFreq = faker.helpers.arrayElement(freqs);
+      // Generate Logs untuk 3 hari terakhir dan hari ini
+      const logsData = [];
+      for (let dayOffset = -3; dayOffset <= 0; dayOffset++) {
+        for (const timeStr of selectedFreq.times) {
+          const [hour, minute] = timeStr.split(':').map(Number);
+          const scheduledDate = new Date();
+          scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
+          scheduledDate.setHours(hour, minute, 0, 0);
 
-        const [schedule] = await db.insert(medicationSchedules).values({
-          patientId: patient.id,
-          prescriptionId: prescription.id,
-          drugName: drug,
-          dosage: faker.helpers.arrayElement(["5mg", "10mg", "20mg", "50mg", "500mg"]),
-          frequency: selectedFreq.freq,
-          scheduledTimes: selectedFreq.times,
-          instructions: faker.helpers.arrayElement(["Sesudah makan", "Sebelum makan", "Bersama makanan", "Sebelum tidur"]),
-          createdBy: adminUsers[0].id,
-          isActive: faker.helpers.weightedArrayElement([{ weight: 8, value: true }, { weight: 2, value: false }]),
-        }).returning();
+          let status = "pending";
+          let confirmedAt = null;
+          let snoozeCount = 0;
 
-        // Generate Logs untuk 3 hari terakhir dan hari ini
-        const logsData = [];
-        for (let dayOffset = -3; dayOffset <= 0; dayOffset++) {
-          for (const timeStr of selectedFreq.times) {
-            const [hour, minute] = timeStr.split(':').map(Number);
-            const scheduledDate = new Date();
-            scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
-            scheduledDate.setHours(hour, minute, 0, 0);
+          if (dayOffset < 0 || (dayOffset === 0 && scheduledDate < new Date())) {
+            // Past times
+            status = faker.helpers.weightedArrayElement([
+              { weight: 70, value: "confirmed" },
+              { weight: 15, value: "missed" },
+              { weight: 15, value: "snoozed" }
+            ]);
 
-            let status = "pending";
-            let confirmedAt = null;
-            let snoozeCount = 0;
-
-            if (dayOffset < 0 || (dayOffset === 0 && scheduledDate < new Date())) {
-              // Past times
-              status = faker.helpers.weightedArrayElement([
-                { weight: 70, value: "confirmed" },
-                { weight: 15, value: "missed" },
-                { weight: 15, value: "snoozed" }
-              ]);
-
-              if (status === "confirmed") {
-                // Konfirmasi bisa tepat waktu atau telat sedikit
-                confirmedAt = new Date(scheduledDate.getTime() + faker.number.int({ min: -5, max: 60 }) * 60000);
-              } else if (status === "snoozed") {
-                snoozeCount = faker.number.int({ min: 1, max: 3 });
-              }
+            if (status === "confirmed") {
+              // Konfirmasi bisa tepat waktu atau telat sedikit
+              confirmedAt = new Date(scheduledDate.getTime() + faker.number.int({ min: -5, max: 60 }) * 60000);
+            } else if (status === "snoozed") {
+              snoozeCount = faker.number.int({ min: 1, max: 3 });
             }
-
-            logsData.push({
-              scheduleId: schedule.id,
-              patientId: patient.id,
-              scheduledTime: scheduledDate,
-              status,
-              confirmedAt,
-              snoozeCount,
-            });
           }
+
+          logsData.push({
+            scheduleId: schedule.id,
+            patientId: patient.id,
+            scheduledTime: scheduledDate,
+            status,
+            confirmedAt,
+            snoozeCount,
+          });
         }
-        await db.insert(medicationLogs).values(logsData);
       }
+      await db.insert(medicationLogs).values(logsData);
     }
   }
 

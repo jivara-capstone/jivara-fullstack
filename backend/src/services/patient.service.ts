@@ -308,7 +308,6 @@ export const getPatientById = async (patientId: string, user?: AccessUser) => {
     db
       .select({
         id: medicationSchedules.id,
-        prescriptionId: medicationSchedules.prescriptionId,
         drugName: medicationSchedules.drugName,
         dosage: medicationSchedules.dosage,
         stock: medicationSchedules.stock,

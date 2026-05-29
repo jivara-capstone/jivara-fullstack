@@ -127,7 +127,6 @@ vi.mock("../../src/controllers/patient.controller", () => controllers);
 vi.mock("../../src/controllers/nurse.controller", () => controllers);
 vi.mock("../../src/controllers/medication-schedule.controller", () => controllers);
 vi.mock("../../src/controllers/medication-log.controller", () => controllers);
-vi.mock("../../src/controllers/prescription.controller", () => controllers);
 vi.mock("../../src/controllers/food-ai.controller", () => controllers);
 vi.mock("../../src/controllers/notification.controller", () => controllers);
 vi.mock("../../src/controllers/alert.controller", () => controllers);
@@ -137,7 +136,6 @@ vi.mock("../../src/validators/patient.validator", () => validators);
 vi.mock("../../src/validators/nurse.validator", () => validators);
 vi.mock("../../src/validators/medication-schedule.validator", () => validators);
 vi.mock("../../src/validators/medication-log.validator", () => validators);
-vi.mock("../../src/validators/prescription.validator", () => validators);
 vi.mock("../../src/validators/food-ai.validator", () => validators);
 vi.mock("../../src/validators/notification.validator", () => validators);
 
@@ -147,7 +145,6 @@ describe("route access control", async () => {
     nurseRoutes,
     medicationScheduleRoutes,
     medicationLogRoutes,
-    prescriptionRoutes,
     foodAiRoutes,
     notificationRoutes,
     alertRoutes,
@@ -157,7 +154,6 @@ describe("route access control", async () => {
     import("../../src/routes/nurse.routes"),
     import("../../src/routes/medication-schedule.routes"),
     import("../../src/routes/medication-log.routes"),
-    import("../../src/routes/prescription.routes"),
     import("../../src/routes/food-ai.routes"),
     import("../../src/routes/notification.routes"),
     import("../../src/routes/alert.routes"),
@@ -170,7 +166,6 @@ describe("route access control", async () => {
     .use("/nurses", nurseRoutes.default)
     .use("/medication-schedules", medicationScheduleRoutes.default)
     .use("/medication-logs", medicationLogRoutes.default)
-    .use("/prescriptions", prescriptionRoutes.default)
     .use("/food", foodAiRoutes.default)
     .use("/notifications", notificationRoutes.default)
     .use("/alerts", alertRoutes.default)
@@ -188,7 +183,6 @@ describe("route access control", async () => {
     ["patient reads notification preference", "get", "/notifications/preferences", "patient"],
     ["nurse creates patient", "post", "/patients", "nurse"],
     ["nurse creates schedule", "post", "/medication-schedules", "nurse"],
-    ["nurse reads prescriptions", "get", "/prescriptions", "nurse"],
     ["nurse reads alerts", "get", "/alerts", "nurse"],
     ["nurse reads own audit logs", "get", "/audit-logs", "nurse"],
     ["admin manages nurses", "get", "/nurses", "admin"],
@@ -207,7 +201,6 @@ describe("route access control", async () => {
     ["anonymous notification event", "post", "/notifications/events", undefined, 401],
     ["patient creating patients", "post", "/patients", "patient", 403],
     ["patient managing nurses", "get", "/nurses", "patient", 403],
-    ["patient reading prescriptions", "get", "/prescriptions", "patient", 403],
     ["patient reading audit logs", "get", "/audit-logs", "patient", 403],
     ["nurse reading user notification preferences", "get", "/notifications/user-preferences", "patient", 403],
     ["nurse assigning patients", "put", `/patients/${validUuid}/assign`, "nurse", 403],

@@ -5,7 +5,6 @@ import { AuthRequest } from "../../src/middleware/auth.middleware";
 const services = vi.hoisted(() => ({
   nurse: { listNurses: vi.fn(), getNurseById: vi.fn(), createNurse: vi.fn(), updateNurse: vi.fn(), deactivateNurse: vi.fn() },
   schedule: { listMedicationSchedules: vi.fn(), getMedicationScheduleById: vi.fn(), createMedicationSchedule: vi.fn(), updateMedicationSchedule: vi.fn(), deactivateMedicationSchedule: vi.fn() },
-  prescription: { listPrescriptions: vi.fn(), getPrescriptionById: vi.fn(), createPrescription: vi.fn(), updatePrescription: vi.fn(), deletePrescription: vi.fn() },
   alert: { listAlerts: vi.fn(), resolveAlert: vi.fn() },
   audit: { listAuditLogs: vi.fn() },
   adherence: { getAdherenceStats: vi.fn(), getAggregateAdherenceStats: vi.fn() },
@@ -27,7 +26,6 @@ const services = vi.hoisted(() => ({
 
 vi.mock("../../src/services/nurse.service", () => services.nurse);
 vi.mock("../../src/services/medication-schedule.service", () => services.schedule);
-vi.mock("../../src/services/prescription.service", () => services.prescription);
 vi.mock("../../src/services/alert.service", () => services.alert);
 vi.mock("../../src/services/audit-log.service", () => services.audit);
 vi.mock("../../src/services/adherence.service", () => services.adherence);
@@ -56,7 +54,6 @@ const authReq = (overrides: Partial<AuthRequest> = {}) => ({
 describe("remaining controllers without database", async () => {
   const nurseController = await import("../../src/controllers/nurse.controller");
   const scheduleController = await import("../../src/controllers/medication-schedule.controller");
-  const prescriptionController = await import("../../src/controllers/prescription.controller");
   const alertController = await import("../../src/controllers/alert.controller");
   const auditController = await import("../../src/controllers/audit-log.controller");
   const adherenceController = await import("../../src/controllers/adherence.controller");
@@ -98,21 +95,6 @@ describe("remaining controllers without database", async () => {
     expect(res.json).toHaveBeenCalledWith({ status: "berhasil", data: [{ id: "schedule-id" }] });
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Jadwal obat berhasil dibuat" }));
     expect(res.json).toHaveBeenCalledWith({ status: "berhasil", message: "Jadwal obat berhasil dinonaktifkan" });
-  });
-
-  it("covers prescription controller success paths", async () => {
-    services.prescription.listPrescriptions.mockResolvedValue([{ id: "rx-id" }]);
-    services.prescription.createPrescription.mockResolvedValue({ id: "rx-id" });
-    services.prescription.deletePrescription.mockResolvedValue(undefined);
-    const res = createResponse();
-
-    await prescriptionController.listPrescriptions(authReq(), res);
-    await prescriptionController.createPrescription(authReq({ body: { patientId: "patient-id" } }), res);
-    await prescriptionController.deletePrescription(authReq({ params: { id: "rx-id" } }), res);
-
-    expect(res.json).toHaveBeenCalledWith({ status: "berhasil", data: [{ id: "rx-id" }] });
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Resep berhasil dibuat" }));
-    expect(res.json).toHaveBeenCalledWith({ status: "berhasil", message: "Resep berhasil dihapus" });
   });
 
   it("covers alert, audit, adherence, and public stats controllers", async () => {

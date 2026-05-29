@@ -131,32 +131,13 @@ export const patientNurseAssignments = pgTable("patient_nurse_assignments", {
 }));
 
 // ─────────────────────────────────────────────
-// 6. PRESCRIPTIONS
-// ─────────────────────────────────────────────
-export const prescriptions = pgTable("prescriptions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  patientId: uuid("patient_id")
-    .notNull()
-    .references(() => patients.id, { onDelete: "cascade" }),
-  diagnosis: text("diagnosis"),
-  prescribingDoctor: varchar("prescribing_doctor", { length: 256 }),
-  startDate: date("start_date"),
-  endDate: date("end_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  createdBy: uuid("created_by").references(() => users.id),
-}, (table) => ({
-  patientIdx: index("idx_prescriptions_patient").on(table.patientId),
-}));
-
-// ─────────────────────────────────────────────
-// 7. MEDICATION SCHEDULES
+// 6. MEDICATION SCHEDULES
 // ─────────────────────────────────────────────
 export const medicationSchedules = pgTable("medication_schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
   patientId: uuid("patient_id")
     .notNull()
     .references(() => patients.id, { onDelete: "cascade" }),
-  prescriptionId: uuid("prescription_id").references(() => prescriptions.id, { onDelete: "set null" }),
   drugName: varchar("drug_name", { length: 256 }).notNull(),
   dosage: varchar("dosage", { length: 64 }).notNull(),
   stock: integer("stock").default(0),
@@ -173,11 +154,10 @@ export const medicationSchedules = pgTable("medication_schedules", {
   patientIdx: index("idx_med_sched_patient").on(table.patientId),
   activeIdx: index("idx_med_sched_active").on(table.isActive),
   patientActiveCreatedIdx: index("idx_med_sched_patient_active_created").on(table.patientId, table.isActive, table.createdAt),
-  prescriptionActiveIdx: index("idx_med_sched_prescription_active").on(table.prescriptionId, table.isActive),
 }));
 
 // ─────────────────────────────────────────────
-// 8. MEDICATION LOGS
+// 7. MEDICATION LOGS
 // ─────────────────────────────────────────────
 export const medicationLogs = pgTable("medication_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -424,7 +404,6 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
     references: [users.id],
   }),
   assignments: many(patientNurseAssignments),
-  prescriptions: many(prescriptions),
   medicationSchedules: many(medicationSchedules),
   medicationLogs: many(medicationLogs),
   medicationReminderJobs: many(medicationReminderJobs),
@@ -456,22 +435,10 @@ export const patientNurseAssignmentsRelations = relations(patientNurseAssignment
   }),
 }));
 
-export const prescriptionsRelations = relations(prescriptions, ({ one, many }) => ({
-  patient: one(patients, {
-    fields: [prescriptions.patientId],
-    references: [patients.id],
-  }),
-  medicationSchedules: many(medicationSchedules),
-}));
-
 export const medicationSchedulesRelations = relations(medicationSchedules, ({ one, many }) => ({
   patient: one(patients, {
     fields: [medicationSchedules.patientId],
     references: [patients.id],
-  }),
-  prescription: one(prescriptions, {
-    fields: [medicationSchedules.prescriptionId],
-    references: [prescriptions.id],
   }),
   logs: many(medicationLogs),
   reminderJobs: many(medicationReminderJobs),

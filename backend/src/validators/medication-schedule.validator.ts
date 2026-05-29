@@ -15,14 +15,10 @@ const validateScheduledTimes = (scheduledTimes: unknown) => {
 };
 
 export const validateMedicationScheduleCreate = (req: Request, res: Response, next: NextFunction) => {
-  const { patientId, prescriptionId, drugName, dosage, stock, frequency, scheduledTimes } = req.body;
+  const { patientId, drugName, dosage, stock, frequency, scheduledTimes } = req.body;
 
   if (isMissing(patientId) || !isValidUuid(patientId)) {
     return res.status(400).json({ status: "gagal", message: "patientId wajib berupa UUID valid", error_code: "VALIDATION_ERROR" });
-  }
-
-  if (prescriptionId && !isValidUuid(prescriptionId)) {
-    return res.status(400).json({ status: "gagal", message: "prescriptionId tidak valid", error_code: "VALIDATION_ERROR" });
   }
 
   if (isMissing(drugName)) {
@@ -80,11 +76,7 @@ export const validateMedicationScheduleId = (req: Request, res: Response, next: 
 };
 
 export const validateMedicationScheduleUpdate = (req: Request, res: Response, next: NextFunction) => {
-  const { prescriptionId, stock, frequency, scheduledTimes } = req.body;
-
-  if (prescriptionId && !isValidUuid(prescriptionId)) {
-    return res.status(400).json({ status: "gagal", message: "prescriptionId tidak valid", error_code: "VALIDATION_ERROR" });
-  }
+  const { stock, frequency, scheduledTimes } = req.body;
 
   if (frequency !== undefined && (!Number.isInteger(frequency) || frequency < 1 || frequency > 3)) {
     return res.status(400).json({ status: "gagal", message: "Frekuensi harus angka 1 sampai 3", error_code: "VALIDATION_ERROR" });

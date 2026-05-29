@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { validateFoodDetect, validateFoodUpload, validateInteractionCheck, validateNutrition } from "../../src/validators/food-ai.validator";
 import { validateNurseCreate, validateNurseId, validateNurseUpdate } from "../../src/validators/nurse.validator";
 import { validatePreference, validateSendNotification, validateSubscribe, validateTrackNotificationEvent, validateUserNotificationPreference, validateUserSubscribe } from "../../src/validators/notification.validator";
-import { validatePrescriptionCreate, validatePrescriptionId, validatePrescriptionUpdate } from "../../src/validators/prescription.validator";
 
 const validUuid = "11111111-1111-4111-8111-111111111111";
 const subscription = { endpoint: "https://push.example.test/subscription", keys: { p256dh: "p256dh", auth: "auth" } };
@@ -60,35 +59,6 @@ describe("extended validators", () => {
     const res = createResponse();
 
     validateNurseUpdate(req, res, next);
-
-    expectRejected(res, next);
-  });
-
-  it("normalizes prescription creation payloads", () => {
-    const req = createRequest({ patient_id: validUuid, start_date: "2026-05-15", end_date: "2026-06-15" });
-    const res = createResponse();
-
-    validatePrescriptionCreate(req, res, next);
-
-    expect(req.body.patientId).toBe(validUuid);
-    expect(req.body.startDate).toBe("2026-05-15");
-    expectAccepted(res, next);
-  });
-
-  it("validates prescription IDs", () => {
-    const req = createRequest({}, { id: validUuid });
-    const res = createResponse();
-
-    validatePrescriptionId(req, res, next);
-
-    expectAccepted(res, next);
-  });
-
-  it("rejects invalid prescription update dates", () => {
-    const req = createRequest({ startDate: "not-a-date" });
-    const res = createResponse();
-
-    validatePrescriptionUpdate(req, res, next);
 
     expectRejected(res, next);
   });

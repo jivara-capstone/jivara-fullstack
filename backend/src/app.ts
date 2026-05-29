@@ -14,7 +14,6 @@ import medicationScheduleRoutes from './routes/medication-schedule.routes';
 import medicationLogRoutes from './routes/medication-log.routes';
 import adherenceRoutes from './routes/adherence.routes';
 import foodAiRoutes from './routes/food-ai.routes';
-import prescriptionRoutes from './routes/prescription.routes';
 import notificationRoutes from './routes/notification.routes';
 import auditLogRoutes from './routes/audit-log.routes';
 import nurseRoutes from './routes/nurse.routes';
@@ -102,7 +101,6 @@ const mountApiRoutes = (basePath: string) => {
   app.use(`${basePath}/public`, publicStatsRoutes);
   app.use(`${basePath}/patients`, patientRoutes);
   app.use(`${basePath}/nurses`, nurseRoutes);
-  app.use(`${basePath}/prescriptions`, prescriptionRoutes);
   app.use(`${basePath}/medication-schedules`, medicationScheduleRoutes);
   app.use(`${basePath}/medication-logs`, medicationLogRoutes);
   app.use(`${basePath}/adherence`, adherenceRoutes);
