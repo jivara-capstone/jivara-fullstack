@@ -451,6 +451,7 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
   const nutritionData = nutritionResult.status === "fulfilled"
     ? nutritionResult.value.data.data
     : null;
+  const nutritionItems = nutritionData?.items.map(mapNutritionItem) ?? [];
   const risk = toRisk(interactionData.overall_risk_level);
   const image = getBackendImageUrl(upload.upload_url);
   const foodName = toFoodName(detection.detected_items);
@@ -502,8 +503,8 @@ export const scanFoodImage = async (file: File): Promise<FoodScanAnalysis> => {
       ?? [],
     schedules: interactions.map((interaction) => interaction.schedule),
     interactions,
-    nutritionItems: nutritionData?.items.map(mapNutritionItem),
-    nutritionTotal: nutritionData
+    nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
+    nutritionTotal: nutritionItems.length > 0 && nutritionData
       ? {
         calories: nutritionData.total.calories,
         proteinG: nutritionData.total.protein_g,
