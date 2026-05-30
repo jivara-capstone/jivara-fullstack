@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import api from "@/lib/axios";
-import { createSchedulesViaApi, deactivateScheduleViaApi, getSchedulesFromApi, setScheduleActiveViaApi, updateScheduleViaApi } from "@/lib/scheduleApi";
+import { clearSchedulesCache, createSchedulesViaApi, deactivateScheduleViaApi, getSchedulesForPatientsFromApi, getSchedulesFromApi, setScheduleActiveViaApi, updateScheduleViaApi } from "@/lib/scheduleApi";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import type { ScheduleMedicineFormValues } from "@/components/schedule/scheduleFormUtils";
@@ -46,6 +46,7 @@ describe("scheduleApi", () => {
     mockedPost.mockReset();
     mockedPut.mockReset();
     mockedDelete.mockReset();
+    clearSchedulesCache();
   });
 
   it("loads and maps schedules with patient info", async () => {
@@ -55,6 +56,18 @@ describe("scheduleApi", () => {
 
     expect(mockedGet).toHaveBeenCalledWith("/medication-schedules");
     expect(schedules[0]).toMatchObject({ patientName: "Budi", medicineName: "Metformin", medicineForm: "Kapsul", mealRule: "Sebelum makan", times: ["08:00"] });
+  });
+
+  it("loads additional patient schedule pages when requested", async () => {
+    mockedGet
+      .mockResolvedValueOnce({ data: { data: [{ ...scheduleResponse, id: "schedule-1" }], meta: { page: 1, limit: 1, total: 2 } } })
+      .mockResolvedValueOnce({ data: { data: [{ ...scheduleResponse, id: "schedule-2" }], meta: { page: 2, limit: 1, total: 2 } } });
+
+    const schedules = await getSchedulesForPatientsFromApi(patients, { limit: 1, loadAllPages: true });
+
+    expect(mockedGet).toHaveBeenNthCalledWith(1, "/medication-schedules", { params: { patient_ids: "patient-1", limit: 1, page: 1 } });
+    expect(mockedGet).toHaveBeenNthCalledWith(2, "/medication-schedules", { params: { patient_ids: "patient-1", limit: 1, page: 2 } });
+    expect(schedules.map((schedule) => schedule.id)).toEqual(["schedule-1", "schedule-2"]);
   });
 
   it("creates schedules from medicine form values", async () => {

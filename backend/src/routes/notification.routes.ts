@@ -239,6 +239,50 @@ router.patch("/user-preferences", authorizeRoles("admin", "super_admin", "nurse"
  */
 router.post("/subscribe", authorizeRoles("patient"), validateSubscribe, notificationController.subscribe);
 
+/**
+ * @swagger
+ * /api/v1/notifications/user-subscribe:
+ *   post:
+ *     summary: Daftarkan device pengguna staf untuk Web Push
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - subscription
+ *             properties:
+ *               subscription:
+ *                 type: object
+ *                 required:
+ *                   - endpoint
+ *                   - keys
+ *                 properties:
+ *                   endpoint:
+ *                     type: string
+ *                     format: uri
+ *                   keys:
+ *                     type: object
+ *                     required:
+ *                       - p256dh
+ *                       - auth
+ *                     properties:
+ *                       p256dh:
+ *                         type: string
+ *                       auth:
+ *                         type: string
+ *     responses:
+ *       201:
+ *         description: Subscription staf berhasil disimpan
+ *       400:
+ *         description: Payload subscription tidak valid
+ *       403:
+ *         description: Hanya admin, super admin, dan nurse yang dapat mengakses endpoint ini
+ */
 router.post("/user-subscribe", authorizeRoles("admin", "super_admin", "nurse"), validateUserSubscribe, notificationController.subscribeUser);
 
 /**

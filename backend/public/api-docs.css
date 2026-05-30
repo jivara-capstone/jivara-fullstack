@@ -1,0 +1,89 @@
+:root[data-jivara-docs='scalar'] {
+  --jivara-primary: #0f766e;
+  --jivara-primary-hover: #0d9488;
+  --jivara-bg: #ffffff;
+  --jivara-text: #0f172a;
+  --jivara-muted: #64748b;
+  --jivara-line: rgba(15, 23, 42, 0.12);
+}
+
+html[data-jivara-docs='scalar'],
+body[data-jivara-docs='scalar'] {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html[data-jivara-docs='scalar'] h1,
+html[data-jivara-docs='scalar'] h2,
+html[data-jivara-docs='scalar'] h3,
+html[data-jivara-docs='scalar'] h4,
+html[data-jivara-docs='scalar'] h5,
+html[data-jivara-docs='scalar'] h6 {
+  font-family: Archivo, Inter, system-ui, sans-serif;
+}
+
+.jivara-docs-footer {
+  border-top: 1px solid var(--jivara-line);
+  background: var(--jivara-bg);
+  color: var(--jivara-muted);
+}
+
+.jivara-docs-footer__inner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+  font-size: 0.875rem;
+}
+
+.jivara-back-to-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 29000;
+  display: none;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--jivara-primary);
+  color: var(--jivara-bg);
+  box-shadow: 0 18px 35px rgba(15, 118, 110, 0.22);
+  cursor: pointer;
+}
+
+.jivara-back-to-top[data-visible='true'] {
+  display: grid;
+}
+
+.jivara-back-to-top:hover,
+.jivara-back-to-top:focus-visible {
+  background: var(--jivara-primary-hover);
+  outline: 0;
+}
+
+button[data-jivara-logout='true'] {
+  border-color: transparent !important;
+  background: var(--jivara-primary) !important;
+  color: var(--jivara-bg) !important;
+}
+
+button[data-jivara-logout='true']:hover,
+button[data-jivara-logout='true']:focus-visible {
+  background: var(--jivara-primary-hover) !important;
+}
+
+@media (max-width: 640px) {
+  .jivara-docs-footer__inner {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .jivara-back-to-top {
+    right: 16px;
+    bottom: 16px;
+  }
+}

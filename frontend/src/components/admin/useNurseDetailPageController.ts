@@ -14,7 +14,6 @@ import type { NurseRecord } from "@/lib/mocks/nurses";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import { deactivateNurseViaApi, getNurseByIdFromApi } from "@/lib/nurseApi";
 import { assignPatientToNursesViaApi, getPatientPageFromApi } from "@/lib/patientApi";
-import { getSchedulesForPatientsFromApi } from "@/lib/scheduleApi";
 import { isDateInRange } from "@/lib/dateRange";
 import { showConfirm, showError, showToast, showWarning } from "@/lib/swal";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -44,7 +43,6 @@ type NurseDetailViewCacheEntry = {
   activityQuickFilter?: ActivityQuickFilter;
   activityCategory?: ActivityCategory | "all";
   activityDate?: string;
-  medicationStats?: Record<string, { completed: number; total: number }>;
 };
 
 const nurseDetailViewCache = new Map<string, NurseDetailViewCacheEntry>();
@@ -69,7 +67,6 @@ interface NurseDetailState {
   nurse: NurseRecord | null;
   assignedPatients: PatientRecord[];
   summaryPatients: PatientRecord[];
-  medicationStats: Record<string, { completed: number; total: number }>;
   selectedPatientIds: string[];
   isReassignOpen: boolean;
   selectedActivity: ActivityLogRecord | null;
@@ -108,7 +105,7 @@ type NurseDetailAction =
   | { type: "reset_patient_filters" }
   | { type: "set_activity_controls"; search?: string; quickFilter?: ActivityQuickFilter; category?: ActivityCategory | "all"; date?: string; reset?: boolean }
   | { type: "patients_loading"; value: boolean }
-  | { type: "patients_loaded"; patients: PatientRecord[]; totalPatientResults: number; medicationStats: Record<string, { completed: number; total: number }>; patientPage: number; summaryPatients?: PatientRecord[]; totalAssignedPatientCount?: number }
+  | { type: "patients_loaded"; patients: PatientRecord[]; totalPatientResults: number; patientPage: number; summaryPatients?: PatientRecord[]; totalAssignedPatientCount?: number }
   | { type: "patients_failed" }
   | { type: "patient_summary_loading"; value: boolean }
   | { type: "patient_summary_loaded"; patients: PatientRecord[]; totalAssignedPatientCount: number }
@@ -144,7 +141,6 @@ function createInitialState(nurseId: string, nurses: readonly NurseRecord[]): Nu
     nurse: cachedNurse,
     assignedPatients: cachedDetail?.assignedPatients ?? [],
     summaryPatients: cachedDetail?.summaryPatients ?? [],
-    medicationStats: cachedDetail?.medicationStats ?? {},
     selectedPatientIds: [],
     isReassignOpen: false,
     selectedActivity: null,
@@ -196,9 +192,9 @@ function nurseDetailReducer(state: NurseDetailState, action: NurseDetailAction):
     case "patients_loading":
       return { ...state, isLoadingPatients: action.value };
     case "patients_loaded":
-      return { ...state, assignedPatients: action.patients, totalPatientResults: action.totalPatientResults, medicationStats: action.medicationStats, patientPage: action.patientPage, summaryPatients: action.summaryPatients ?? state.summaryPatients, totalAssignedPatientCount: action.totalAssignedPatientCount ?? state.totalAssignedPatientCount, hasLoadedPatients: true, hasLoadedPatientSummary: action.summaryPatients ? true : state.hasLoadedPatientSummary, isLoadingPatients: false, isLoadingPatientSummary: action.summaryPatients ? false : state.isLoadingPatientSummary };
+      return { ...state, assignedPatients: action.patients, totalPatientResults: action.totalPatientResults, patientPage: action.patientPage, summaryPatients: action.summaryPatients ?? state.summaryPatients, totalAssignedPatientCount: action.totalAssignedPatientCount ?? state.totalAssignedPatientCount, hasLoadedPatients: true, hasLoadedPatientSummary: action.summaryPatients ? true : state.hasLoadedPatientSummary, isLoadingPatients: false, isLoadingPatientSummary: action.summaryPatients ? false : state.isLoadingPatientSummary };
     case "patients_failed":
-      return { ...state, assignedPatients: [], totalPatientResults: 0, medicationStats: {}, hasLoadedPatients: true, isLoadingPatients: false };
+      return { ...state, assignedPatients: [], totalPatientResults: 0, hasLoadedPatients: true, isLoadingPatients: false };
     case "patient_summary_loading":
       return { ...state, isLoadingPatientSummary: action.value };
     case "patient_summary_loaded":
@@ -270,16 +266,11 @@ export function useNurseDetailPageController(nurseId: string) {
     dispatch({ type: "patients_loading", value: !canUseVisibleCache });
     try {
       const response = await getPatientPageFromApi({ page, limit: patientPageSize, status: patientStatus, nurseId, search: debouncedPatientSearch, adherenceStatus, forceRefresh });
-      const schedules = await getSchedulesForPatientsFromApi(response.patients).catch(() => []);
-      const medicationStats = Object.fromEntries(response.patients.map((patient) => {
-        const patientSchedules = schedules.filter((schedule) => schedule.patientId === patient.id);
-        return [patient.id, { total: patientSchedules.length, completed: patientSchedules.filter((schedule) => schedule.status === "Selesai").length }];
-      }));
       const canUsePageAsSummary = page === 1 && !debouncedPatientSearch && state.patientFilter === "all" && response.patients.length >= response.meta.total;
       const nextSummaryPatients = canUsePageAsSummary ? response.patients : undefined;
       const nextTotalAssignedPatientCount = canUsePageAsSummary ? response.patients.filter(isPatientStillHandled).length : undefined;
-      dispatch({ type: "patients_loaded", patients: response.patients, totalPatientResults: response.meta.total, medicationStats, patientPage: page, summaryPatients: nextSummaryPatients, totalAssignedPatientCount: nextTotalAssignedPatientCount });
-      updateNurseDetailViewCache(nurseId, { assignedPatients: response.patients, ...(nextSummaryPatients ? { summaryPatients: nextSummaryPatients } : {}), ...(nextTotalAssignedPatientCount !== undefined ? { totalAssignedPatientCount: nextTotalAssignedPatientCount } : {}), totalPatientResults: response.meta.total, patientSearch: state.patientSearch, patientFilter: state.patientFilter, patientPage: page, medicationStats });
+      dispatch({ type: "patients_loaded", patients: response.patients, totalPatientResults: response.meta.total, patientPage: page, summaryPatients: nextSummaryPatients, totalAssignedPatientCount: nextTotalAssignedPatientCount });
+      updateNurseDetailViewCache(nurseId, { assignedPatients: response.patients, ...(nextSummaryPatients ? { summaryPatients: nextSummaryPatients } : {}), ...(nextTotalAssignedPatientCount !== undefined ? { totalAssignedPatientCount: nextTotalAssignedPatientCount } : {}), totalPatientResults: response.meta.total, patientSearch: state.patientSearch, patientFilter: state.patientFilter, patientPage: page });
     } catch {
       dispatch({ type: "patients_failed" });
     }

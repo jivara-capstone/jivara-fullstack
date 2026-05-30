@@ -102,7 +102,7 @@ const getAuditLogs = async (params: AuditLogParams = {}) => {
   const search = params.search?.trim() || "";
   const cacheKey = `${page}:${limit}:${params.action ?? ""}:${activityCategory ?? ""}:${params.date ?? ""}:${params.userRole ?? ""}:${params.nurseId ?? ""}:${params.severity ?? ""}:${search}`;
   const now = Date.now();
-  if (params.forceRefresh) clearAuditLogCache();
+  if (params.forceRefresh) auditCache.delete(cacheKey);
   const cached = auditCache.get(cacheKey);
   if (cached && cached.expiresAt > now) return cached.data;
   const activeRequest = auditRequests.get(cacheKey);

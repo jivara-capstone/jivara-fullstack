@@ -117,9 +117,9 @@ const getMonthLogRange = (monthDate: Date) => {
 
 const patientActivityScheduleLimit = 50;
 
-const getPatientScheduleBaseData = async (options: { readonly scheduleLimit?: number; readonly forceRefresh?: boolean } = {}) => {
+const getPatientScheduleBaseData = async (options: { readonly scheduleLimit?: number; readonly forceRefresh?: boolean; readonly loadAllSchedulePages?: boolean } = {}) => {
   const patient = await getCurrentPatientFromApi();
-  const schedules = await getSchedulesForPatientsFromApi([patient], { ...(options.scheduleLimit ? { limit: options.scheduleLimit } : {}), forceRefresh: options.forceRefresh });
+  const schedules = await getSchedulesForPatientsFromApi([patient], { ...(options.scheduleLimit ? { limit: options.scheduleLimit } : {}), forceRefresh: options.forceRefresh, loadAllPages: options.loadAllSchedulePages });
 
   return {
     patient,
@@ -356,7 +356,6 @@ export const getPatientActivityLogData = async (monthDate = new Date(), options:
   const { cacheKey } = getMonthLogRange(monthDate);
   if (options.forceRefresh) {
     activitiesCache.delete(cacheKey);
-    activitiesRequests.delete(cacheKey);
   }
   const cached = activitiesCache.get(cacheKey);
   if (cached && cached.expiresAt > now) return cached.data;
@@ -364,7 +363,7 @@ export const getPatientActivityLogData = async (monthDate = new Date(), options:
   if (activeRequest) return activeRequest;
 
   const request = (async () => {
-    const baseData = await getPatientScheduleBaseData({ scheduleLimit: patientActivityScheduleLimit });
+    const baseData = await getPatientScheduleBaseData({ scheduleLimit: patientActivityScheduleLimit, forceRefresh: options.forceRefresh, loadAllSchedulePages: true });
     const [logResponse, scans] = await Promise.all([
       getMedicationLogsForMonth(baseData.patient.id, monthDate),
       getFoodScansForPatientMonth(baseData.patient.id, monthDate).catch(() => []),

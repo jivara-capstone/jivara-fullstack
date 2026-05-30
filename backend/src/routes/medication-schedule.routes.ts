@@ -12,6 +12,71 @@ const router = Router();
 
 router.use(authenticateToken);
 
+/**
+ * @swagger
+ * /api/v1/medication-schedules/medicine-catalog:
+ *   get:
+ *     summary: Cari katalog obat untuk pembuatan jadwal
+ *     tags: [Medication Schedules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Cari berdasarkan nama produk obat.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 333
+ *           minimum: 1
+ *           maximum: 500
+ *     responses:
+ *       200:
+ *         description: Katalog obat berhasil diambil
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: berhasil
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       registrationNumber:
+ *                         type: string
+ *                       productName:
+ *                         type: string
+ *                         example: Amlodipine 5 mg Tablet
+ *                       compositionNormalized:
+ *                         type: string
+ *                         nullable: true
+ *                       activeSubstances:
+ *                         type: array
+ *                         nullable: true
+ *                         items:
+ *                           type: string
+ *                       drugCategories:
+ *                         type: array
+ *                         nullable: true
+ *                         items:
+ *                           type: string
+ *                       dosageFormGroup:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Bentuk sediaan yang dipakai frontend untuk auto-fill Bentuk Obat.
+ *       403:
+ *         description: Hanya nurse dan admin yang dapat mengakses katalog obat
+ */
 router.get("/medicine-catalog", authorizeRoles("nurse", "admin"), medicationScheduleController.listMedicineCatalog);
 
 /**

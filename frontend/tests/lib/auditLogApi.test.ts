@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/axios";
-import { clearAuditLogCache, getAuditActivitiesFromApi, getSuperAdminApprovalActivitiesFromApi } from "@/lib/auditLogApi";
+import { clearAuditLogCache, getAuditActivitiesFromApi, getAuditActivityPageFromApi, getSuperAdminApprovalActivitiesFromApi } from "@/lib/auditLogApi";
 
 vi.mock("@/lib/axios", () => ({
   default: {
@@ -99,5 +99,24 @@ describe("auditLogApi", () => {
 
     expect(mockedGet).toHaveBeenCalledTimes(2);
     expect(refreshedActivities).toHaveLength(1);
+  });
+
+  it("shares identical in-flight force-refresh admin audit requests", async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: {
+        data: [
+          { id: "admin-audit", userName: "Admin", action: "patient.updated", resourceType: "patient", resourceId: "patient-1", createdAt: "2026-05-09T08:00:00.000Z" },
+        ],
+      },
+    });
+
+    const [summaryPage, listPage] = await Promise.all([
+      getAuditActivityPageFromApi({ page: 1, limit: 10, userRole: "admin", forceRefresh: true }),
+      getAuditActivityPageFromApi({ page: 1, limit: 10, userRole: "admin", forceRefresh: true }),
+    ]);
+
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    expect(summaryPage.activities).toHaveLength(1);
+    expect(listPage.activities).toHaveLength(1);
   });
 });

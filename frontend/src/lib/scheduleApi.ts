@@ -53,6 +53,7 @@ interface SingleScheduleResponse {
 
 interface ScheduleListResponse {
   data: ScheduleResponse[];
+  meta?: { page?: number; limit?: number; total?: number };
 }
 
 interface PatientListResponse {
@@ -277,14 +278,14 @@ export const getSchedulesFromApi = async (providedPatients?: readonly PatientRec
 
 export const getSchedulesForPatientsFromApi = async (
   patients: readonly PatientRecord[],
-  options: { readonly limit?: number; readonly forceRefresh?: boolean } = {},
+  options: { readonly limit?: number; readonly forceRefresh?: boolean; readonly loadAllPages?: boolean } = {},
 ): Promise<MedicationScheduleRecord[]> => {
   if (patients.length === 0) return [];
 
   const patientIds = patients.map((patient) => patient.id).sort();
   const patientIdsParam = patientIds.join(",");
   const limit = options.limit && options.limit > 0 ? Math.floor(options.limit) : undefined;
-  const cacheKey = `${patientIdsParam}:${limit ?? "all"}`;
+  const cacheKey = `${patientIdsParam}:${limit ?? "all"}:${options.loadAllPages ? "all-pages" : "first-page"}`;
   if (options.forceRefresh) {
     schedulePatientsCache.delete(cacheKey);
     schedulePatientsRequests.delete(cacheKey);
@@ -296,13 +297,28 @@ export const getSchedulesForPatientsFromApi = async (
   if (!options.forceRefresh && activeRequest) return activeRequest;
 
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
-  const request = api.get<{ data: ScheduleResponse[] }>("/medication-schedules", {
-    params: { patient_ids: patientIdsParam, ...(limit ? { limit } : {}) },
-  }).then((response) => {
-    const schedules = response.data.data.map((schedule) => mapSchedule(schedule, patientById.get(schedule.patientId)));
+  const request = (async () => {
+    const baseParams = { patient_ids: patientIdsParam, ...(limit ? { limit } : {}) };
+    const firstResponse = await api.get<ScheduleListResponse>("/medication-schedules", {
+      params: limit ? { ...baseParams, page: 1 } : baseParams,
+    });
+    const firstPage = firstResponse.data.data;
+    const total = firstResponse.data.meta?.total ?? firstPage.length;
+    const pageLimit = firstResponse.data.meta?.limit ?? limit ?? firstPage.length;
+    const totalPages = options.loadAllPages && pageLimit > 0 ? Math.ceil(total / pageLimit) : 1;
+    const additionalResponses = totalPages > 1
+      ? await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => api.get<ScheduleListResponse>("/medication-schedules", {
+        params: { ...baseParams, limit: pageLimit, page: index + 2 },
+      })))
+      : [];
+    const scheduleRows = [
+      ...firstPage,
+      ...additionalResponses.flatMap((response) => response.data.data),
+    ];
+    const schedules = scheduleRows.map((schedule) => mapSchedule(schedule, patientById.get(schedule.patientId)));
     schedulePatientsCache.set(cacheKey, { data: schedules, expiresAt: Date.now() + schedulesCacheTtl });
     return schedules;
-  }).finally(() => {
+  })().finally(() => {
     schedulePatientsRequests.delete(cacheKey);
   });
 

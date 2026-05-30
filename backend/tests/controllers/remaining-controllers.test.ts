@@ -83,7 +83,7 @@ describe("remaining controllers without database", async () => {
   });
 
   it("covers medication schedule controller success paths", async () => {
-    services.schedule.listMedicationSchedules.mockResolvedValue([{ id: "schedule-id" }]);
+    services.schedule.listMedicationSchedules.mockResolvedValue({ data: [{ id: "schedule-id" }], meta: { page: 1, limit: 20, total: 1 } });
     services.schedule.createMedicationSchedule.mockResolvedValue({ id: "schedule-id" });
     services.schedule.deactivateMedicationSchedule.mockResolvedValue(undefined);
     const res = createResponse();
@@ -92,7 +92,7 @@ describe("remaining controllers without database", async () => {
     await scheduleController.createMedicationSchedule(authReq({ body: { drugName: "Obat" } }), res);
     await scheduleController.deactivateMedicationSchedule(authReq({ params: { id: "schedule-id" } }), res);
 
-    expect(res.json).toHaveBeenCalledWith({ status: "berhasil", data: [{ id: "schedule-id" }] });
+    expect(res.json).toHaveBeenCalledWith({ status: "berhasil", data: [{ id: "schedule-id" }], meta: { page: 1, limit: 20, total: 1 } });
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: "Jadwal obat berhasil dibuat" }));
     expect(res.json).toHaveBeenCalledWith({ status: "berhasil", message: "Jadwal obat berhasil dinonaktifkan" });
   });

@@ -27,7 +27,7 @@ export const listMedicineCatalog = async (req: AuthRequest, res: Response) => {
 export const listMedicationSchedules = async (req: AuthRequest, res: Response) => {
   try {
     const schedules = await medicationScheduleService.listMedicationSchedules(req.query, req.user);
-    res.status(200).json({ status: "berhasil", data: schedules });
+    res.status(200).json({ status: "berhasil", data: schedules.data, meta: schedules.meta });
   } catch (error) {
     sendError(res, error);
   }

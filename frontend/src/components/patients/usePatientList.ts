@@ -137,13 +137,15 @@ export function usePatientList(onViewPatient: (patientId: string) => void, optio
 
     setIsAddModalOpen(false);
     resetFilters();
-    await loadPatientPage(1, true, { search: "", activeFilter: "all" });
     if (assignAfterCreate) {
       setAssigningPatient(createdPatient);
       void ensureNursesLoaded();
+      void loadPatientPage(1, true, { search: "", activeFilter: "all" });
       showToast("Pasien berhasil ditambahkan. Pilih perawat yang menangani pasien.", "success");
       return;
     }
+
+    await loadPatientPage(1, true, { search: "", activeFilter: "all" });
     showToast("Pasien berhasil ditambahkan.", "success");
   };
 

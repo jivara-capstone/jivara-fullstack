@@ -308,8 +308,12 @@ export const loginUser = async (dto: LoginDTO) => {
         ))
         .limit(1);
 
-      if (!activeAssignment || suspendedAdmin) {
-        throw { status: 403, message: "Akun dinonaktifkan, silahkan hubungi perawat anda.", code: "PATIENT_DEACTIVATED" };
+      if (!activeAssignment) {
+        throw { status: 403, message: "Akun pasien belum ditugaskan ke perawat. Silakan hubungi admin untuk penugasan perawat.", code: "PATIENT_UNASSIGNED" };
+      }
+
+      if (suspendedAdmin) {
+        throw { status: 403, message: "Akun pasien dinonaktifkan sementara karena admin organisasi sedang disuspend. Silakan hubungi admin.", code: "PATIENT_ORGANIZATION_SUSPENDED" };
       }
     }
   }

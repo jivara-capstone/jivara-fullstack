@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import api from "@/lib/axios";
-import { clearPatientDashboardCache, confirmMedicationScheduleViaApi, getConfirmedScheduleDates, getPatientActivitiesFromApi, getPatientDashboardData, getPatientScheduleData } from "@/lib/patientDashboardApi";
+import { clearPatientDashboardCache, confirmMedicationScheduleViaApi, getConfirmedScheduleDates, getPatientActivitiesFromApi, getPatientActivityLogData, getPatientDashboardData, getPatientScheduleData } from "@/lib/patientDashboardApi";
 import type { PatientRecord } from "@/lib/mocks/patients";
 import type { MedicationScheduleRecord } from "@/lib/mocks/schedules";
 import { getFoodScansPageFromApi } from "@/lib/foodScanApi";
@@ -210,6 +210,21 @@ describe("patientDashboardApi", () => {
     const activities = await getPatientActivitiesFromApi(new Date(2026, 4, 9));
 
     expect(activities.map((activity) => activity.scanId)).toEqual(["scan-ok"]);
+  });
+
+  it("shares identical in-flight force-refresh patient activity requests", async () => {
+    mockedGet.mockResolvedValue({ data: { data: [], meta: { total: 0 } } });
+
+    const [firstData, secondData] = await Promise.all([
+      getPatientActivityLogData(new Date(2026, 4, 9), { forceRefresh: true }),
+      getPatientActivityLogData(new Date(2026, 4, 9), { forceRefresh: true }),
+    ]);
+
+    expect(mockedGetSchedulesForPatients).toHaveBeenCalledTimes(1);
+    expect(mockedGetSchedulesForPatients).toHaveBeenCalledWith([patient], { limit: 50, forceRefresh: true, loadAllPages: true });
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+    expect(mockedGetFoodScansPage).toHaveBeenCalledTimes(1);
+    expect(firstData.monthKey).toBe(secondData.monthKey);
   });
 
   it("posts medication confirmation with selected date and schedule time", async () => {

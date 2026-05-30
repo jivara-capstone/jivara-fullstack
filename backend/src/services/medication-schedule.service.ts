@@ -21,6 +21,17 @@ const getBooleanFilter = (value?: string) => {
   return undefined;
 };
 
+const parsePagination = (query: MedicationScheduleListQuery) => {
+  const parsedPage = Number(query.page || 1);
+  const parsedLimit = Number(query.limit);
+  const page = Math.max(Number.isFinite(parsedPage) ? Math.trunc(parsedPage) : 1, 1);
+  const limit = query.limit && Number.isFinite(parsedLimit)
+    ? Math.min(Math.max(Math.trunc(parsedLimit), 1), 100)
+    : undefined;
+
+  return { page, limit, offset: limit ? (page - 1) * limit : 0 };
+};
+
 const ensurePatientExists = async (patientId: string) => {
   const patient = await db.select({ id: patients.id }).from(patients).where(eq(patients.id, patientId)).limit(1);
   if (patient.length === 0) {
@@ -129,7 +140,7 @@ export const listMedicineCatalog = async (query: { search?: string; limit?: stri
 
 export const listMedicationSchedules = async (query: MedicationScheduleListQuery, user?: AccessUser) => {
   const cacheKey = getListCacheKey(query, user);
-  const cached = getCached<Array<typeof medicationSchedules.$inferSelect>>(cacheKey);
+  const cached = getCached<{ data: Array<typeof medicationSchedules.$inferSelect>; meta: { page: number; limit: number; total: number } }>(cacheKey);
   if (cached) return cached;
 
   const patientId = query.patientId || query.patient_id;
@@ -137,29 +148,31 @@ export const listMedicationSchedules = async (query: MedicationScheduleListQuery
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  const parsedLimit = Number(query.limit);
-  const limit = query.limit && Number.isFinite(parsedLimit)
-    ? Math.min(Math.max(Math.trunc(parsedLimit), 1), 100)
-    : undefined;
+  const { page, limit, offset } = parsePagination(query);
   const activeFilter = getBooleanFilter(query.isActive || query.is_active);
   const conditions = [];
   const scopedFilter = await scopedPatientFilter(medicationSchedules.patientId, user, patientId);
 
-  if (!scopedFilter.scope.allowed) return [];
+  if (!scopedFilter.scope.allowed) return { data: [], meta: { page, limit: limit ?? 0, total: 0 } };
   if (scopedFilter.condition) conditions.push(scopedFilter.condition);
 
   if (activeFilter !== undefined) conditions.push(eq(medicationSchedules.isActive, activeFilter));
   if (!patientId && patientIds.length > 0) conditions.push(inArray(medicationSchedules.patientId, patientIds));
 
+  const totalRows = await db
+    .select({ total: count() })
+    .from(medicationSchedules)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
   const baseQuery = db
     .select()
     .from(medicationSchedules)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(medicationSchedules.createdAt));
-  const rows = limit ? await baseQuery.limit(limit) : await baseQuery;
+  const rows = limit ? await baseQuery.limit(limit).offset(offset) : await baseQuery;
+  const result = { data: rows, meta: { page, limit: limit ?? rows.length, total: totalRows[0]?.total ?? rows.length } };
 
-  setCached(cacheKey, rows, CACHE_TTL_MS);
-  return rows;
+  setCached(cacheKey, result, CACHE_TTL_MS);
+  return result;
 };
 
 export const listMedicationSchedulePatientGroups = async (query: MedicationScheduleListQuery, user?: AccessUser) => {
@@ -174,7 +187,7 @@ export const listMedicationSchedulePatientGroups = async (query: MedicationSched
 
   const patientIds = patientPage.data.map((patient) => patient.id);
   const schedules = patientIds.length > 0
-    ? await listMedicationSchedules({ patient_ids: patientIds.join(",") }, user)
+    ? (await listMedicationSchedules({ patient_ids: patientIds.join(",") }, user)).data
     : [];
   const summaryPatientIds = query.search || query.adherenceStatus
     ? (patientPage.meta.total > patientPage.data.length

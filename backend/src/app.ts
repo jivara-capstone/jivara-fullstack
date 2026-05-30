@@ -90,9 +90,26 @@ app.use('/api-docs', apiReference({
   theme: 'saturn',
   layout: 'modern',
   darkMode: false,
+  pageTitle: 'Dokumentasi API | Jivara',
   favicon: '/docs-assets/favicon.ico',
   metaData: {
     title: 'Dokumentasi API | Jivara',
+  },
+  onLoaded: () => {
+    const clientDocument = (globalThis as unknown as {
+      document: {
+        querySelector: (selectors: string) => unknown;
+        createElement: (tagName: string) => { src: string; defer: boolean; dataset: Record<string, string> };
+        head: { appendChild: (node: unknown) => void };
+      };
+    }).document;
+    if (clientDocument.querySelector('script[data-jivara-scalar-docs]')) return;
+
+    const script = clientDocument.createElement('script');
+    script.src = '/docs-assets/api-docs.js';
+    script.defer = true;
+    script.dataset.jivaraScalarDocs = 'true';
+    clientDocument.head.appendChild(script);
   },
 }));
 

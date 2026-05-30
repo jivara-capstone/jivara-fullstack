@@ -84,7 +84,7 @@ function NurseDetailPageContent({ nurseId }: NurseDetailPageProps) {
         loading={{ isLoading: controller.state.isLoadingPatients, hasLoaded: controller.state.hasLoadedPatients }}
         filters={{ search: controller.state.patientSearch, filter: controller.state.patientFilter, hasActive: controller.hasActivePatientFilters }}
         selection={{ count: controller.selectedPatientIds.length, allSelected: controller.selectablePatients.length > 0 && controller.selectedPatientIds.length === controller.selectablePatients.length, selectedIds: controller.selectedPatientIds }}
-        data={{ patients: controller.state.assignedPatients, medicationStats: controller.state.medicationStats, page: controller.state.patientPage, totalPages: controller.totalPatientPages, totalResults: controller.state.totalPatientResults }}
+        data={{ patients: controller.state.assignedPatients, page: controller.state.patientPage, totalPages: controller.totalPatientPages, totalResults: controller.state.totalPatientResults }}
         onOpenReassign={controller.openReassign}
         onSearchChange={controller.handlePatientSearchChange}
         onFilterChange={controller.handlePatientFilterChange}
@@ -168,7 +168,7 @@ function PatientAssignmentsSection({
   readonly loading: { isLoading: boolean; hasLoaded: boolean };
   readonly filters: { search: string; filter: PatientFilter; hasActive: boolean };
   readonly selection: { count: number; allSelected: boolean; selectedIds: readonly string[] };
-  readonly data: { patients: readonly PatientRecord[]; medicationStats: Record<string, { completed: number; total: number }>; page: number; totalPages: number; totalResults: number };
+  readonly data: { patients: readonly PatientRecord[]; page: number; totalPages: number; totalResults: number };
   readonly onOpenReassign: () => void;
   readonly onSearchChange: (value: string) => void;
   readonly onFilterChange: (value: PatientFilter) => void;
@@ -194,7 +194,6 @@ function PatientAssignmentsSection({
                 <col className="w-[6%]" />
                 <col className="w-[28%]" />
                 <col className="w-[24%]" />
-                <col className="w-[24%]" />
                 <col className="w-[18%]" />
               </colgroup>
               <thead className="bg-surface text-xs font-extrabold uppercase tracking-[0.08em] text-muted">
@@ -203,23 +202,18 @@ function PatientAssignmentsSection({
                   <th className="px-5 py-4">Pasien</th>
                   <th className="px-5 py-4">Status</th>
                   <th className="px-5 py-4">Kepatuhan</th>
-                  <th className="px-5 py-4">Obat Selesai</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {data.patients.map((patient, index) => {
-                  const stats = data.medicationStats[patient.id];
-                  return (
-                    <tr key={`nurse-detail-patient-${patient.id}-${index}`} className="transition-colors hover:bg-surface/60">
-                      <td className="px-5 py-4"><SelectionCheckbox label={`Pilih ${patient.name}`} checked={selection.selectedIds.includes(patient.id)} disabled={patient.status === "Complete" || patient.status === "Nonaktif"} onChange={() => onTogglePatient(patient.id)} /></td>
-                      <td className="px-5 py-4"><Link href={`/patients/${encodeURIComponent(patient.id)}`} className="font-extrabold text-text-main transition-colors hover:text-primary">{patient.name}</Link></td>
-                      <td className="px-5 py-4"><PatientStatusBadge status={patient.status} /></td>
-                      <td className="px-5 py-4"><AdherenceBar value={patient.adherence} /></td>
-                      <td className="px-5 py-4 text-sm font-bold text-muted">{stats ? `${stats.completed}/${stats.total}` : "..."}</td>
-                    </tr>
-                  );
-                })}
-                {data.patients.length === 0 && <tr><td colSpan={5} className="px-5 py-12 text-center text-sm font-bold text-muted">Tidak ada data pasien.</td></tr>}
+                {data.patients.map((patient, index) => (
+                  <tr key={`nurse-detail-patient-${patient.id}-${index}`} className="transition-colors hover:bg-surface/60">
+                    <td className="px-5 py-4"><SelectionCheckbox label={`Pilih ${patient.name}`} checked={selection.selectedIds.includes(patient.id)} disabled={patient.status === "Complete" || patient.status === "Nonaktif"} onChange={() => onTogglePatient(patient.id)} /></td>
+                    <td className="px-5 py-4"><Link href={`/patients/${encodeURIComponent(patient.id)}`} className="font-extrabold text-text-main transition-colors hover:text-primary">{patient.name}</Link></td>
+                    <td className="px-5 py-4"><PatientStatusBadge status={patient.status} /></td>
+                    <td className="px-5 py-4"><AdherenceBar value={patient.adherence} /></td>
+                  </tr>
+                ))}
+                {data.patients.length === 0 && <tr><td colSpan={4} className="px-5 py-12 text-center text-sm font-bold text-muted">Tidak ada data pasien.</td></tr>}
               </tbody>
             </table>
           </div>

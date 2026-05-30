@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PatientListPage from "@/components/patients/PatientListPage";
 import { getNursesFromApi } from "@/lib/nurseApi";
@@ -106,9 +106,14 @@ describe("patient management feature", () => {
   });
 
   it("opens nurse assignment modal after admin creates a patient", async () => {
+    let resolvePostCreateRefresh!: (value: Awaited<ReturnType<typeof getPatientPageFromApi>>) => void;
+    const postCreateRefresh = new Promise<Awaited<ReturnType<typeof getPatientPageFromApi>>>((resolve) => {
+      resolvePostCreateRefresh = resolve;
+    });
+
     vi.mocked(getPatientPageFromApi)
       .mockResolvedValueOnce({ patients, meta: { page: 1, limit: 10, total: patients.length } })
-      .mockResolvedValueOnce({ patients: [newPatient, ...patients], meta: { page: 1, limit: 10, total: patients.length + 1 } })
+      .mockImplementationOnce(() => postCreateRefresh)
       .mockResolvedValueOnce({ patients: [{ ...newPatient, assignedNurseId: "NRS-01", assignedNurses: [{ id: "NRS-01", name: "Nurse Jivara" }] }, ...patients], meta: { page: 1, limit: 10, total: patients.length + 1 } });
     vi.mocked(getNursesFromApi).mockResolvedValueOnce(nurses);
     vi.mocked(createPatientViaApi).mockResolvedValueOnce(newPatient);
@@ -131,6 +136,10 @@ describe("patient management feature", () => {
     expect(await screen.findByText("Pilih satu atau lebih perawat yang menangani Rina Hartati.")).toBeInTheDocument();
     expect(screen.getByText("Nurse Jivara")).toBeInTheDocument();
     expect(screen.queryByText("Dimas Pradana")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePostCreateRefresh({ patients: [newPatient, ...patients], meta: { page: 1, limit: 10, total: patients.length + 1 } });
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Pilih Nurse Jivara" }));
     fireEvent.click(screen.getByRole("button", { name: /Simpan Perawat/i }));
