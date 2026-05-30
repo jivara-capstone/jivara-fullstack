@@ -172,7 +172,7 @@ const mapRiskScoreToLevel = (score: number) => {
 
 const getReasoningTimeoutMs = () => Number(process.env.FOOD_REASONING_TIMEOUT_MS || process.env.FOOD_AI_TIMEOUT_MS || 10000);
 
-const getDetectionTimeoutMs = () => Number(process.env.FOOD_AI_TIMEOUT_MS || 30000);
+const getDetectionTimeoutMs = () => Number(process.env.FOOD_AI_TIMEOUT_MS || 25000);
 
 const getDetectionImageMaxSize = () => Number(process.env.FOOD_AI_IMAGE_MAX_SIZE || 960);
 
@@ -259,6 +259,8 @@ const postFoodDetectionMultipart = async (inferenceUrl: string, image: ImageForD
 };
 
 const isServiceError = (error: unknown): error is ServiceError => Boolean(error && typeof error === "object" && typeof (error as ServiceError).status === "number");
+
+const isTimeoutError = (error: unknown) => error instanceof DOMException && ["AbortError", "TimeoutError"].includes(error.name);
 
 const getFallbackInteraction = (yoloClass: string): ReasoningInteractionResponse => ({
   detected_food: yoloClass,
@@ -499,6 +501,9 @@ const runFoodDetection = async (scan: typeof foodScans.$inferSelect): Promise<Fo
   } catch (error) {
     if (shouldUseDevelopmentFallback()) return getDevelopmentDetectionResult();
     if (isServiceError(error)) throw error;
+    if (isTimeoutError(error)) {
+      throw { status: 503, message: "AI deteksi sedang lambat, coba ulang beberapa saat lagi.", code: "AI_INFERENCE_TIMEOUT" };
+    }
     const status = axios.isAxiosError(error) && error.response?.status ? error.response.status : 502;
     throw { status, message: "Service AI gagal memproses gambar makanan", code: "AI_INFERENCE_FAILED" };
   }
